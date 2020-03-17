@@ -3,6 +3,11 @@
  */
 package de.unijena.cheminf.deglycosylation;
 
+/**
+ * TODO:
+ * -
+ */
+
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.InvalidSmilesException;
@@ -23,254 +28,268 @@ import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * TODO: Add doc
  */
 public final class SugarRemovalUtility {
-    public List<IAtomContainer> linearSugars;
-    public List<IAtomContainer> ringSugars;
-    public List<DfPattern> patternListLinearSugars;
+    //<editor-fold desc="Private static final constants">
+    /**
+     * TODO: Add doc, add names of sugars
+     */
+    private static final String[] LINEAR_SUGARS_SMILES = {
+            "C(C(C(C(C(C=O)O)O)O)O)O",
+            "C(C(CC(C(CO)O)O)O)(O)=O",
+            "C(C(C(CC(=O)O)O)O)O",
+            "C(C(C(C(C(CO)O)O)O)=O)O",
+            "C(C(C(C(C(CO)O)O)O)O)O",
+            "C(C(C(C(CC=O)O)O)O)O",
+            "OCC(O)C(O)C(O)C(O)CO",
+            "O=CC(O)C(O)C(O)C(O)CO",
+            "CCCCC(O)C(=O)O",
+            "CC(=O)CC(=O)CCC(=O)O",
+            "O=C(O)CC(O)CC(=O)O",
+            "O=C(O)C(=O)C(=O)C(O)C(O)CO",
+            "O=C(O)CCC(O)C(=O)O",
+            "O=CC(O)C(O)C(O)C(O)CO",
+            "O=C(CO)C(O)C(O)CO"};
 
-    UniversalIsomorphismTester universalIsomorphismTester = new UniversalIsomorphismTester();
+    /**
+     * TODO: Add doc, add names/description
+     */
+    private static final String [] RING_SUGARS_SMILES = {
+            "C1CCOC1",
+            "C1CCOCC1",
+            "C1CCCOCC1"};
 
+    /**
+     * Logger of this class
+     */
+    private static final Logger LOGGER = Logger.getLogger(SugarRemovalUtility.class.getName());
+    //</editor-fold>
+    //
+    //<editor-fold desc="Private final variables">
+    /**
+     * TODO: Add doc
+     */
+    private final List<IAtomContainer> linearSugars;
 
+    /**
+     * TODO: Add doc
+     */
+    private final List<IAtomContainer> ringSugars;
 
+    /**
+     * TODO: Add doc
+     */
+    private final List<DfPattern> linearSugarPatterns;
 
-
-    public void getSugarChains() {
-
-        linearSugars = new ArrayList<>();
-        ringSugars = new ArrayList<>();
-        SmilesParser smilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-
-        String[] linearSugarsSmilesList = {"C(C(C(C(C(C=O)O)O)O)O)O", "C(C(CC(C(CO)O)O)O)(O)=O", "C(C(C(CC(=O)O)O)O)O",
-                "C(C(C(C(C(CO)O)O)O)=O)O", "C(C(C(C(C(CO)O)O)O)O)O", "C(C(C(C(CC=O)O)O)O)O",
-                "OCC(O)C(O)C(O)C(O)CO", "O=CC(O)C(O)C(O)C(O)CO",  "CCCCC(O)C(=O)O", "CC(=O)CC(=O)CCC(=O)O",
-                "O=C(O)CC(O)CC(=O)O", "O=C(O)C(=O)C(=O)C(O)C(O)CO",
-                "O=C(O)CCC(O)C(=O)O", "O=CC(O)C(O)C(O)C(O)CO", "O=C(CO)C(O)C(O)CO"};
-
-        String [] ringSugarsSmilesList = { "C1CCOC1", "C1CCOCC1", "C1CCCOCC1"};
-
-
-
+    /**
+     * TODO: Add doc
+     */
+    private final UniversalIsomorphismTester univIsomorphismTester;
+    //</editor-fold>
+    //
+    //<editor-fold desc="Constructors">
+    /**
+     * TODO: Add doc, add parameters
+     */
+    public SugarRemovalUtility() {
+        this.univIsomorphismTester = new UniversalIsomorphismTester();
+        this.linearSugars = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
+        this.ringSugars = new ArrayList<>(SugarRemovalUtility.RING_SUGARS_SMILES.length);
+        this.linearSugarPatterns = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
+        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         //adding linear sugars to list
-        for (String smiles : linearSugarsSmilesList) {
+        for (String tmpSmiles : SugarRemovalUtility.LINEAR_SUGARS_SMILES) {
             try {
-                linearSugars.add(smilesParser.parseSmiles(smiles));
-            } catch (InvalidSmilesException ex) {
-                System.out.println("could not read linear sugar");
+                this.linearSugars.add(tmpSmilesParser.parseSmiles(tmpSmiles));
+            } catch (InvalidSmilesException anInvalidSmilesException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anInvalidSmilesException.toString(), anInvalidSmilesException);
             }
         }
-
-
         //adding ring sugars to list
-        for (String smiles : ringSugarsSmilesList) {
+        for (String tmpSmiles : SugarRemovalUtility.RING_SUGARS_SMILES) {
             try {
-                ringSugars.add(smilesParser.parseSmiles(smiles));
-            } catch (InvalidSmilesException ex) {
-                System.out.println("could not read ring sugar");
+                this.ringSugars.add(tmpSmilesParser.parseSmiles(tmpSmiles));
+            } catch (InvalidSmilesException anInvalidSmilesException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anInvalidSmilesException.toString(), anInvalidSmilesException);
             }
         }
-
-    }
-
-
-    public void getSugarPatterns(){
-        getSugarChains();
-
-        patternListLinearSugars = new ArrayList<>();
-        for(IAtomContainer sugarAC : linearSugars){
-            patternListLinearSugars.add(DfPattern.findSubstructure(sugarAC));
+        //parsing linear sugars into pattern
+        for(IAtomContainer tmpSugarAC : this.linearSugars){
+            this.linearSugarPatterns.add(DfPattern.findSubstructure(tmpSugarAC));
         }
-
     }
-
-
-
-
-    public IAtomContainer removeSugars(IAtomContainer molecule){
-        //SmilesGenerator smilesGenerator = new SmilesGenerator(SmiFlavor.Unique );
-        //this.getSugarPatterns();
-
-        IAtomContainer newMolecule = null;
+    //</editor-fold>
+    //
+    //<editor-fold desc="Public methods">
+    /**
+     * TODO: Add doc
+     *
+     * @param aMolecule
+     * @return
+     * @throws
+     */
+    public IAtomContainer removeSugars(IAtomContainer aMolecule, boolean aShouldBeCloned) throws NullPointerException {
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        IAtomContainer tmpNewMolecule;
         try {
-            newMolecule = molecule.clone();
-
-            //removing ring sugars
-
-            int[][] g = GraphUtil.toAdjList(newMolecule);
-
-            // efficient computation/partitioning of the ring systems
-            RingSearch rs = new RingSearch(newMolecule, g);
-
-            // isolated cycles don't need to be run
-            List<IAtomContainer> isolatedRings = rs.isolatedRingFragments();//
-            List<IAtomContainer> fusedRings = rs.fusedRingFragments();//
-            for(IAtomContainer referenceRing : ringSugars){//
-                for(IAtomContainer isolatedRing : isolatedRings){//
-                    if (universalIsomorphismTester.isIsomorph(referenceRing, isolatedRing)) {
-                        boolean tmpAreAllExocyclicBondsSingle = areAllExocyclicBondsSingle(isolatedRing, newMolecule);
+            if (aShouldBeCloned) {
+                tmpNewMolecule = aMolecule.clone();
+            } else {
+                tmpNewMolecule = aMolecule;
+            }
+            //***removing ring sugars***
+            int[][] tmpAdjList = GraphUtil.toAdjList(tmpNewMolecule);
+            //efficient computation/partitioning of the ring systems
+            RingSearch tmpRingSearch = new RingSearch(tmpNewMolecule, tmpAdjList);
+            List<IAtomContainer> tmpIsolatedRings = tmpRingSearch.isolatedRingFragments();
+            List<IAtomContainer> tmpFusedRings = tmpRingSearch.fusedRingFragments();
+            for(IAtomContainer tmpReferenceRing : this.ringSugars){
+                for(IAtomContainer tmpIsolatedRing : tmpIsolatedRings){
+                    if (this.univIsomorphismTester.isIsomorph(tmpReferenceRing, tmpIsolatedRing)) {
+                        //do not remove rings with non-single exocyclic bonds
+                        boolean tmpAreAllExocyclicBondsSingle = SugarRemovalUtility.areAllExocyclicBondsSingle(tmpIsolatedRing, tmpNewMolecule);
                         if (!tmpAreAllExocyclicBondsSingle) {
                             continue;
                         }
-                        int tmpExocyclicOxygenCount = getAttachedOxygenAtomCount(isolatedRing, newMolecule);
-                        //TODO: Count only heavy atoms? But normally, Hs should not be included in the atom containers using RingSearch
-                        int tmpAtomsInRing = isolatedRing.getAtomCount();
-                        boolean tmpAreEnoughOxygensAttached = doesRingHaveEnoughOxygenAtomsAttached(tmpAtomsInRing, tmpExocyclicOxygenCount);
+                        //do not remove rings with 'too few' attached oxygens
+                        int tmpExocyclicOxygenCount = SugarRemovalUtility.getAttachedOxygenAtomCount(tmpIsolatedRing, tmpNewMolecule);
+                        int tmpAtomsInRing = tmpIsolatedRing.getAtomCount();
+                        boolean tmpAreEnoughOxygensAttached = SugarRemovalUtility.doesRingHaveEnoughOxygenAtomsAttached(tmpAtomsInRing, tmpExocyclicOxygenCount);
                         if (!tmpAreEnoughOxygensAttached) {
                             continue;
                         }
-                        //</Jonas>
-                        newMolecule.setProperty("CONTAINS_RING_SUGAR", 1);
-
+                        //TODO: Move to constant
+                        tmpNewMolecule.setProperty("CONTAINS_RING_SUGAR", 1);
                         //remove found ring
-                        for(IAtom a : isolatedRing.atoms()){
-                            //<Jonas>
-                            if (!newMolecule.contains(a)) {
-                                continue;
+                        for(IAtom tmpAtom : tmpIsolatedRing.atoms()){
+                            if (tmpNewMolecule.contains(tmpAtom)) {
+                                tmpNewMolecule.removeAtom(tmpAtom);
                             }
-                            //</Jonas>
-                            newMolecule.removeAtom(a);
                         }
+                        tmpIsolatedRings.remove(tmpIsolatedRing);
                     }
                 }
             }
-
-
-            //removing linear sugars
-            boolean containsLinearSugar = false;
-            for(DfPattern pattern : patternListLinearSugars){
-
-                //if (pattern.matches(molecule)) {
-                //boolean patternPartOfARing = false;
-
-                //remove sugar
-
-                int[][] mappings = pattern.matchAll(newMolecule).uniqueAtoms().toArray();
-
-                for (int[] p : mappings) {
-                    boolean matchPartOfRing = false;
-                    for (int i = 0; i < p.length; i++) {
-                        if( newMolecule.getAtomCount()>= i ){
-                            for(IAtomContainer fr : fusedRings){
-                                if(fr.contains(newMolecule.getAtom(i))){
+            //***removing linear sugars***
+            boolean tmpContainsLinearSugar = false;
+            //iterating over linear sugar patterns
+            for(DfPattern tmpPattern : this.linearSugarPatterns) {
+                int[][] tmpUniqueMappings = tmpPattern.matchAll(tmpNewMolecule).uniqueAtoms().toArray();
+                //Linear sugars that are detected as part of a larger ring should not be removed
+                //iterating over mappings of one pattern
+                for (int[] tmpMapping : tmpUniqueMappings) {
+                    boolean tmpIsPartOfRing = false;
+                    //iterating over atoms of one mapping
+                    for (int i = 0; i < tmpMapping.length; i++) {
+                        //TODO: Why this if?
+                        if(tmpNewMolecule.getAtomCount() >= i) {
+                            //iterating over fused rings to check whether atom is part of a ring
+                            for(IAtomContainer tmpFusedRing : tmpFusedRings){
+                                if(tmpFusedRing.contains(tmpNewMolecule.getAtom(i))) {
                                     //mapped atom is in a ring
-                                    //patternPartOfARing = true;
-                                    matchPartOfRing = true;
+                                    tmpIsPartOfRing = true;
+                                    //breaking iteration of rings
                                     break;
                                 }
                             }
-                            if (matchPartOfRing) {
+                            if (tmpIsPartOfRing) {
+                                //breaking iteration of atoms in mapping
                                 break;
                             }
-                            for(IAtomContainer ir : isolatedRings){
-                                if(ir.contains(newMolecule.getAtom(i))){
+                            //doing the same for isolated rings
+                            for(IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
+                                if(tmpIsolatedRing.contains(tmpNewMolecule.getAtom(i))) {
                                     //mapped atom is in a ring
-                                    //patternPartOfARing = true;
-                                    matchPartOfRing = true;
+                                    tmpIsPartOfRing = true;
                                     break;
                                 }
                             }
-                            if (matchPartOfRing) {
+                            if (tmpIsPartOfRing) {
                                 break;
                             }
-
                         }
-
                     }
-                    if(!matchPartOfRing ){
-                        //for (int[] p : mappings) {
-                        ArrayList<IAtom> atomsToRemove = new ArrayList<>();
-
-                        for (int i = 0; i < p.length; i++) {
-                            if( newMolecule.getAtomCount()>= i ) {
-                                //<Jonas> added try catch block
+                    if(!tmpIsPartOfRing ) {
+                        ArrayList<IAtom> tmpAtomsToRemove = new ArrayList<>(tmpMapping.length);
+                        for (int i = 0; i < tmpMapping.length; i++) {
+                            //TODO: Why this if?
+                            if(tmpNewMolecule.getAtomCount() >= i) {
                                 try {
-                                    IAtom atomToRemove = newMolecule.getAtom(i);
-                                    atomsToRemove.add(atomToRemove);
+                                    IAtom atomToRemove = tmpNewMolecule.getAtom(i);
+                                    tmpAtomsToRemove.add(atomToRemove);
                                 } catch (IndexOutOfBoundsException anException) {
-                                    anException.printStackTrace();
+                                    SugarRemovalUtility.LOGGER.log(Level.SEVERE, anException.toString(), anException);
                                 }
-                                //</Jonas>
                             }
                         }
-                        if(atomsToRemove.size()>=4){
-                            containsLinearSugar = true;
+                        //TODO: To prevent removal of sugars that are not there anymore? Move to constant or option
+                        if(tmpAtomsToRemove.size() >= 4) {
+                            tmpContainsLinearSugar = true;
                         }
-                        for(IAtom a : atomsToRemove){
-                            //<Jonas>
-                            if (!newMolecule.contains(a)) {
-                                continue;
+                        for(IAtom tmpAtom : tmpAtomsToRemove) {
+                            if (tmpNewMolecule.contains(tmpAtom)) {
+                                tmpNewMolecule.removeAtom(tmpAtom);
                             }
-                            //</Jonas>
-                            newMolecule.removeAtom(a);
                         }
-
-                        //}
-
                     }
                 }
-
-
             }
-            if(containsLinearSugar){
-                newMolecule.setProperty("CONTAINS_LINEAR_SUGAR", 1);
+            //TODO: Move to constant
+            if(tmpContainsLinearSugar) {
+                tmpNewMolecule.setProperty("CONTAINS_LINEAR_SUGAR", 1);
             }
-            //select only the biggest part of the molecule
-            newMolecule = getBiggestComponent(newMolecule);
-
-        } catch (CloneNotSupportedException | ConcurrentModificationException | IndexOutOfBoundsException  e) {
-            e.printStackTrace();
-            return null;
-        } catch (CDKException e) {
-            e.printStackTrace();
+            //select only the biggest remaining unconnected part of the molecule
+            tmpNewMolecule = SugarRemovalUtility.selectBiggestUnconnectedFragment(tmpNewMolecule);
+        //TODO: maybe catch some exceptions in between already
+        } catch (CloneNotSupportedException | ConcurrentModificationException | IndexOutOfBoundsException | CDKException anException) {
+            SugarRemovalUtility.LOGGER.log(Level.SEVERE, anException.toString(), anException);
             return null;
         }
-
-        return newMolecule;
+        return tmpNewMolecule;
     }
-
+    //</editor-fold>
+    //
+    //<editor-fold desc="Public static methods">
     /**
-     * TODO
-     * @param molecule
+     * TODO: Add doc
+     *
+     * @param aMolecule
      * @return
      */
-    public static IAtomContainer getBiggestComponent(IAtomContainer molecule){
-
-        Map<Object, Object> properties = molecule.getProperties();
-        IAtomContainerSet listAC = ConnectivityChecker.partitionIntoMolecules(molecule);
-
-        if(listAC != null && listAC.getAtomContainerCount() >= 1 ){
-            IAtomContainer biggestComponent = listAC.getAtomContainer(0);
-            for(IAtomContainer partac : listAC.atomContainers()){
-                if(partac.getAtomCount()>biggestComponent.getAtomCount()){
-                    biggestComponent = partac;
+    public static IAtomContainer selectBiggestUnconnectedFragment(IAtomContainer aMolecule) throws NullPointerException {
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        Map<Object, Object> tmpProperties = aMolecule.getProperties();
+        IAtomContainerSet tmpUnconnectedFragments = ConnectivityChecker.partitionIntoMolecules(aMolecule);
+        if(tmpUnconnectedFragments != null && tmpUnconnectedFragments.getAtomContainerCount() >= 1) {
+            IAtomContainer tmpBiggestFragment = tmpUnconnectedFragments.getAtomContainer(0);
+            for(IAtomContainer tmpFragment : tmpUnconnectedFragments.atomContainers()){
+                if(tmpFragment.getAtomCount() > tmpBiggestFragment.getAtomCount()){
+                    tmpBiggestFragment = tmpFragment;
                 }
             }
-            molecule = biggestComponent;
-
-            int nbheavyatoms = 0;
-            for(IAtom a : molecule.atoms()){
-                if(!a.getSymbol().equals("H")){
-                    nbheavyatoms++;
+            aMolecule = tmpBiggestFragment;
+            int tmpHeavyAtomCount = 0;
+            for(IAtom tmpAtom : aMolecule.atoms()){
+                if(!tmpAtom.getSymbol().equals("H")){
+                    tmpHeavyAtomCount++;
                 }
             }
-            if(nbheavyatoms<5){
+            //Discard 'too small' remaining fragments
+            //TODO: Move to constants or rather option
+            if(tmpHeavyAtomCount < 5){
                 return null;
             }
-        }
-        else{
-
+        } else {
             return null;
         }
-        molecule.setProperties(properties);
-        return molecule;
+        aMolecule.setProperties(tmpProperties);
+        return aMolecule;
     }
-
-
-
-
 
     /**
      * Checks whether all exocyclic bonds connected to a given ring fragment of an original atom container are of single
@@ -288,7 +307,6 @@ public final class SugarRemovalUtility {
      *                           queried from it
      * @return true, if all exocyclic bonds connected to the ring are of single order
      * @throws NullPointerException if a parameter is 'null'
-     * @author Jonas
      */
     public static boolean areAllExocyclicBondsSingle(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule) throws NullPointerException {
         Objects.requireNonNull(aRingToTest, "Given ring atom container is 'null'");
@@ -329,7 +347,6 @@ public final class SugarRemovalUtility {
      *                           queried from it
      * @return number of attached exocyclic oxygen atoms
      * @throws NullPointerException if a parameter is 'null'
-     * @author Jonas
      */
     public static int getAttachedOxygenAtomCount(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule) throws NullPointerException {
         Objects.requireNonNull(aRingToTest, "Given ring atom container is 'null'");
@@ -368,4 +385,5 @@ public final class SugarRemovalUtility {
     public static boolean doesRingHaveEnoughOxygenAtomsAttached(int aNumberOfAtomsInRing, int aNumberOfAttachedExocyclicOxygenAtoms) {
         return (aNumberOfAttachedExocyclicOxygenAtoms >= (aNumberOfAtomsInRing / 2));
     }
+    //</editor-fold>
 }
