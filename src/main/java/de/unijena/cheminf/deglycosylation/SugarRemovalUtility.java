@@ -20,6 +20,8 @@ import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
 import org.openscience.cdk.ringsearch.RingSearch;
+import org.openscience.cdk.smiles.SmiFlavor;
+import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
 import org.openscience.cdk.tools.manipulator.BondManipulator;
 
@@ -35,6 +37,47 @@ import java.util.logging.Logger;
  * TODO: Add doc
  */
 public final class SugarRemovalUtility {
+    //<editor-fold desc="Enum StructuresToKeepMode">
+    /**
+     * TODO
+     */
+    public static enum StructuresToKeepMode {
+        /**
+         * TODO
+         */
+        ALL (0),
+
+        /**
+         * TODO
+         */
+        HEAVY_ATOM_COUNT (5),
+
+        /**
+         * TODO
+         */
+        MOLECULAR_WEIGHT (60);
+
+        /**
+         * TODO
+         */
+        private final int defaultThreshold;
+
+        /**
+         * TODO
+         */
+        StructuresToKeepMode(int aDefaultValue) {
+            this.defaultThreshold = aDefaultValue;
+        }
+
+        /**
+         * TODO
+         */
+        public int getDefaultThreshold() {
+            return this.defaultThreshold;
+        }
+    }
+    //</editor-fold>
+    //
     //<editor-fold desc="Private static final constants">
     /**
      * TODO: Add doc, add names of sugars
@@ -65,6 +108,36 @@ public final class SugarRemovalUtility {
             "C1CCCOCC1"};
 
     /**
+     * TODO
+     */
+    private static final boolean DETECT_GLYCOSIDIC_BOND_DEFAULT = false;
+
+    /**
+     * TODO
+     */
+    private static final boolean REMOVE_ONLY_TERMINAL_DEFAULT = true;
+
+    /**
+     * TODO
+     */
+    private static final StructuresToKeepMode STRUCTURES_TO_KEEP_MODE_DEFAULT = StructuresToKeepMode.HEAVY_ATOM_COUNT;
+
+    /**
+     * TODO
+     */
+    private static final boolean INCLUDE_NR_OF_ATTACHED_OXYGEN_DEFAULT = true;
+
+    /**
+     * TODO
+     */
+    private static final double ATTACHED_OXYGENS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT = 0.5;
+
+    /**
+     * TODO
+     */
+    private static final boolean REMOVE_LINEAR_SUGARS_IN_RING_DEFAULT = false;
+
+    /**
      * Logger of this class
      */
     private static final Logger LOGGER = Logger.getLogger(SugarRemovalUtility.class.getName());
@@ -74,22 +147,59 @@ public final class SugarRemovalUtility {
     /**
      * TODO: Add doc
      */
-    private final List<IAtomContainer> linearSugars;
-
-    /**
-     * TODO: Add doc
-     */
-    private final List<IAtomContainer> ringSugars;
-
-    /**
-     * TODO: Add doc
-     */
-    private final List<DfPattern> linearSugarPatterns;
-
-    /**
-     * TODO: Add doc
-     */
     private final UniversalIsomorphismTester univIsomorphismTester;
+    //</editor-fold>
+    //
+    //<editor-fold desc="Private variables">
+    /**
+     * TODO: Add doc
+     */
+    private List<IAtomContainer> linearSugars;
+
+    /**
+     * TODO: Add doc
+     */
+    private List<IAtomContainer> ringSugars;
+
+    /**
+     * TODO: Add doc
+     */
+    private List<DfPattern> linearSugarPatterns;
+
+    /**
+     * TODO: Add doc
+     */
+    private boolean detectGlycosidicBond;
+
+    /**
+     * TODO
+     */
+    private boolean removeOnlyTerminal;
+
+    /**
+     * TODO
+     */
+    private StructuresToKeepMode structuresToKeepMode;
+
+    /**
+     * TODO
+     */
+    private int mwOrHacThreshold;
+
+    /**
+     * TODO
+     */
+    private boolean includeNrOfAttachedOxygens;
+
+    /**
+     * TODO
+     */
+    private double attachedOxygensToAtomsInRingRatioThreshold;
+
+    /**
+     * TODO
+     */
+    private boolean removeLinearSugarsInRing;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
@@ -118,10 +228,234 @@ public final class SugarRemovalUtility {
                 SugarRemovalUtility.LOGGER.log(Level.WARNING, anInvalidSmilesException.toString(), anInvalidSmilesException);
             }
         }
-        //parsing linear sugars into pattern
+        //parsing linear sugars into patterns
         for(IAtomContainer tmpSugarAC : this.linearSugars){
             this.linearSugarPatterns.add(DfPattern.findSubstructure(tmpSugarAC));
         }
+        this.detectGlycosidicBond = SugarRemovalUtility.DETECT_GLYCOSIDIC_BOND_DEFAULT;
+        this.removeOnlyTerminal = SugarRemovalUtility.REMOVE_ONLY_TERMINAL_DEFAULT;
+        this.structuresToKeepMode = SugarRemovalUtility.STRUCTURES_TO_KEEP_MODE_DEFAULT;
+        this.mwOrHacThreshold = this.structuresToKeepMode.defaultThreshold;
+        this.includeNrOfAttachedOxygens = SugarRemovalUtility.INCLUDE_NR_OF_ATTACHED_OXYGEN_DEFAULT;
+        this.attachedOxygensToAtomsInRingRatioThreshold = SugarRemovalUtility.ATTACHED_OXYGENS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT;
+        this.removeLinearSugarsInRing = SugarRemovalUtility.REMOVE_LINEAR_SUGARS_IN_RING_DEFAULT;
+    }
+    //</editor-fold>
+    //
+    //<editor-fold desc="Public properties get/is">
+    /**
+     * TODO
+     */
+    public List<String> getLinearSugars() {
+        List<String> tmpSmilesList = new ArrayList<>(this.linearSugars.size());
+        SmilesGenerator tmpSmilesGen = new SmilesGenerator(SmiFlavor.Unique);
+        for (IAtomContainer tmpLinearSugar : this.linearSugars) {
+            String tmpSmiles = null;
+            try {
+                tmpSmiles = tmpSmilesGen.create(tmpLinearSugar);
+            } catch (CDKException aCDKException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+            }
+            tmpSmilesList.add(tmpSmiles);
+        }
+        return tmpSmilesList;
+    }
+
+    /**
+     * TODO
+     */
+    public List<String> getCircularSugars() {
+        List<String> tmpSmilesList = new ArrayList<>(this.ringSugars.size());
+        SmilesGenerator tmpSmilesGen = new SmilesGenerator(SmiFlavor.Unique);
+        for (IAtomContainer tmpRingSugar : this.ringSugars) {
+            String tmpSmiles = null;
+            try {
+                tmpSmiles = tmpSmilesGen.create(tmpRingSugar);
+            } catch (CDKException aCDKException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+            }
+            tmpSmilesList.add(tmpSmiles);
+        }
+        return tmpSmilesList;
+    }
+
+    /**
+     * TODO
+     * @return
+     */
+    public boolean isGlycosidicBondDetected() {
+        return this.detectGlycosidicBond;
+    }
+
+    /**
+     * TODO
+     */
+    public boolean areOnlyTerminalSugarsRemoved() {
+        return this.removeOnlyTerminal;
+    }
+
+    /**
+     * TODO
+     */
+    public StructuresToKeepMode getStructuresToKeepMode() {
+        return this.structuresToKeepMode;
+    }
+
+    /**
+     * TODO
+     */
+    public int getMwOrHacThreshold() {
+        return this.mwOrHacThreshold;
+    }
+
+    /**
+     * TODO
+     */
+    public boolean isNrOfAttachedOxygensIncluded() {
+        return this.includeNrOfAttachedOxygens;
+    }
+
+    /**
+     * TODO
+     */
+    public double getAttachedOxygensToAtomsInRingRatioThreshold() {
+        return this.attachedOxygensToAtomsInRingRatioThreshold;
+    }
+
+    /**
+     * TODO
+     */
+    public boolean areLinearSugarsInRingsRemoved() {
+        return this.removeLinearSugarsInRing;
+    }
+    //</editor-fold>
+    //
+    //<editor-fold desc="Public properties set/add/clear">
+    /**
+     * TODO
+     */
+    public void addCircularSugar(IAtomContainer aCircularSugar) throws NullPointerException, IllegalArgumentException, IllegalStateException {
+        Objects.requireNonNull(aCircularSugar, "Given atom container is 'null'");
+        this.ringSugars.add(aCircularSugar);
+    }
+
+    /**
+     * TODO
+     */
+    public void addCircularSugar(String aSmilesCode) throws NullPointerException, CDKException, IllegalArgumentException, IllegalStateException {
+        Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
+        if (aSmilesCode.isEmpty()) {
+            throw new IllegalArgumentException("Given SMILES code is empty");
+        }
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer tmpRingSugar = tmpSmiPar.parseSmiles(aSmilesCode);
+        this.addCircularSugar(tmpRingSugar);
+    }
+
+    /**
+     * TODO
+     */
+    public void addLinearSugar(IAtomContainer aLinearSugar) throws NullPointerException, IllegalArgumentException, IllegalStateException {
+        Objects.requireNonNull(aLinearSugar, "Given atom container is 'null'");
+        this.linearSugars.add(aLinearSugar);
+        this.linearSugarPatterns.add(DfPattern.findSubstructure(aLinearSugar));
+    }
+
+    /**
+     * TODO
+     */
+    public void addLinearSugar(String aSmilesCode) throws NullPointerException, CDKException, IllegalArgumentException, IllegalStateException {
+        Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
+        if (aSmilesCode.isEmpty()) {
+            throw new IllegalArgumentException("Given SMILES code is empty");
+        }
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer tmpLinearSugar = tmpSmiPar.parseSmiles(aSmilesCode);
+        this.addLinearSugar(tmpLinearSugar);
+    }
+
+    /**
+     * TODO
+     */
+    public void clearCircularSugars() {
+        this.ringSugars.clear();
+    }
+
+    /**
+     * TODO
+     */
+    public void clearLinearSugars() {
+        this.linearSugars.clear();
+        this.linearSugarPatterns.clear();
+    }
+
+    /**
+     * TODO
+     */
+    public void setDetectGlycosidicBond(boolean aBoolean) {
+        this.detectGlycosidicBond = aBoolean;
+    }
+
+    /**
+     * TODO
+     */
+    public void setRemoveOnlyTerminalSugars(boolean aBoolean) {
+        this.removeOnlyTerminal = aBoolean;
+    }
+
+    /**
+     * TODO
+     */
+    public void setStructuresToKeepMode(StructuresToKeepMode aMode) throws NullPointerException {
+        Objects.requireNonNull(aMode, "Given mode is 'null'.");
+        this.structuresToKeepMode = aMode;
+        this.mwOrHacThreshold = this.structuresToKeepMode.getDefaultThreshold();
+    }
+
+    /**
+     * TODO
+     */
+    public void setStructuresToKeepThreshold(int aThreshold) throws IllegalArgumentException {
+        if ((this.structuresToKeepMode == StructuresToKeepMode.ALL) && (aThreshold > 1)) {
+            throw new IllegalArgumentException("The mode is currently set to keep all structures, so a threshold > 1 makes no sense.");
+        }
+        if (aThreshold < 0) {
+            throw new IllegalArgumentException("Threshold cannot be negative.");
+        }
+        this.mwOrHacThreshold = aThreshold;
+    }
+
+    /**
+     * TODO
+     */
+    public void setIncludeNrOfAttachedOxygens(boolean aBoolean) {
+        this.includeNrOfAttachedOxygens = aBoolean;
+    }
+
+    /**
+     * TODO
+     */
+    public void setAttachedOxygensToAtomsInRingRatioThreshold(double aDouble) throws IllegalArgumentException {
+        boolean tmpIsFinite = Double.isFinite(aDouble); //false for NaN and infinity arguments
+        boolean tmpIsNegative = (aDouble < 0);
+        if(!tmpIsFinite || tmpIsNegative) {
+            throw new IllegalArgumentException("Given double is NaN, infinite or negative.");
+        }
+        boolean tmpIsBiggerThanOne = (aDouble > 1);
+        if (tmpIsBiggerThanOne) {
+            throw new IllegalArgumentException("Threshold cannot be bigger than one.");
+        }
+        if ((this.includeNrOfAttachedOxygens == false) && aDouble > 0) {
+            throw new IllegalArgumentException("The number of attached oxygen atoms is currently not included in the " +
+                    "decision making process, so a ration threshold > 0 makes no sense.");
+        }
+    }
+
+    /**
+     * TODO
+     */
+    public void setRemoveLinearSugarsInRing(boolean aBoolean) {
+        this.removeLinearSugarsInRing = aBoolean;
     }
     //</editor-fold>
     //
