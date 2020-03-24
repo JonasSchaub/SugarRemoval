@@ -5,14 +5,18 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
+ * - Add test for removal of linear sugars!
  * - Add more examples
  * - play around with settings
  */
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.isomorphism.DfPattern;
+import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
@@ -57,5 +61,20 @@ public class SugarRemovalUtilityTest {
             //Note: for an unknown reason, this does not work all the time...
             //Assert.assertTrue(tmpUnivIsomorphTester.isIsomorph(tmpOriginalMolecule, tmpDeglycosylatedMolecule));
         }
+    }
+
+    @Ignore
+    @Test
+    public void mappingsExperiment() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer target = tmpSmiPar.parseSmiles("CCCCC");
+        IAtomContainer query = tmpSmiPar.parseSmiles("CC");
+        DfPattern tmpPattern = DfPattern.findSubstructure(query);
+        Mappings tmpMappings = tmpPattern.matchAll(target);
+        for (IAtomContainer tmpMap : tmpMappings.toSubstructures()) {
+            System.out.println(tmpSmiGen.create(tmpMap));
+        }
+        System.out.println(tmpMappings.countUnique());
     }
 }

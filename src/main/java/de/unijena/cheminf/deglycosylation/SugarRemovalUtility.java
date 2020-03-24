@@ -9,6 +9,11 @@ package de.unijena.cheminf.deglycosylation;
  * removed, no sugar is removed in this case! So remove sugars with attached hydroxy groups also?
  * - implement removal of linear sugars and of both circular and linear
  * - implement hasXy methods
+ * - Note: The situation at the previous connection point is unclear. When circular sugars are removed, a hydroxy
+ * group remains at the core structure (if there was a glycosidic bond). But for the linear sugars, no general statement
+ * like this can be made.
+ * - add hetero atom count as StructureToKeepMode option?
+ * - add detection of glycosidic bond for linear sugars?
  * - see all the to dos
  */
 
@@ -22,6 +27,7 @@ import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.isomorphism.DfPattern;
+import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
 import org.openscience.cdk.ringsearch.RingSearch;
 import org.openscience.cdk.smiles.SmiFlavor;
@@ -89,6 +95,11 @@ public final class SugarRemovalUtility {
     /**
      * TODO
      */
+    public static final String CONTAINS_LINEAR_SUGAR_PROPERTY_KEY = "CONTAINS_LINEAR_SUGAR";
+
+    /**
+     * TODO
+     */
     public static final String INDEX_PROPERTY_KEY = "SUGAR_REMOVAL_UTILITY_INDEX";
 
     /**
@@ -103,11 +114,11 @@ public final class SugarRemovalUtility {
             "C(C(C(C(CC=O)O)O)O)O",
             "OCC(O)C(O)C(O)C(O)CO",
             "O=CC(O)C(O)C(O)C(O)CO",
-            "CCCCC(O)C(=O)O",
-            "CC(=O)CC(=O)CCC(=O)O",
-            "O=C(O)CC(O)CC(=O)O",
+            "CCCCC(O)C(=O)O", //TODO: Is this a sugar?
+            "CC(=O)CC(=O)CCC(=O)O", //TODO: Is this a sugar?
+            "O=C(O)CC(O)CC(=O)O", //TODO: Is this a sugar?
             "O=C(O)C(=O)C(=O)C(O)C(O)CO",
-            "O=C(O)CCC(O)C(=O)O",
+            "O=C(O)CCC(O)C(=O)O", //TODO: Is this a sugar?
             "O=CC(O)C(O)C(O)C(O)CO",
             "O=C(CO)C(O)C(O)CO"};
 
@@ -217,7 +228,7 @@ public final class SugarRemovalUtility {
     //
     //<editor-fold desc="Constructors">
     /**
-     * TODO: Add doc, add parameters
+     * TODO: Add doc, add parameters?
      */
     public SugarRemovalUtility() {
         this.univIsomorphismTester = new UniversalIsomorphismTester();
@@ -345,7 +356,7 @@ public final class SugarRemovalUtility {
     //
     //<editor-fold desc="Public properties set/add/clear">
     /**
-     * TODO
+     * TODO: Add doc, add test to check whether given new structure is isomorph to an already present structure
      */
     public void addCircularSugar(IAtomContainer aCircularSugar) throws NullPointerException, IllegalArgumentException, IllegalStateException {
         Objects.requireNonNull(aCircularSugar, "Given atom container is 'null'");
@@ -585,13 +596,13 @@ public final class SugarRemovalUtility {
             if (this.structuresToKeepMode != StructuresToKeepMode.ALL) {
                 this.clearTooSmallStructures(tmpNewMolecule);
             }
-        }
-        //post-processing
-        try {
-            AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpNewMolecule);
-            CDKHydrogenAdder.getInstance(DefaultChemObjectBuilder.getInstance()).addImplicitHydrogens(tmpNewMolecule);
-        } catch (CDKException aCDKException) {
-            SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+            //post-processing
+            try {
+                AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpNewMolecule);
+                CDKHydrogenAdder.getInstance(DefaultChemObjectBuilder.getInstance()).addImplicitHydrogens(tmpNewMolecule);
+            } catch (CDKException aCDKException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+            }
         }
         //May be empty and may be unconnected, based on the settings
         return tmpNewMolecule;
@@ -608,9 +619,119 @@ public final class SugarRemovalUtility {
         } else {
             tmpNewMolecule = aMolecule;
         }
-        throw new UnsupportedOperationException();
+        this.setIndices(tmpNewMolecule);
+        List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(aMolecule.getAtomCount() / 2);
+        HashSet<Integer> tmpSugarCandidateAtomsSet = new HashSet<>(aMolecule.getAtomCount() + 2, 1);
+        for(DfPattern tmpLinearSugarPattern : this.linearSugarPatterns) {
+            /*unique in this case means that the same match cannot be in this collection multiple times but they can
+            still overlap! Overlapping atoms are removed in the following lines.*/
+            //TODO: Is there a better way to get non-overlapping matches?
+            Mappings tmpMappings = tmpLinearSugarPattern.matchAll(tmpNewMolecule);
+            Mappings tmpUniqueMappings = tmpMappings.uniqueAtoms();
+            Iterable<IAtomContainer> tmpUniqueSubstructureMappings = tmpUniqueMappings.toSubstructures();
+            for (IAtomContainer tmpMatchedStructure : tmpUniqueSubstructureMappings) {
+                for (IAtom tmpAtom : tmpMatchedStructure.atoms()) {
+                    int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                    boolean tmpIsAtomAlreadyInCandidates = tmpSugarCandidateAtomsSet.contains(tmpAtomIndex);
+                    if (tmpIsAtomAlreadyInCandidates) {
+                        tmpMatchedStructure.removeAtom(tmpAtom);
+                    } else {
+                        tmpSugarCandidateAtomsSet.add(tmpAtomIndex);
+                    }
+                }
+                if (!tmpMatchedStructure.isEmpty()) {
+                    tmpSugarCandidates.add(tmpMatchedStructure);
+                }
+            }
+        }
+        //note: this does only mean that there are matches of the linear sugar patterns! They might not be terminal or
+        //might be contained in a ring!
+        boolean tmpContainsSugar = !tmpSugarCandidates.isEmpty();
+        if (tmpContainsSugar) {
+            tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, true);
+            if (!this.removeLinearSugarsInRing) {
+                int[][] tmpAdjList = GraphUtil.toAdjList(tmpNewMolecule);
+                RingSearch tmpRingSearch = new RingSearch(tmpNewMolecule, tmpAdjList);
+                for (int i = 0; i < tmpSugarCandidates.size(); i++) {
+                    IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
+                    //TODO: discard whole candidate substructure if at least one of its atoms is in a ring (as done now)
+                    // or remove only the atoms that are in a ring from the candidate substructure?
+                    boolean tmpIsInRing = false;
+                    for (IAtom tmpAtom : tmpCandidate.atoms()) {
+                        if (tmpRingSearch.cyclic(tmpAtom)) {
+                            tmpIsInRing = true;
+                            break;
+                        }
+                    }
+                    if (tmpIsInRing) {
+                        tmpSugarCandidates.remove(i);
+                        //The removal shifts the remaining indices!
+                        i = i - 1;
+                    }
+                }
+                if (tmpSugarCandidates.isEmpty()) {
+                    //to skip the remaining code and exit the method
+                    tmpContainsSugar = false;
+                }
+            }
+        }
+        if (tmpContainsSugar) {
+            //TODO: duplicate!
+            if (this.removeOnlyTerminal) {
+                //Only terminal sugars should be removed
+                //but the definition of terminal depends on the set structures to keep mode!
+                //decisions based on this setting are made in the respective private method
+                //No unconnected structures result at the end or at an intermediate step
+                boolean tmpContainsNoTerminalSugar = false;
+                while (!tmpContainsNoTerminalSugar) {
+                    boolean tmpSomethingWasRemoved = false;
+                    for (int i = 0; i < tmpSugarCandidates.size(); i++) {
+                        IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
+                        boolean tmpIsTerminal = this.isTerminal(tmpCandidate, tmpNewMolecule);
+                        if (tmpIsTerminal) {
+                            for (IAtom tmpAtom : tmpCandidate.atoms()) {
+                                if (tmpNewMolecule.contains(tmpAtom)) {
+                                    tmpNewMolecule.removeAtom(tmpAtom);
+                                }
+                            }
+                            tmpSugarCandidates.remove(i);
+                            //The removal shifts the remaining indices!
+                            i = i - 1;
+                            //to clear away leftover unconnected fragments that are not to be kept due to the settings
+                            this.clearTooSmallStructures(tmpNewMolecule);
+                            //atom container may be empty after that
+                            if (tmpNewMolecule.isEmpty()) {
+                                tmpContainsNoTerminalSugar = true;
+                                break;
+                            }
+                            tmpSomethingWasRemoved = true;
+                        }
+                    }
+                    if (!tmpSomethingWasRemoved) {
+                        tmpContainsNoTerminalSugar = true;
+                    }
+                }
+            } else {
+                //all sugar moieties are removed, may result in an unconnected atom container
+                for (IAtomContainer tmpSugarCandidate : tmpSugarCandidates) {
+                    for (IAtom tmpAtom : tmpSugarCandidate.atoms()) {
+                        if (tmpNewMolecule.contains(tmpAtom)) {
+                            tmpNewMolecule.removeAtom(tmpAtom);
+                        }
+                    }
+                }
+            }
+            //TODO: Post-processing is a duplicate, could be moved to its own method
+            //post-processing
+            try {
+                AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(tmpNewMolecule);
+                CDKHydrogenAdder.getInstance(DefaultChemObjectBuilder.getInstance()).addImplicitHydrogens(tmpNewMolecule);
+            } catch (CDKException aCDKException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+            }
+        }
         //May be empty and may be unconnected, based on the settings
-        //return tmpNewMolecule;
+        return tmpNewMolecule;
     }
 
     /**
@@ -836,6 +957,7 @@ public final class SugarRemovalUtility {
 
     //TODO: Include N-, S- and C-glycosidic bonds?
     // TODO: Include bonds that are not of type -X- but also of type -X(R)R etc., e.g. in adenosine?
+    //Note: detects also ester bonds which is not a bad thing because they occur frequently in NPs
     /**
      * TODO!
      */
