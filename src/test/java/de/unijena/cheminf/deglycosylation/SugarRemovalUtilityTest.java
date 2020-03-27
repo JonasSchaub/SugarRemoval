@@ -1,5 +1,5 @@
 /**
- * TODO: Add license header
+ * TODO: Add license header (switch to MIT?)
  */
 package de.unijena.cheminf.deglycosylation;
 
@@ -8,6 +8,8 @@ package de.unijena.cheminf.deglycosylation;
  * - Add test for removal of linear sugars!
  * - Add more examples
  * - play around with settings
+ * - load COCONUT and visually inspect results, also to get more test cases
+ * - write docs
  */
 
 import org.junit.Assert;
