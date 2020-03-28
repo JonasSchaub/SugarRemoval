@@ -16,10 +16,13 @@ package de.unijena.cheminf.deglycosylation;
  * - add hetero atom count as StructureToKeepMode option?
  * - add detection of glycosidic bond for linear sugars? The respective method would already be suitable for linear sugars
  * - remove deprecated method?
- * - is there a better way than the 'index' workaround to uniquely identify an atom object? Maybe hashes?
  * - license
- * - Do not set 'contains_sugar' property or set it in the hasXy methods also?
  * - make a console application to deploy as jar? Inputs and outputs?
+ * - add more linear sugars?
+ *      - e.g. aldopentose, different deoxypentoses/deoxyhexoses, heptoses, octoses (?)
+ * - Do we need a general linear sugar pattern?
+ *      - e.g. a single-bonded, simple carbon chain of sufficient length where nearly all carbon atoms have one hydroxy
+ *      or keto group
  * - see 'to do / to discuss' points in the code
  */
 
@@ -44,48 +47,66 @@ import org.openscience.cdk.tools.manipulator.AtomContainerComparator;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import org.openscience.cdk.tools.manipulator.BondManipulator;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.List;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * TODO: Add doc
+ * Utility class to remove sugar moieties from molecular structures, primarily natural products.
+ *
+ * @author Jonas Schaub, Maria Sorokina
  */
-public final class SugarRemovalUtility {
+public class SugarRemovalUtility {
     //<editor-fold desc="Enum StructuresToKeepMode">
     /**
-     * TODO
+     * Enum that contains options for how to judge whether a remaining (unconnected) substructure after sugar removal is
+     * worth keeping or should be discarded because it is too small/light etc.
+     * <br>The set option also plays a crucial role in judging whether a sugar moiety is terminal or not.
+     * <br>Also, the set threshold for the molecular weight / heavy atom count etc. interrelates with this option.
      */
     public static enum StructuresToKeepMode {
         /**
-         * TODO
+         * Specifies that all structures are worth keeping.
          */
         ALL (0),
 
         /**
-         * TODO
+         * Specifies that whether a structure is worth keeping will be judged by its heavy atom count. The default
+         * threshold to keep a structure is set to 5 heavy atoms.
          */
         HEAVY_ATOM_COUNT (5),
 
         /**
-         * TODO
+         * Specifies that whether a structure is worth keeping will be judged by its molecular weight. The default
+         * threshold to keep a structure is set to 60 Da (= 5 carbon atoms).
          */
         MOLECULAR_WEIGHT (60);
 
         /**
-         * TODO
+         * Default threshold to keep a structure for the respective option.
          */
         private final int defaultThreshold;
 
         /**
-         * TODO
+         * Constructor.
+         *
+         * @param aDefaultValue the default threshold to keep a structure for the respective option; no parameter checks
+         *                      are implemented
          */
         StructuresToKeepMode(int aDefaultValue) {
             this.defaultThreshold = aDefaultValue;
         }
 
         /**
-         * TODO
+         * Returns the default threshold to keep a structure for this option
+         *
+         * @return the default threshold
          */
         public int getDefaultThreshold() {
             return this.defaultThreshold;
@@ -95,52 +116,56 @@ public final class SugarRemovalUtility {
     //
     //<editor-fold desc="Public static final constants">
     /**
-     * TODO
+     * Property key to indicate that the structure contains (or contained before removal) circular sugar moieties.
      */
     public static final String CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY = "CONTAINS_CIRCULAR_SUGAR";
 
     /**
-     * TODO
+     * Property key to indicate that the structure contains (or contained before removal) linear sugar moieties.
      */
     public static final String CONTAINS_LINEAR_SUGAR_PROPERTY_KEY = "CONTAINS_LINEAR_SUGAR";
 
     /**
-     * TODO
+     * Property key to indicate that the structure contains (or contained before removal) sugar moieties.
      */
     public static final String CONTAINS_SUGAR_PROPERTY_KEY = "CONTAINS_SUGAR";
 
     /**
-     * TODO
+     * Property key for index that is added to any IAtom object in a given IAtomContainer object for unique
+     * identification of the respective IAtom object.
      */
     public static final String INDEX_PROPERTY_KEY = "SUGAR_REMOVAL_UTILITY_INDEX";
 
     /**
-     * TODO: Add doc, add names of sugars
+     * Linear sugar structures represented as SMILES codes. An input molecule is scanned for these substructures for
+     * the detection of linear sugars.
      */
     public static final String[] LINEAR_SUGARS_SMILES = {
-            "C(C(C(C(C(C=O)O)O)O)O)O",
-            "C(C(CC(C(CO)O)O)O)(O)=O",
-            "C(C(C(CC(=O)O)O)O)O",
-            "C(C(C(C(C(CO)O)O)O)=O)O",
-            "C(C(C(C(C(CO)O)O)O)O)O",
-            "C(C(C(C(CC=O)O)O)O)O",
-            "OCC(O)C(O)C(O)C(O)CO",
-            "O=CC(O)C(O)C(O)C(O)CO",
-            "CCCCC(O)C(=O)O", //TODO/discuss: Is this a sugar?
-            "CC(=O)CC(=O)CCC(=O)O", //TODO/discuss: Is this a sugar?
-            "O=C(O)CC(O)CC(=O)O", //TODO/discuss: Is this a sugar?
-            "O=C(O)C(=O)C(=O)C(O)C(O)CO",
-            "O=C(O)CCC(O)C(=O)O", //TODO/discuss: Is this a sugar?
-            "O=CC(O)C(O)C(O)C(O)CO",
-            "O=C(CO)C(O)C(O)CO"};
+            "C(C(C(C(C(C=O)O)O)O)O)O", //aldohexose
+            "C(C(CC(C(CO)O)O)O)(O)=O", //3-deoxyhexonic acid
+            "C(C(C(CC(=O)O)O)O)O", //2-deoxypentonic acid
+            "C(C(C(C(C(CO)O)O)O)=O)O", //2-ketohexose
+            "C(C(C(C(C(CO)O)O)O)O)O", //hexitol
+            "C(C(C(C(CC=O)O)O)O)O", //2-deoxyhexose
+            //"OCC(O)C(O)C(O)C(O)CO", //hexitol TODO/discuss: this is a doublet!
+            //"O=CC(O)C(O)C(O)C(O)CO", //aldohexose TODO/discuss: this is a doublet!
+            "CCCCC(O)C(=O)O", //2-hydroxyhexanoic acid TODO/discuss: Is this a sugar?
+            "CC(=O)CC(=O)CCC(=O)O", //4,6-dioxoheptanoic acid TODO/discuss: Is this a sugar?
+            "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid TODO/discuss: Is this a sugar?
+            "O=C(O)C(=O)C(=O)C(O)C(O)CO", //hexo-2,3-diulosonic acid
+            "O=C(O)CCC(O)C(=O)O", //2-hydroxypentanedioic acid TODO/discuss: Is this a sugar?
+            //"O=CC(O)C(O)C(O)C(O)CO", //aldohexose TODO/discuss: this is a doublet!
+            "O=C(CO)C(O)C(O)CO" //ketopentose
+    };
 
     /**
-     * TODO: Add doc, add names/description
+     * TODO: Add doc
      */
     public static final String [] RING_SUGARS_SMILES = {
-            "C1CCOC1",
-            "C1CCOCC1",
-            "C1CCCOCC1"};
+            "C1CCOC1", //tetrahydrofuran to match all 5-membered sugar rings, formed by pentoses
+            "C1CCOCC1", //tetrahydropyran to match all 6-membered sugar rings, formed by hexoses
+            "C1CCCOCC1" //oxepane to match all 7-membered sugar rings, formed by heptoses
+    };
 
     /**
      * TODO
@@ -171,6 +196,11 @@ public final class SugarRemovalUtility {
      * TODO
      */
     public static final boolean REMOVE_LINEAR_SUGARS_IN_RING_DEFAULT = false;
+
+    /**
+     * TODO
+     */
+    public static final boolean SET_PROPERTY_OF_SUGAR_CONTAINING_MOLECULES_DEFAULT = true;
     //</editor-fold>
     //<editor-fold desc="Private static final constants">
     /**
@@ -236,6 +266,11 @@ public final class SugarRemovalUtility {
      * TODO
      */
     private boolean removeLinearSugarsInRing;
+
+    /**
+     * TODO
+     */
+    private boolean setPropertyOfSugarContainingMolecules;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
@@ -275,6 +310,7 @@ public final class SugarRemovalUtility {
         this.includeNrOfAttachedOxygens = SugarRemovalUtility.INCLUDE_NR_OF_ATTACHED_OXYGEN_DEFAULT;
         this.attachedOxygensToAtomsInRingRatioThreshold = SugarRemovalUtility.ATTACHED_OXYGENS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT;
         this.removeLinearSugarsInRing = SugarRemovalUtility.REMOVE_LINEAR_SUGARS_IN_RING_DEFAULT;
+        this.setPropertyOfSugarContainingMolecules = SugarRemovalUtility.SET_PROPERTY_OF_SUGAR_CONTAINING_MOLECULES_DEFAULT;
     }
     //</editor-fold>
     //
@@ -363,6 +399,13 @@ public final class SugarRemovalUtility {
      */
     public boolean areLinearSugarsInRingsRemoved() {
         return this.removeLinearSugarsInRing;
+    }
+
+    /**
+     * TODO
+     */
+    public boolean isPropertyOfSugarContainingMoleculesSet() {
+        return this.setPropertyOfSugarContainingMolecules;
     }
     //</editor-fold>
     //
@@ -534,6 +577,13 @@ public final class SugarRemovalUtility {
     public void setRemoveLinearSugarsInRing(boolean aBoolean) {
         this.removeLinearSugarsInRing = aBoolean;
     }
+
+    /**
+     * TODO
+     */
+    public void setPropertyOfSugarContainingMolecules(boolean aBoolean) {
+        this.setPropertyOfSugarContainingMolecules = aBoolean;
+    }
     //</editor-fold>
     //
     //<editor-fold desc="Public methods">
@@ -548,6 +598,10 @@ public final class SugarRemovalUtility {
         aMolecule = this.setIndices(aMolecule);
         List<IAtomContainer> tmpSugarCandidates = this.getLinearSugarCandidates(aMolecule);
         boolean tmpContainsSugar = !tmpSugarCandidates.isEmpty();
+        if (tmpContainsSugar && this.setPropertyOfSugarContainingMolecules) {
+            aMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, true);
+            aMolecule.setProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY, true);
+        }
         return tmpContainsSugar;
     }
 
@@ -562,6 +616,10 @@ public final class SugarRemovalUtility {
         aMolecule = this.setIndices(aMolecule);
         List<IAtomContainer> tmpSugarCandidates = this.getCircularSugarCandidates(aMolecule);
         boolean tmpContainsSugar = !tmpSugarCandidates.isEmpty();
+        if (tmpContainsSugar && this.setPropertyOfSugarContainingMolecules) {
+            aMolecule.setProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY, true);
+            aMolecule.setProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY, true);
+        }
         return tmpContainsSugar;
     }
 
@@ -579,6 +637,17 @@ public final class SugarRemovalUtility {
         List<IAtomContainer> tmpLinearSugarCandidates = this.getLinearSugarCandidates(aMolecule);
         boolean tmpContainsLinearSugar = !tmpLinearSugarCandidates.isEmpty();
         boolean tmpContainsSugar = (tmpContainsCircularSugar || tmpContainsLinearSugar);
+        if (tmpContainsSugar && this.setPropertyOfSugarContainingMolecules) {
+            if (tmpContainsCircularSugar || tmpContainsLinearSugar) {
+                aMolecule.setProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY, true);
+            }
+            if (tmpContainsCircularSugar) {
+                aMolecule.setProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY, true);
+            }
+            if (tmpContainsLinearSugar) {
+                aMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, true);
+            }
+        }
         return tmpContainsSugar;
     }
 
@@ -602,7 +671,10 @@ public final class SugarRemovalUtility {
         if (tmpContainsSugar) {
             /*note: this means that there are matches of the circular sugar patterns and that they adhere to most of
             the given settings. The exception is that they might not be terminal*/
-            tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY, true);
+            if (this.setPropertyOfSugarContainingMolecules) {
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY, true);
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY, true);
+            }
             tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpSugarCandidates);
             tmpNewMolecule = this.postProcessAfterRemoval(tmpNewMolecule);
         }
@@ -630,7 +702,10 @@ public final class SugarRemovalUtility {
         if (tmpContainsSugar) {
             /*note: this means that there are matches of the linear sugar patterns and that they adhere to most of
             the given settings. The exception is that they might not be terminal*/
-            tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, true);
+            if (this.setPropertyOfSugarContainingMolecules) {
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, true);
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY, true);
+            }
             tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpSugarCandidates);
             tmpNewMolecule = this.postProcessAfterRemoval(tmpNewMolecule);
         }
@@ -657,14 +732,16 @@ public final class SugarRemovalUtility {
         boolean tmpContainsCircularSugars = !tmpCircularSugarCandidates.isEmpty();
         List<IAtomContainer> tmpLinearSugarCandidates = this.getLinearSugarCandidates(tmpNewMolecule);
         boolean tmpContainsLinearSugars = !tmpLinearSugarCandidates.isEmpty();
-        if (tmpContainsCircularSugars || tmpContainsLinearSugars) {
-            tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY, true);
-        }
-        if (tmpContainsCircularSugars) {
-            tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY, true);
-        }
-        if (tmpContainsLinearSugars) {
-            tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, true);
+        if (this.setPropertyOfSugarContainingMolecules) {
+            if (tmpContainsCircularSugars || tmpContainsLinearSugars) {
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY, true);
+            }
+            if (tmpContainsCircularSugars) {
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY, true);
+            }
+            if (tmpContainsLinearSugars) {
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, true);
+            }
         }
         if (tmpContainsCircularSugars && tmpContainsLinearSugars) {
             List<IAtomContainer> tmpAllSugarCandidates = new ArrayList<>(tmpCircularSugarCandidates.size()
