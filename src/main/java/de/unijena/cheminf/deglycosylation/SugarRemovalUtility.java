@@ -553,7 +553,10 @@ public class SugarRemovalUtility {
      * Allows to add an additional linear sugar to the list of linear sugar structures an input molecule is scanned for
      * by the methods for sugar detection and removal. The given structure must not be isomorph to the already present
      * ones (no further requirements, so in fact, any kind of structure could be added here, e.g. to detect/remove amino
-     * acids also).
+     * acids also). Note: If the given structure contains circles, to remove its matches entirely in the removal methods,
+     * the option to remove linear sugars in rings needs to be disabled. Otherwise, all circular substructures of the
+     * 'linear sugars' will not be removed.
+     *
      *
      * @param aLinearSugar an atom container representing a molecular structure to search for
      * @throws NullPointerException if given atom container is 'null'
@@ -589,7 +592,9 @@ public class SugarRemovalUtility {
      * Allows to add an additional linear sugar (represented as a SMILES string) to the list of linear sugar structures
      * an input molecule is scanned for by the methods for sugar detection and removal. The given structure must not be
      * isomorph to the already present ones (no further requirements, so in fact, any kind of structure could be added
-     * here, e.g. to detect/remove amino acids also).
+     * here, e.g. to detect/remove amino acids also). Note: If the given structure contains circles, to remove its
+     * matches entirely in the removal methods, the option to remove linear sugars in rings needs to be disabled.
+     * Otherwise, all circular substructures of the 'linear sugars' will not be removed.
      *
      * @param aSmilesCode a SMILES code representation of a molecular structure to search for
      * @throws NullPointerException if given string is 'null'
@@ -654,6 +659,9 @@ public class SugarRemovalUtility {
      * 'big/heavy enough').
      * <br>IMPORTANT NOTE: This threshold is overridden with the default threshold for the newly set option if this
      * method is called!
+     * <br>Note: If the structure to keep mode 'All' is combined with the removal of only terminal sugars, even though
+     * seemingly terminal circular sugars are not removed if they would leave behind their hydroxy groups as unconnected
+     * fragments upon removal.
      *
      * @param aMode the selected mode
      * @throws NullPointerException if given mode is 'null'
@@ -849,7 +857,9 @@ public class SugarRemovalUtility {
      *     too small to keep and therefore discarded after the removal of the sugar. Resulting again in one connected
      *     remaining structure.
      *     <br>If also non-terminal sugars should be removed, simply all detected candidates are removed from the given
-     *     molecular structure.
+     *     molecular structure. If too small/light structures are also removed according to the current settings, the
+     *     resulting structure will be cleared of all unconnected fragments that are not big/heavy enough. Still, a
+     *     molecule consisting of multiple unconnected structures may result.
      *     <br>If the respective option is set, a property will be added to the given atom container specifying whether
      *     it contains (circular) sugar moieties or not.
      * </p>
@@ -923,7 +933,9 @@ public class SugarRemovalUtility {
      *     too small to keep and therefore discarded after the removal of the sugar. Resulting again in one connected
      *     remaining structure.
      *     <br>If also non-terminal sugars should be removed, simply all detected candidates are removed from the given
-     *     molecular structure.
+     *     molecular structure. If too small/light structures are also removed according to the current settings, the
+     *     resulting structure will be cleared of all unconnected fragments that are not big/heavy enough. Still, a
+     *     molecule consisting of multiple unconnected structures may result.
      *     <br>If the respective option is set, a property will be added to the given atom container specifying whether
      *     it contains (linear) sugar moieties or not.
      * </p>
@@ -1192,10 +1204,18 @@ public class SugarRemovalUtility {
     //
     //<editor-fold desc="Public static methods">
     /**
-     * TODO: Add doc, note that this method does not clear too small structures and may return null!
+     * Utility method that can used to select the 'biggest' (i.e. the one with the highest heavy atom count) structure
+     * from an atom container containing multiple unconnected structures, e.g. after the removal of both terminal and
+     * non-terminal sugar moieties.
+     * <br>The properties of the given atom container (IAtomContainer.getProperties()) are transferred to the returned
+     * atom container.
+     * <br>Note: This method does not clear away structures that are too small/light. It is independent of the settings
+     * done in an object of this class.
      *
-     * @param aMolecule
-     * @return
+     * @param aMolecule the molecule to select the biggest structure from out of multiple unconnected structures
+     * @return the biggest structure
+     * @throws NullPointerException if the given atom container is 'null' or the CDK ConnectivityChecker is unable
+     * to determine the unconnected structures
      */
     public static IAtomContainer selectBiggestUnconnectedFragment(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
@@ -1220,15 +1240,25 @@ public class SugarRemovalUtility {
                 }
             }
         } else {
-            //if something went wrong
-            return null;
+            throw new NullPointerException("Could not detect the unconnected structures of the given atom container.");
         }
         tmpBiggestFragment.setProperties(tmpProperties);
         return tmpBiggestFragment;
     }
 
     /**
-     * TODO: Add doc, note that this method does not clear too small structures and may return null!
+     * Utility method that can used to select the 'heaviest' (i.e. the one with the highest molecular weight) structure
+     * from an atom container containing multiple unconnected structures, e.g. after the removal of both terminal and
+     * non-terminal sugar moieties.
+     * <br>The properties of the given atom container (IAtomContainer.getProperties()) are transferred to the returned
+     * atom container.
+     * <br>Note: This method does not clear away structures that are too small/light. It is independent of the settings
+     * done in an object of this class.
+     *
+     * @param aMolecule the molecule to select the heaviest structure from out of multiple unconnected structures
+     * @return the heaviest structure
+     * @throws NullPointerException if the given atom container is 'null' or the CDK ConnectivityChecker is unable
+     * to determine the unconnected structures
      */
     public static IAtomContainer selectHeaviestUnconnectedFragment(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
@@ -1261,10 +1291,17 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Utility method that can used to partition the unconnected structures in an atom container, e.g. after the removal
+     * of both terminal and non-terminal sugar moieties, into a list of separate atom container objects and sort this
+     * list with the following criteria with decreasing priority: atom count, molecular weight, bond count and sum of
+     * bond orders.
+     *
+     * @param aMolecule the molecule whose unconnected structures to separate and sort
+     * @return list of sorted atom containers representing the unconnected structures of the given molecule
+     * @throws NullPointerException if the given atom container is 'null'
      */
     public static List<IAtomContainer> partitionAndSortUnconnectedFragments(IAtomContainer aMolecule)
-            throws NullPointerException, IllegalArgumentException {
+            throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         boolean tmpIsEmpty = aMolecule.isEmpty();
         boolean tmpIsConnected = ConnectivityChecker.isConnected(aMolecule);
@@ -1293,7 +1330,13 @@ public class SugarRemovalUtility {
     //
     //<editor-fold desc="Private methods">
     /**
-     * TODO
+     * Adds indices as properties to all atom objects of the given atom container to identify them uniquely within the
+     * atom container and its clones. This is required e.g. for the determination of terminal vs. non-terminal sugar
+     * moieties.
+     *
+     * @param aMolecule the molecule to process
+     * @return the same atom container object
+     * @throws NullPointerException if molecule is 'null' (note: no further parameter tests are implemented!)
      */
     private IAtomContainer setIndices(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
@@ -1307,11 +1350,8 @@ public class SugarRemovalUtility {
 
     /**
      * Checks whether all exocyclic bonds connected to a given ring fragment of an original atom container are of single
-     * order.
-     * <p>
-     *     The method iterates over all cyclic atoms and all of their bonds. So the runtime scales linear with the number
-     *     of cyclic atoms and their connected bonds.
-     * </p>
+     * order. The method iterates over all cyclic atoms and all of their bonds. So the runtime scales linear with the number
+     * of cyclic atoms and their connected bonds.
      *
      * @param aRingToTest the ring fragment to test; exocyclic bonds do not have to be included in the fragment but if it
      *                    is a fused system of multiple rings, the internal interconnecting bonds of the different rings
@@ -1320,7 +1360,7 @@ public class SugarRemovalUtility {
      * @param anOriginalMolecule the molecule that contains the ring under investigation; The exocyclic bonds will be
      *                           queried from it
      * @return true, if all exocyclic bonds connected to the ring are of single order
-     * @throws NullPointerException if a parameter is 'null'
+     * @throws NullPointerException if a parameter is 'null' (note: no further parameter tests are implemented!)
      */
     private boolean areAllExocyclicBondsSingle(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
             throws NullPointerException {
@@ -1348,9 +1388,22 @@ public class SugarRemovalUtility {
 
     //TODO/discuss: Include N-, S- and C-glycosidic bonds?
     //TODO/discuss: Include bonds that are not of type -X- but also of type -X(R)R etc., e.g. in adenosine?
-    //Note: detects also ester and ether bonds which is not a bad thing because they occur frequently in NPs
     /**
-     * TODO
+     * Checks all exocyclic connections of the given ring to detect a glycosidic bond. Checklist for glycosidic bond:
+     * Connected oxygen atom that is not in the ring, has two bonds that are both of single order and no bond partner
+     * is a hydrogen atom.
+     * <br>Note: This algorithm also classifies ester and ether bonds as a glycosidic bond which is not really bad. They
+     * occur frequently in natural products.
+     * <br>Note 2: The 'ring' is not tested for whether it is circular or not. So theoretically, this method
+     * can also be used to detect glycosidic bonds of linear structures. BUT: The oxygen atom must not be part of the
+     * structure itself. Due to the processing of candidate linear sugar moieties this can make it difficult to use
+     * this method also for linear sugars.
+     *
+     * @param aRingToTest the candidate sugar ring
+     * @param anOriginalMolecule the molecule in which the ring is contained as a substructure to query the connected
+     *                           atoms from
+     * @return true, if a glycosidic bond is detected
+     * @throws NullPointerException if any parameter is 'null' (note: no further parameter tests are implemented!)
      */
     private boolean hasGlycosidicBond(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
             throws NullPointerException {
@@ -1376,7 +1429,15 @@ public class SugarRemovalUtility {
                         boolean tmpHasOnlyTwoBonds = (tmpConnectedBondsList.size() == 2);
                         boolean tmpAllBondsAreSingle =
                                 (BondManipulator.getMaximumBondOrder(tmpConnectedBondsList) == IBond.Order.SINGLE);
-                        if (tmpHasOnlyTwoBonds && tmpAllBondsAreSingle) {
+                        boolean tmpOneBondAtomIsHydrogen = false;
+                        for (IBond tmpBond : tmpConnectedBondsList) {
+                            for (IAtom tmpBondAtom : tmpBond.atoms()) {
+                                if (tmpBondAtom.getSymbol().equals("H")) {
+                                    tmpOneBondAtomIsHydrogen = true;
+                                }
+                            }
+                        }
+                        if ((tmpHasOnlyTwoBonds && tmpAllBondsAreSingle) && !tmpOneBondAtomIsHydrogen) {
                             tmpContainsGlycosidicBond = true;
                             tmpBreakOuterLoop = true;
                             break;
@@ -1394,11 +1455,12 @@ public class SugarRemovalUtility {
     //TODO/discuss: Also count N and S (or all hetero atoms)?
     /**
      * Gives the number of attached exocyclic oxygen atoms of a given ring fragment of an original atom container.
-     * <p>
-     *     The method iterates over all cyclic atoms and all of their connected atoms. So the runtime scales linear with
-     *     the number
-     *     of cyclic atoms and their connected atoms.
-     * </p>
+     * The method iterates over all cyclic atoms and all of their connected atoms. So the runtime scales linear with
+     * the number of cyclic atoms and their connected atoms.
+     * <br>Note: The oxygen atoms are not tested for being attached by a single bond since in the algorithm, the
+     * determination whether a candidate sugar ring has only exocyclic single bonds precedes the calling of this method.
+     * <br>Note: The circularity of the given 'ring' is not tested, so this method could in theory also be used for linear
+     * structures. But his does not make much sense.
      *
      * @param aRingToTest the ring fragment to test; exocyclic bonds do not have to be included in the fragment but if it
      *                    is a fused system of multiple rings, the internal interconnecting bonds of the different rings
@@ -1407,7 +1469,7 @@ public class SugarRemovalUtility {
      * @param anOriginalMolecule the molecule that contains the ring under investigation; The exocyclic bonds will be
      *                           queried from it
      * @return number of attached exocyclic oxygen atoms
-     * @throws NullPointerException if a parameter is 'null'
+     * @throws NullPointerException if a parameter is 'null' (note: no further parameter tests are implemented!)
      */
    private int getAttachedOxygenAtomCount(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
            throws NullPointerException {
@@ -1424,7 +1486,7 @@ public class SugarRemovalUtility {
             List<IAtom> tmpConnectedAtomsList = anOriginalMolecule.getConnectedAtomsList(tmpRingAtom);
             for (IAtom tmpConnectedAtom : tmpConnectedAtomsList) {
                 String tmpSymbol = tmpConnectedAtom.getSymbol();
-                boolean tmpIsOxygen = tmpSymbol.matches("O");
+                boolean tmpIsOxygen = tmpSymbol.equals("O");
                 boolean tmpIsInRing = aRingToTest.contains(tmpConnectedAtom);
                 if (tmpIsOxygen && !tmpIsInRing) {
                     tmpExocyclicOxygenCounter++;
@@ -1434,20 +1496,24 @@ public class SugarRemovalUtility {
         return tmpExocyclicOxygenCounter;
     }
 
-    //TODO: Revise doc and parameter tests
     /**
-     * Simple decision making function for deciding whether a possible sugar ring has enough exocyclic oxygen atom
-     * attached to it. This number should be higher or equal to the number of atoms in the ring (including the cyclic
-     * oxygen atom) divided by two. So at least 3 attached exocyclic oxygen atoms for a six-membered ring, 2 for a
-     * five-membered ring etc. A simple integer division is used.
+     * Simple decision making function for deciding whether a candidate sugar ring has enough attached, single-bonded
+     * exocyclic oxygen atoms, called if this option is enabled in the current settings. The given number of oxygen atoms
+     * is divided by the given number of atoms in the ring (should also contain the usually present oxygen atom in
+     * a sugar ring) and the resulting ratio is checked for being equal or higher than the currently set
+     * threshold.
      *
      * @param aNumberOfAtomsInRing number of atoms in the possible sugar ring, including the cyclic oxygen atom
-     * @param aNumberOfAttachedExocyclicOxygenAtoms number of attached exocyclic oxygen atom of the ring under
-     *                                              investigation
-     * @return true, if the number of attached exocyclic oxygen atoms is at least half of the number of atoms in the ring
+     * @param aNumberOfAttachedExocyclicOxygenAtoms number of attached exocyclic oxygen atoms of the ring under
+     *                                              investigation (if zero, false is returned)
+     * @return true, if the calculated ratio is equal to or higher than the currently set threshold
      */
     private boolean doesRingHaveEnoughOxygenAtomsAttached(int aNumberOfAtomsInRing,
                                                           int aNumberOfAttachedExocyclicOxygenAtoms) {
+        if (aNumberOfAtomsInRing == 0) {
+            //better than throwing an exception here?
+            return false;
+        }
         double tmpAttachedOxygensToAtomsInRingRatio =
                 ((double) aNumberOfAttachedExocyclicOxygenAtoms / (double) aNumberOfAtomsInRing);
         boolean tmpMeetsThreshold =
