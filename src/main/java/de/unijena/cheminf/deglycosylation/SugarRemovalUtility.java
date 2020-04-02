@@ -5,7 +5,7 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
- * - 
+ * - Check the exceptions the private methods throw, are they passed on by the public methods?
  *
  * To discuss:
  * - If all remaining structures are kept, hydroxy groups of the sugars are also kept. If only terminal sugars should be
@@ -19,6 +19,8 @@ package de.unijena.cheminf.deglycosylation;
  * - remove deprecated method?
  * - license
  * - make a console application to deploy as jar? Inputs and outputs?
+ * - linear sugars: for overlapping candidates, only the overlapping atoms are removed. If a structure is part of a ring,
+ * the whole candidate is discarded, even though it may not be part of a ring entirely. Change something about that?
  * - add more linear sugars?
  *      - e.g. aldopentose, different deoxypentoses/deoxyhexoses, heptoses, octoses (?)
  * - Do we need a general linear sugar pattern?
@@ -924,7 +926,8 @@ public class SugarRemovalUtility {
      *     matches and the specific overlapping part (NOT the whole candidate) is removed from one of the overlapping
      *     pair. After this, there are no overlapping candidate sugar structures.
      *     <br>If the respective option is set, all candidates are also searched for substructures that are part of rings
-     *     in the original molecule and these atoms (and bonds, NOT the whole candidate) are discarded from the candidates.
+     *     in the original molecule and these candidate structures (the WHOLE structure, not only the cyclic part) are
+     *     discarded from the candidates.
      *     <br>If only terminal sugar moieties are to be removed, the sugar candidates are one-by-one tested for
      *     whether they are terminal or not and removed if they are. The procedure starts anew after iterating over all
      *     candidates and stops if no terminal sugar was removed in one whole iteration. The determination whether
@@ -1034,35 +1037,34 @@ public class SugarRemovalUtility {
             tmpNewMolecule = aMolecule;
         }
         tmpNewMolecule = this.setIndices(tmpNewMolecule);
+        //note: this has to be done stepwise because linear and circular sugar candidates can overlap
         List<IAtomContainer> tmpCircularSugarCandidates = this.getCircularSugarCandidates(aMolecule);
         boolean tmpContainsCircularSugars = !tmpCircularSugarCandidates.isEmpty();
+        if (tmpContainsCircularSugars) {
+            tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpCircularSugarCandidates);
+            tmpNewMolecule = this.postProcessAfterRemoval(tmpNewMolecule);
+        }
+        //exit here if molecule is empty after removal
+        if (tmpNewMolecule.isEmpty()) {
+            if (this.setPropertyOfSugarContainingMolecules) {
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY, tmpContainsCircularSugars);
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY, tmpContainsCircularSugars);
+                tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, false);
+            }
+            return tmpNewMolecule;
+        }
+        //note: if only terminal sugars are removed, the atom container should not be disconnected at this point
         List<IAtomContainer> tmpLinearSugarCandidates = this.getLinearSugarCandidates(tmpNewMolecule);
         boolean tmpContainsLinearSugars = !tmpLinearSugarCandidates.isEmpty();
+        if (tmpContainsLinearSugars) {
+            tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpLinearSugarCandidates);
+            tmpNewMolecule = this.postProcessAfterRemoval(tmpNewMolecule);
+        }
         boolean tmpContainsAnyTypeOfSugars = (tmpContainsCircularSugars || tmpContainsLinearSugars);
         if (this.setPropertyOfSugarContainingMolecules) {
             tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY, tmpContainsAnyTypeOfSugars);
             tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY, tmpContainsCircularSugars);
             tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, tmpContainsLinearSugars);
-        }
-        if (tmpContainsAnyTypeOfSugars) {
-            if (tmpContainsCircularSugars && tmpContainsLinearSugars) {
-                List<IAtomContainer> tmpAllSugarCandidates = new ArrayList<>(tmpCircularSugarCandidates.size()
-                        + tmpLinearSugarCandidates.size());
-                boolean tmpAddingCircularsWasSuccessful = tmpAllSugarCandidates.addAll(tmpCircularSugarCandidates);
-                boolean tmpAddingLinearsWasSuccessful = tmpAllSugarCandidates.addAll(tmpLinearSugarCandidates);
-                if (tmpAddingCircularsWasSuccessful && tmpAddingLinearsWasSuccessful) {
-                    tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpAllSugarCandidates);
-                    tmpContainsCircularSugars = false;
-                    tmpContainsLinearSugars = false;
-                }
-            }
-            if (tmpContainsCircularSugars) {
-                tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpCircularSugarCandidates);
-            }
-            if (tmpContainsLinearSugars) {
-                tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpLinearSugarCandidates);
-            }
-            tmpNewMolecule = this.postProcessAfterRemoval(tmpNewMolecule);
         }
         //May be empty and may be unconnected, based on the settings
         return tmpNewMolecule;
@@ -1536,10 +1538,14 @@ public class SugarRemovalUtility {
             return aMolecule;
         }
         IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(aMolecule);
-        for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+        for (int i = 0; i < tmpComponents.getAtomContainerCount(); i++) {
+            IAtomContainer tmpComponent = tmpComponents.getAtomContainer(i);
             boolean tmpIsTooSmall = this.isTooSmall(tmpComponent);
             if (tmpIsTooSmall) {
+                //note: careful with removing things from sets/lists while iterating over it! But here it is ok because elements
+                // are not removed from the same set that is iterated
                 for (IAtom tmpAtom : tmpComponent.atoms()) {
+                    //check to avoid exceptions
                     if (aMolecule.contains(tmpAtom)) {
                         aMolecule.removeAtom(tmpAtom);
                     }
@@ -1863,11 +1869,14 @@ public class SugarRemovalUtility {
             Mappings tmpUniqueMappings = tmpMappings.uniqueAtoms();
             Iterable<IAtomContainer> tmpUniqueSubstructureMappings = tmpUniqueMappings.toSubstructures();
             for (IAtomContainer tmpMatchedStructure : tmpUniqueSubstructureMappings) {
-                for (IAtom tmpAtom : tmpMatchedStructure.atoms()) {
+                for (int i = 0; i < tmpMatchedStructure.getAtomCount(); i++) {
+                    IAtom tmpAtom = tmpMatchedStructure.getAtom(i);
                     int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
                     boolean tmpIsAtomAlreadyInCandidates = tmpSugarCandidateAtomsSet.contains(tmpAtomIndex);
                     if (tmpIsAtomAlreadyInCandidates) {
                         tmpMatchedStructure.removeAtom(tmpAtom);
+                        //The removal shifts the remaining indices!
+                        i = i - 1;
                     } else {
                         tmpSugarCandidateAtomsSet.add(tmpAtomIndex);
                     }
@@ -1882,18 +1891,28 @@ public class SugarRemovalUtility {
             RingSearch tmpRingSearch = new RingSearch(tmpNewMolecule, tmpAdjList);
             for (int i = 0; i < tmpSugarCandidates.size(); i++) {
                 IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
-                for (IAtom tmpAtom : tmpCandidate.atoms()) {
+                for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
+                    IAtom tmpAtom = tmpCandidate.getAtom(j);
                     if (tmpRingSearch.cyclic(tmpAtom)) {
-                        if (tmpCandidate.contains(tmpAtom)) {
+                        //  *this is the routine to remove the whole candidate*
+                        tmpSugarCandidates.remove(i);
+                        //removal shifts the remaining indices
+                        i = i - 1;
+                        break;
+                        //  *this would be the routine to remove only the cyclic atoms (see also add. part below)*
+                        /*if (tmpCandidate.contains(tmpAtom)) {
                             tmpCandidate.removeAtom(tmpAtom);
-                        }
+                            //The removal shifts the remaining indices!
+                            j = j - 1;
+                        }*/
                     }
                 }
-                if (tmpCandidate.isEmpty()) {
+                //  *this would be the routine to remove only the cyclic atoms (part 2)*
+                /*if (tmpCandidate.isEmpty()) {
                     tmpSugarCandidates.remove(i);
                     //The removal shifts the remaining indices!
                     i = i - 1;
-                }
+                }*/
             }
         }
         return tmpSugarCandidates;
