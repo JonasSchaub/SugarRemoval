@@ -1,6 +1,27 @@
-/**
- * TODO: Add license header (switch to MIT)
+/*
+ * MIT License
+ *
+ * Copyright (c) 2020 Maria Sorokina, Jonas Schaub, Christoph Steinbeck
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
+
 package de.unijena.cheminf.deglycosylation;
 
 /**
@@ -8,7 +29,6 @@ package de.unijena.cheminf.deglycosylation;
  * - Is there a way to combine overlapping matches of linear patterns? Would that be better? Maybe do not remove linear
  * sugar matches if they are too small after removal of overlapping atoms, e.g. only a CH3 group could get removed (see tests)
  * - Check the exceptions the private methods throw, are they passed on by the public methods?
- * - Add MIT license header (and change license on GitHub)
  * - make a console application to deploy as jar; see google doc for input and output
  * - add more linear sugars, e.g. aldopentose, different deoxypentoses/deoxyhexoses, heptoses, octoses
  * - see to dos in the code
