@@ -1,31 +1,22 @@
 /**
- * TODO: Add license header (switch to MIT?)
+ * TODO: Add license header (switch to MIT)
  */
 package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
+ * - Is there a way to combine overlapping matches of linear patterns? Would that be better? Maybe do not remove linear
+ * sugar matches if they are too small after removal of overlapping atoms, e.g. only a CH3 group could get removed (see tests)
  * - Check the exceptions the private methods throw, are they passed on by the public methods?
+ * - Add MIT license header (and change license on GitHub)
+ * - make a console application to deploy as jar; see google doc for input and output
+ * - add more linear sugars, e.g. aldopentose, different deoxypentoses/deoxyhexoses, heptoses, octoses
+ * - see to dos in the code
+ * - check occurrence of 'questionable' linear sugars
+ * - return a list of the removed sugars; that will be complicated if the given molecule should be cloned!
+ * - maybe make some more methods public that might be of interest
  *
  * To discuss:
- * - If all remaining structures are kept, hydroxy groups of the sugars are also kept. If only terminal sugars should be
- * removed, no sugar is removed in this case! So remove sugars with attached hydroxy groups also?
- * - Note: The situation at the previous connection point is unclear. When circular sugars are removed, a hydroxy
- * group remains at the core structure (if there was a glycosidic bond). But for the linear sugars, no general statement
- * like this can be made.
- * - add hetero atom count as StructureToKeepMode option?
- * - add detection of glycosidic bond for linear sugars? The respective method to detect them looks for oxygen atoms
- * that are NOT part of the sugar structure, keep that in mind! But generally, it is also suitable for linear structures
- * - remove deprecated method?
- * - license
- * - make a console application to deploy as jar? Inputs and outputs?
- * - linear sugars: for overlapping candidates, only the overlapping atoms are removed. If a structure is part of a ring,
- * the whole candidate is discarded, even though it may not be part of a ring entirely. Change something about that?
- * - add more linear sugars?
- *      - e.g. aldopentose, different deoxypentoses/deoxyhexoses, heptoses, octoses (?)
- * - Do we need a general linear sugar pattern?
- *      - e.g. a single-bonded, simple carbon chain of sufficient length where nearly all carbon atoms have one hydroxy
- *      or keto group
  * - see 'to do / to discuss' points in the code
  */
 
@@ -51,7 +42,6 @@ import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import org.openscience.cdk.tools.manipulator.BondManipulator;
 
 import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -150,14 +140,11 @@ public class SugarRemovalUtility {
             "C(C(C(C(C(CO)O)O)O)=O)O", //2-ketohexose
             "C(C(C(C(C(CO)O)O)O)O)O", //hexitol
             "C(C(C(C(CC=O)O)O)O)O", //2-deoxyhexose
-            //"OCC(O)C(O)C(O)C(O)CO", //hexitol TODO/discuss: this is a doublet!
-            //"O=CC(O)C(O)C(O)C(O)CO", //aldohexose TODO/discuss: this is a doublet!
             "CCCCC(O)C(=O)O", //2-hydroxyhexanoic acid TODO/discuss: Is this a sugar?
             "CC(=O)CC(=O)CCC(=O)O", //4,6-dioxoheptanoic acid TODO/discuss: Is this a sugar?
             "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid TODO/discuss: Is this a sugar?
             "O=C(O)C(=O)C(=O)C(O)C(O)CO", //hexo-2,3-diulosonic acid
             "O=C(O)CCC(O)C(=O)O", //2-hydroxypentanedioic acid TODO/discuss: Is this a sugar?
-            //"O=CC(O)C(O)C(O)C(O)CO", //aldohexose TODO/discuss: this is a doublet!
             "O=C(CO)C(O)C(O)CO" //ketopentose
     };
 
@@ -899,7 +886,7 @@ public class SugarRemovalUtility {
             tmpNewMolecule = aMolecule;
         }
         tmpNewMolecule = this.setIndices(tmpNewMolecule);
-        List<IAtomContainer> tmpSugarCandidates = this.getCircularSugarCandidates(aMolecule);
+        List<IAtomContainer> tmpSugarCandidates = this.getCircularSugarCandidates(tmpNewMolecule);
         /*note: this means that there are matches of the circular sugar patterns and that they adhere to most of
         the given settings. The exception is that they might not be terminal*/
         boolean tmpContainsSugar = !tmpSugarCandidates.isEmpty();
@@ -994,6 +981,8 @@ public class SugarRemovalUtility {
         return tmpNewMolecule;
     }
 
+    //TODO: Try again to remove linear and circular candidates together (for a more valid terminal-check)
+    // if it does not work, maybe chain multiple removals of linear and circular
     /**
      * Removes linear AND circular sugar moieties from the given atom container. Which substructures are removed depends
      * on the various settings available in this class.
@@ -1038,7 +1027,7 @@ public class SugarRemovalUtility {
         }
         tmpNewMolecule = this.setIndices(tmpNewMolecule);
         //note: this has to be done stepwise because linear and circular sugar candidates can overlap
-        List<IAtomContainer> tmpCircularSugarCandidates = this.getCircularSugarCandidates(aMolecule);
+        List<IAtomContainer> tmpCircularSugarCandidates = this.getCircularSugarCandidates(tmpNewMolecule);
         boolean tmpContainsCircularSugars = !tmpCircularSugarCandidates.isEmpty();
         if (tmpContainsCircularSugars) {
             tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpCircularSugarCandidates);
@@ -1067,139 +1056,6 @@ public class SugarRemovalUtility {
             tmpNewMolecule.setProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY, tmpContainsLinearSugars);
         }
         //May be empty and may be unconnected, based on the settings
-        return tmpNewMolecule;
-    }
-
-    /**
-     * TODO: Add doc
-     *
-     * @param aMolecule
-     * @return
-     * @throws
-     */
-    @Deprecated
-    public IAtomContainer removeSugars(IAtomContainer aMolecule, boolean aShouldBeCloned) throws NullPointerException {
-        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
-        IAtomContainer tmpNewMolecule;
-        try {
-            if (aShouldBeCloned) {
-                tmpNewMolecule = aMolecule.clone();
-            } else {
-                tmpNewMolecule = aMolecule;
-            }
-            //***removing ring sugars***
-            int[][] tmpAdjList = GraphUtil.toAdjList(tmpNewMolecule);
-            //efficient computation/partitioning of the ring systems
-            RingSearch tmpRingSearch = new RingSearch(tmpNewMolecule, tmpAdjList);
-            List<IAtomContainer> tmpIsolatedRings = tmpRingSearch.isolatedRingFragments();
-            List<IAtomContainer> tmpFusedRings = tmpRingSearch.fusedRingFragments();
-            for(IAtomContainer tmpReferenceRing : this.ringSugars){
-                for(IAtomContainer tmpIsolatedRing : tmpIsolatedRings){
-                    if (this.univIsomorphismTester.isIsomorph(tmpReferenceRing, tmpIsolatedRing)) {
-                        //do not remove rings with non-single exocyclic bonds
-                        boolean tmpAreAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(tmpIsolatedRing,
-                                tmpNewMolecule);
-                        if (!tmpAreAllExocyclicBondsSingle) {
-                            continue;
-                        }
-                        //do not remove rings with 'too few' attached oxygens
-                        int tmpExocyclicOxygenCount = this.getAttachedOxygenAtomCount(tmpIsolatedRing, tmpNewMolecule);
-                        int tmpAtomsInRing = tmpIsolatedRing.getAtomCount();
-                        boolean tmpAreEnoughOxygensAttached = this.doesRingHaveEnoughOxygenAtomsAttached(tmpAtomsInRing,
-                                tmpExocyclicOxygenCount);
-                        if (!tmpAreEnoughOxygensAttached) {
-                            continue;
-                        }
-                        //TODO: Move to constant
-                        tmpNewMolecule.setProperty("CONTAINS_RING_SUGAR", 1);
-                        //remove found ring
-                        for(IAtom tmpAtom : tmpIsolatedRing.atoms()){
-                            if (tmpNewMolecule.contains(tmpAtom)) {
-                                tmpNewMolecule.removeAtom(tmpAtom);
-                            }
-                        }
-                        tmpIsolatedRings.remove(tmpIsolatedRing);
-                    }
-                }
-            }
-            //***removing linear sugars***
-            boolean tmpContainsLinearSugar = false;
-            //iterating over linear sugar patterns
-            for(DfPattern tmpPattern : this.linearSugarPatterns) {
-                int[][] tmpUniqueMappings = tmpPattern.matchAll(tmpNewMolecule).uniqueAtoms().toArray();
-                //Linear sugars that are detected as part of a larger ring should not be removed
-                //iterating over mappings of one pattern
-                for (int[] tmpMapping : tmpUniqueMappings) {
-                    boolean tmpIsPartOfRing = false;
-                    //iterating over atoms of one mapping
-                    for (int i = 0; i < tmpMapping.length; i++) {
-                        //TODO: Why this if?
-                        if(tmpNewMolecule.getAtomCount() >= i) {
-                            //iterating over fused rings to check whether atom is part of a ring
-                            for(IAtomContainer tmpFusedRing : tmpFusedRings){
-                                if(tmpFusedRing.contains(tmpNewMolecule.getAtom(i))) {
-                                    //mapped atom is in a ring
-                                    tmpIsPartOfRing = true;
-                                    //breaking iteration of rings
-                                    break;
-                                }
-                            }
-                            if (tmpIsPartOfRing) {
-                                //breaking iteration of atoms in mapping
-                                break;
-                            }
-                            //doing the same for isolated rings
-                            for(IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
-                                if(tmpIsolatedRing.contains(tmpNewMolecule.getAtom(i))) {
-                                    //mapped atom is in a ring
-                                    tmpIsPartOfRing = true;
-                                    break;
-                                }
-                            }
-                            if (tmpIsPartOfRing) {
-                                break;
-                            }
-                        }
-                    }
-                    if(!tmpIsPartOfRing ) {
-                        ArrayList<IAtom> tmpAtomsToRemove = new ArrayList<>(tmpMapping.length);
-                        for (int i = 0; i < tmpMapping.length; i++) {
-                            //TODO: Why this if?
-                            if(tmpNewMolecule.getAtomCount() >= i) {
-                                try {
-                                    IAtom atomToRemove = tmpNewMolecule.getAtom(i);
-                                    tmpAtomsToRemove.add(atomToRemove);
-                                } catch (IndexOutOfBoundsException anException) {
-                                    SugarRemovalUtility.LOGGER.log(Level.SEVERE, anException.toString(), anException);
-                                }
-                            }
-                        }
-                        //TODO: To prevent removal of sugars that are not there anymore? Move to constant or option
-                        if(tmpAtomsToRemove.size() >= 4) {
-                            tmpContainsLinearSugar = true;
-                        }
-                        for(IAtom tmpAtom : tmpAtomsToRemove) {
-                            if (tmpNewMolecule.contains(tmpAtom)) {
-                                tmpNewMolecule.removeAtom(tmpAtom);
-                            }
-                        }
-                    }
-                }
-            }
-            //TODO: Move to constant
-            if(tmpContainsLinearSugar) {
-                tmpNewMolecule.setProperty("CONTAINS_LINEAR_SUGAR", 1);
-            }
-            //select only the biggest remaining unconnected part of the molecule
-            tmpNewMolecule = SugarRemovalUtility.selectBiggestUnconnectedFragment(tmpNewMolecule);
-        //TODO: maybe catch some exceptions in between already
-        } catch (CloneNotSupportedException
-                | ConcurrentModificationException
-                | IndexOutOfBoundsException
-                | CDKException anException) {
-            SugarRemovalUtility.LOGGER.log(Level.SEVERE, anException.toString(), anException);
-            return null;
-        }
         return tmpNewMolecule;
     }
     //</editor-fold>
@@ -1388,8 +1244,6 @@ public class SugarRemovalUtility {
         return (BondManipulator.getMaximumBondOrder(tmpExocyclicBondsList) == IBond.Order.SINGLE);
     }
 
-    //TODO/discuss: Include N-, S- and C-glycosidic bonds?
-    //TODO/discuss: Include bonds that are not of type -X- but also of type -X(R)R etc., e.g. in adenosine?
     /**
      * Checks all exocyclic connections of the given ring to detect a glycosidic bond. Checklist for glycosidic bond:
      * Connected oxygen atom that is not in the ring, has two bonds that are both of single order and no bond partner
@@ -1454,7 +1308,6 @@ public class SugarRemovalUtility {
         return tmpContainsGlycosidicBond;
     }
 
-    //TODO/discuss: Also count N and S (or all hetero atoms)?
     /**
      * Gives the number of attached exocyclic oxygen atoms of a given ring fragment of an original atom container.
      * The method iterates over all cyclic atoms and all of their connected atoms. So the runtime scales linear with
@@ -1463,6 +1316,8 @@ public class SugarRemovalUtility {
      * determination whether a candidate sugar ring has only exocyclic single bonds precedes the calling of this method.
      * <br>Note: The circularity of the given 'ring' is not tested, so this method could in theory also be used for linear
      * structures. But his does not make much sense.
+     * <br>Note: This method does NOT check for hydroxy groups but for oxygen atoms. So e.g. the oxygen atom in a
+     * glycosidic bond is counted.
      *
      * @param aRingToTest the ring fragment to test; exocyclic bonds do not have to be included in the fragment but if it
      *                    is a fused system of multiple rings, the internal interconnecting bonds of the different rings
@@ -1717,6 +1572,8 @@ public class SugarRemovalUtility {
                                 tmpNewMolecule.removeAtom(tmpAtom);
                             }
                         }
+                        //TODO: Post-process after every removal? Formerly non-terminal sugars might have only attached
+                        // oxygen atoms now instead of hydroxy groups. This might be a problem!
                         tmpSugarCandidates.remove(i);
                         //The removal shifts the remaining indices!
                         i = i - 1;
@@ -1860,30 +1717,36 @@ public class SugarRemovalUtility {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'");
         IAtomContainer tmpNewMolecule = aMolecule;
         List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(aMolecule.getAtomCount() / 2);
-        HashSet<Integer> tmpSugarCandidateAtomsSet = new HashSet<>(aMolecule.getAtomCount() + 2, 1);
         for(DfPattern tmpLinearSugarPattern : this.linearSugarPatterns) {
             /*unique in this case means that the same match cannot be in this collection multiple times but they can
             still overlap! Overlapping atoms are removed in the following lines.*/
-            //TODO/discuss: Is there a better way to get non-overlapping matches?
             Mappings tmpMappings = tmpLinearSugarPattern.matchAll(tmpNewMolecule);
             Mappings tmpUniqueMappings = tmpMappings.uniqueAtoms();
             Iterable<IAtomContainer> tmpUniqueSubstructureMappings = tmpUniqueMappings.toSubstructures();
             for (IAtomContainer tmpMatchedStructure : tmpUniqueSubstructureMappings) {
-                for (int i = 0; i < tmpMatchedStructure.getAtomCount(); i++) {
-                    IAtom tmpAtom = tmpMatchedStructure.getAtom(i);
-                    int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                    boolean tmpIsAtomAlreadyInCandidates = tmpSugarCandidateAtomsSet.contains(tmpAtomIndex);
-                    if (tmpIsAtomAlreadyInCandidates) {
-                        tmpMatchedStructure.removeAtom(tmpAtom);
-                        //The removal shifts the remaining indices!
-                        i = i - 1;
-                    } else {
-                        tmpSugarCandidateAtomsSet.add(tmpAtomIndex);
-                    }
+                tmpSugarCandidates.add(tmpMatchedStructure);
+            }
+        }
+        //TODO/discuss: Is there a better way to get non-overlapping matches?
+        HashSet<Integer> tmpSugarCandidateAtomsSet = new HashSet<>(aMolecule.getAtomCount() + 2, 1);
+        for (int i = 0; i < tmpSugarCandidates.size(); i++) {
+            IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
+            for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
+                IAtom tmpAtom = tmpCandidate.getAtom(j);
+                int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                boolean tmpIsAtomAlreadyInCandidates = tmpSugarCandidateAtomsSet.contains(tmpAtomIndex);
+                if (tmpIsAtomAlreadyInCandidates) {
+                    tmpCandidate.removeAtom(tmpAtom);
+                    //The removal shifts the remaining indices!
+                    j = j - 1;
+                } else {
+                    tmpSugarCandidateAtomsSet.add(tmpAtomIndex);
                 }
-                if (!tmpMatchedStructure.isEmpty()) {
-                    tmpSugarCandidates.add(tmpMatchedStructure);
-                }
+            }
+            if (tmpCandidate.isEmpty()) {
+                tmpSugarCandidates.remove(tmpCandidate);
+                //The removal shifts the remaining indices!
+                i = i - 1;
             }
         }
         if (!this.removeLinearSugarsInRing && !tmpSugarCandidates.isEmpty()) {
