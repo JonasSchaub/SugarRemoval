@@ -27,6 +27,8 @@ package de.unijena.cheminf.deglycosylation;
 /**
  * TODO:
  * - write docs
+ * - update the used COCONUT version to the latest publicly available one
+ * - print sugar removal util settings
  * - see to dos at failing tests
  */
 
