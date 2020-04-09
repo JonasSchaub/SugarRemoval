@@ -27,10 +27,14 @@ package de.unijena.cheminf.deglycosylation;
 /**
  * TODO:
  * - Check the exceptions the private methods throw, are they passed on by the public methods?
+ *      - plus, check for other contingencies (can something be null or empty etc)
+ *      - has been done up to the public methods
  * - where it is unnecessary, do not return the molecule (mainly private methods)
  * - make a console application to deploy as jar; see google doc for input and output
  * - return a list of the removed sugars; that will be complicated if the given molecule should be cloned!
+ *      - change all return types to lists?
  * - maybe make some more methods public that might be of interest
+ *      - note: e.g. making getCircular/LinearSugarCandidates public is problematic because of the new caching work-around
  * - Is there a way to combine overlapping matches of linear patterns? Would that be better? Maybe do not remove linear
  * sugar matches if they are too small after removal of overlapping atoms, e.g. only a CH3 group could get removed (see tests)
  *      - Is that elegant? For structures connected to rings, sure, but what about linear structures?
@@ -124,14 +128,14 @@ public class SugarRemovalUtility {
          * Constructor.
          *
          * @param aDefaultValue the default threshold to keep a structure for the respective option; no parameter checks
-         *                      are implemented
+         *                      are implemented but it should of course be a positive number
          */
         StructuresToKeepMode(int aDefaultValue) {
             this.defaultThreshold = aDefaultValue;
         }
 
         /**
-         * Returns the default threshold to keep a structure for this option
+         * Returns the default threshold to keep a structure for this option.
          *
          * @return the default threshold
          */
@@ -162,12 +166,6 @@ public class SugarRemovalUtility {
      * identification of the respective IAtom object.
      */
     public static final String INDEX_PROPERTY_KEY = "SUGAR_REMOVAL_UTILITY_INDEX";
-
-    /**
-     * Key for property key that will be added to atoms that are part of a sugar candidate. Because in some situations
-     * (e.g. the clearing of too small structures) these atoms must not be removed.
-     */
-    public static final String BELONGS_TO_SUGAR_CANDIDATE_PROPERTY_KEY = "BELONGS_TO_SUGAR_CANDIDATE";
 
     /**
      * Linear sugar structures represented as SMILES codes. An input molecule is scanned for these substructures for
@@ -272,13 +270,6 @@ public class SugarRemovalUtility {
     private static final Logger LOGGER = Logger.getLogger(SugarRemovalUtility.class.getName());
     //</editor-fold>
     //
-    //<editor-fold desc="Private final variables">
-    /**
-     * Universal isomorphism tester for the detection of circular sugars.
-     */
-    private final UniversalIsomorphismTester univIsomorphismTester;
-    //</editor-fold>
-    //
     //<editor-fold desc="Private variables">
     /**
      * Linear sugar structures parsed into atom containers. Not used for detection but parsed into patterns.
@@ -335,15 +326,21 @@ public class SugarRemovalUtility {
      * Add a property to sugar-containing, given atom containers setting.
      */
     private boolean setPropertyOfSugarContainingMolecules;
+
+    /**
+     * Set containing the indices of atoms that are part of sugar candidates in the molecule currently under investigation.
+     * This cache needs to be cleared before new sugar candidates are detected in a molecule and to be sure also after
+     * removal of sugar moieties.
+     */
+    private HashSet<Integer> atomIndicesThatArePartOfSugarCandidatesCache;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
     /**
-     * Sole constructor of this class. The circular and linear sugar structures are parsed into atom containers or pattern
+     * Sole constructor of this class. The circular and linear sugar structures are parsed into atom containers and patterns
      * and all settings are set to their default values (see public static constants or enquire via get/is methods).
      */
     public SugarRemovalUtility() {
-        this.univIsomorphismTester = new UniversalIsomorphismTester();
         this.linearSugars = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
         this.ringSugars = new ArrayList<>(SugarRemovalUtility.RING_SUGARS_SMILES.length);
         this.linearSugarPatterns = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
@@ -352,21 +349,25 @@ public class SugarRemovalUtility {
         for (String tmpSmiles : SugarRemovalUtility.LINEAR_SUGARS_SMILES) {
             try {
                 this.linearSugars.add(tmpSmilesParser.parseSmiles(tmpSmiles));
-            } catch (InvalidSmilesException anInvalidSmilesException) {
-                SugarRemovalUtility.LOGGER.log(Level.WARNING, anInvalidSmilesException.toString(), anInvalidSmilesException);
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             }
         }
         //adding ring sugars to list
         for (String tmpSmiles : SugarRemovalUtility.RING_SUGARS_SMILES) {
             try {
                 this.ringSugars.add(tmpSmilesParser.parseSmiles(tmpSmiles));
-            } catch (InvalidSmilesException anInvalidSmilesException) {
-                SugarRemovalUtility.LOGGER.log(Level.WARNING, anInvalidSmilesException.toString(), anInvalidSmilesException);
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             }
         }
         //parsing linear sugars into patterns
         for(IAtomContainer tmpSugarAC : this.linearSugars){
-            this.linearSugarPatterns.add(DfPattern.findSubstructure(tmpSugarAC));
+            try {
+                this.linearSugarPatterns.add(DfPattern.findSubstructure(tmpSugarAC));
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            }
         }
         this.detectGlycosidicBond = SugarRemovalUtility.DETECT_GLYCOSIDIC_BOND_DEFAULT;
         this.removeOnlyTerminal = SugarRemovalUtility.REMOVE_ONLY_TERMINAL_DEFAULT;
@@ -377,6 +378,8 @@ public class SugarRemovalUtility {
                 SugarRemovalUtility.ATTACHED_OXYGENS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT;
         this.removeLinearSugarsInRing = SugarRemovalUtility.REMOVE_LINEAR_SUGARS_IN_RING_DEFAULT;
         this.setPropertyOfSugarContainingMolecules = SugarRemovalUtility.SET_PROPERTY_OF_SUGAR_CONTAINING_MOLECULES_DEFAULT;
+        //to instantiate the cache collections/variables
+        this.clearCache();
     }
     //</editor-fold>
     //
@@ -400,7 +403,11 @@ public class SugarRemovalUtility {
                 SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
             }
             if (!Objects.isNull(tmpSmiles)) {
-                tmpSmilesList.add(tmpSmiles);
+                try {
+                    tmpSmilesList.add(tmpSmiles);
+                } catch (Exception anException) {
+                    SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+                }
             }
         }
         return tmpSmilesList;
@@ -425,7 +432,11 @@ public class SugarRemovalUtility {
                 SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
             }
             if (!Objects.isNull(tmpSmiles)) {
-                tmpSmilesList.add(tmpSmiles);
+                try {
+                    tmpSmilesList.add(tmpSmiles);
+                } catch (Exception anException) {
+                    SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+                }
             }
         }
         return tmpSmilesList;
@@ -515,7 +526,7 @@ public class SugarRemovalUtility {
      *
      * @return true if properties are added to the given atom containers
      */
-    public boolean isPropertyOfSugarContainingMoleculesSet() {
+    public boolean arePropertiesOfSugarContainingMoleculesSet() {
         return this.setPropertyOfSugarContainingMolecules;
     }
     //</editor-fold>
@@ -543,7 +554,7 @@ public class SugarRemovalUtility {
         RingSearch tmpRingSearch = new RingSearch(aCircularSugar, tmpAdjList);
         List<IAtomContainer> tmpIsolatedRingFragments = tmpRingSearch.isolatedRingFragments();
         int tmpSize = tmpIsolatedRingFragments.size();
-        if (!(tmpSize == 1)) {
+        if (tmpSize != 1) {
             throw new IllegalArgumentException("Given molecule is either not circular or contains too many rings.");
         }
         UniversalIsomorphismTester tmpUnivIsomorphTester = new UniversalIsomorphismTester();
@@ -570,7 +581,12 @@ public class SugarRemovalUtility {
             }
         }
         //</editor-fold>
-        this.ringSugars.add(aCircularSugar);
+        try {
+            this.ringSugars.add(aCircularSugar);
+        } catch (Exception anException) {
+            SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            throw new IllegalArgumentException("Could not add sugar to the list of circular sugars.");
+        }
     }
 
     /**
@@ -582,18 +598,24 @@ public class SugarRemovalUtility {
      * @param aSmilesCode a SMILES code representation of a molecule consisting of only one isolated sugar ring
      * @throws NullPointerException if given string is 'null'
      * @throws IllegalArgumentException if the given SMILES string is empty or does represent a molecule that contains
-     * no isolated ring, more than one isolated ring, consists of more structures than one isolated ring or is isomorph
-     * to a circular sugar structure already present
-     * @throws CDKException if the given SMILES string cannot be parsed into a molecular structure
+     * no isolated ring, more than one isolated ring, consists of more structures than one isolated ring, is isomorph
+     * to a circular sugar structure already present or if the given SMILES string cannot be parsed into a molecular
+     * structure
      */
-    public void addCircularSugar(String aSmilesCode) throws NullPointerException, CDKException, IllegalArgumentException {
+    public void addCircularSugar(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
         }
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer tmpRingSugar = tmpSmiPar.parseSmiles(aSmilesCode);
-        //see exceptions this method can throw!
+        IAtomContainer tmpRingSugar = null;
+        try {
+            tmpRingSugar = tmpSmiPar.parseSmiles(aSmilesCode);
+        } catch (InvalidSmilesException anException) {
+            SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            throw new IllegalArgumentException("Could not parse given string as a SMILES code.");
+        }
+        //throws NullPointerException and IllegalArgumentException that are relayed
         this.addCircularSugar(tmpRingSugar);
     }
 
@@ -604,7 +626,6 @@ public class SugarRemovalUtility {
      * acids also). Note: If the given structure contains circles, to remove its matches entirely in the removal methods,
      * the option to remove linear sugars in rings needs to be disabled. Otherwise, all circular substructures of the
      * 'linear sugars' will not be removed.
-     *
      *
      * @param aLinearSugar an atom container representing a molecular structure to search for
      * @throws NullPointerException if given atom container is 'null'
@@ -632,8 +653,13 @@ public class SugarRemovalUtility {
             }
         }
         //</editor-fold>
-        this.linearSugars.add(aLinearSugar);
-        this.linearSugarPatterns.add(DfPattern.findSubstructure(aLinearSugar));
+        try {
+            this.linearSugars.add(aLinearSugar);
+            this.linearSugarPatterns.add(DfPattern.findSubstructure(aLinearSugar));
+        } catch (Exception anException) {
+            SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            throw new IllegalArgumentException("Could not add sugar to the list of linear sugars");
+        }
     }
 
     /**
@@ -647,17 +673,22 @@ public class SugarRemovalUtility {
      * @param aSmilesCode a SMILES code representation of a molecular structure to search for
      * @throws NullPointerException if given string is 'null'
      * @throws IllegalArgumentException if the given SMILES string is empty or does represent a molecule that is isomorph
-     * to a linear sugar structure already present
-     * @throws CDKException if the given SMILES string cannot be parsed into a molecular structure
+     * to a linear sugar structure already present or if it cannot be parsed into a molecular structure
      */
-    public void addLinearSugar(String aSmilesCode) throws NullPointerException, CDKException, IllegalArgumentException {
+    public void addLinearSugar(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
         }
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer tmpLinearSugar = tmpSmiPar.parseSmiles(aSmilesCode);
-        //see exceptions this method can throw!
+        IAtomContainer tmpLinearSugar = null;
+        try {
+            tmpLinearSugar = tmpSmiPar.parseSmiles(aSmilesCode);
+        } catch (InvalidSmilesException anException) {
+            SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            throw new IllegalArgumentException("Could not parse given string as a SMILES code.");
+        }
+        //throws NullPointerException and IllegalArgumentException that are relayed
         this.addLinearSugar(tmpLinearSugar);
     }
 
@@ -666,7 +697,12 @@ public class SugarRemovalUtility {
      * detection and removal.
      */
     public void clearCircularSugars() {
-        this.ringSugars.clear();
+        try {
+            this.ringSugars.clear();
+        } catch (UnsupportedOperationException anException) {
+            SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            this.ringSugars = new ArrayList<>(SugarRemovalUtility.RING_SUGARS_SMILES.length);
+        }
     }
 
     /**
@@ -674,8 +710,14 @@ public class SugarRemovalUtility {
      * detection and removal.
      */
     public void clearLinearSugars() {
-        this.linearSugars.clear();
-        this.linearSugarPatterns.clear();
+        try {
+            this.linearSugars.clear();
+            this.linearSugarPatterns.clear();
+        } catch (UnsupportedOperationException anException) {
+            SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            this.linearSugars = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
+            this.linearSugarPatterns = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
+        }
     }
 
     /**
@@ -730,6 +772,7 @@ public class SugarRemovalUtility {
      * threshold is negative
      */
     public void setStructuresToKeepThreshold(int aThreshold) throws IllegalArgumentException {
+        //<editor-fold desc="Checks">
         if ((this.structuresToKeepMode == StructuresToKeepMode.ALL)) {
             throw new IllegalArgumentException("The mode is currently set to keep all structures, so a threshold " +
                     "makes no sense.");
@@ -737,6 +780,7 @@ public class SugarRemovalUtility {
         if (aThreshold < 0) {
             throw new IllegalArgumentException("Threshold cannot be negative.");
         }
+        //</editor-fold>
         this.structureToKeepModeThreshold = aThreshold;
     }
 
@@ -768,12 +812,13 @@ public class SugarRemovalUtility {
      */
     public void setAttachedOxygensToAtomsInRingRatioThreshold(double aDouble) throws IllegalArgumentException {
         //<editor-fold desc="Checks">
-        boolean tmpIsFinite = Double.isFinite(aDouble); //false for NaN and infinity arguments
+        //false for NaN and infinity arguments
+        boolean tmpIsFinite = Double.isFinite(aDouble);
         boolean tmpIsNegative = (aDouble < 0);
         if(!tmpIsFinite || tmpIsNegative) {
             throw new IllegalArgumentException("Given double is NaN, infinite or negative.");
         }
-        if ((!this.includeNrOfAttachedOxygens)) {
+        if (!this.includeNrOfAttachedOxygens) {
             throw new IllegalArgumentException("The number of attached oxygen atoms is currently not included in the " +
                     "decision making process, so a ratio threshold makes no sense.");
         }
@@ -1549,7 +1594,8 @@ public class SugarRemovalUtility {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         boolean tmpIsPartOfSugarCandidate = false;
         for (IAtom tmpAtom : aMolecule.atoms()) {
-            if (!Objects.isNull(tmpAtom.getProperty(SugarRemovalUtility.BELONGS_TO_SUGAR_CANDIDATE_PROPERTY_KEY))) {
+            int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+            if (this.atomIndicesThatArePartOfSugarCandidatesCache.contains(tmpIndex)) {
                 tmpIsPartOfSugarCandidate = true;
                 break;
             }
@@ -1747,6 +1793,7 @@ public class SugarRemovalUtility {
             //throws NullPointerException if molecule is null
             tmpNewMolecule = this.postProcessAfterRemoval(tmpNewMolecule);
         }
+        this.clearCache();
         return tmpNewMolecule;
     }
 
@@ -1813,8 +1860,9 @@ public class SugarRemovalUtility {
                     continue;
                 }
                 boolean tmpIsIsomorph = false;
+                UniversalIsomorphismTester tmpUnivIsoTester = new UniversalIsomorphismTester();
                 try {
-                    tmpIsIsomorph = this.univIsomorphismTester.isIsomorph(tmpReferenceRing, tmpIsolatedRing);
+                    tmpIsIsomorph = tmpUnivIsoTester.isIsomorph(tmpReferenceRing, tmpIsolatedRing);
                 } catch (CDKException aCDKException) {
                     SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
                     continue;
@@ -1854,9 +1902,12 @@ public class SugarRemovalUtility {
                 }
             }
         }
+        this.clearCache();
+        this.atomIndicesThatArePartOfSugarCandidatesCache = new HashSet<>(tmpNewMolecule.getAtomCount(), 0.8f);
         for (IAtomContainer tmpCandidate : tmpSugarCandidates) {
             for (IAtom tmpAtom : tmpCandidate.atoms()) {
-                tmpAtom.setProperty(SugarRemovalUtility.BELONGS_TO_SUGAR_CANDIDATE_PROPERTY_KEY, true);
+                int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                this.atomIndicesThatArePartOfSugarCandidatesCache.add(tmpIndex);
             }
         }
         return tmpSugarCandidates;
@@ -1944,12 +1995,28 @@ public class SugarRemovalUtility {
                 }*/
             }
         }
+        this.clearCache();
+        this.atomIndicesThatArePartOfSugarCandidatesCache = new HashSet<>(tmpNewMolecule.getAtomCount(), 0.8f);
         for (IAtomContainer tmpCandidate : tmpSugarCandidates) {
             for (IAtom tmpAtom : tmpCandidate.atoms()) {
-                tmpAtom.setProperty(SugarRemovalUtility.BELONGS_TO_SUGAR_CANDIDATE_PROPERTY_KEY, true);
+                int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                this.atomIndicesThatArePartOfSugarCandidatesCache.add(tmpIndex);
             }
         }
         return tmpSugarCandidates;
+    }
+
+    /**
+     * Clears the cache containing the indices of atoms that are part of sugar candidates. It must be done before new
+     * candidates are detected and should be done after removal of candidates.
+     * <br>This method must NOT be called in-between the detection and removal of sugars from a molecule! At least, if
+     * only terminal moieties are removed.
+     * <br>Note: This internal caching was introduced because adding the information as property to the respective
+     * atom objects lead to unwanted confusion/entanglement between the removal of linear and circular sugar moieties.
+     */
+    private void clearCache() {
+        //the initial capacity was randomly chosen
+        this.atomIndicesThatArePartOfSugarCandidatesCache = new HashSet<Integer>(20, 0.8f);
     }
     //</editor-fold>
 }

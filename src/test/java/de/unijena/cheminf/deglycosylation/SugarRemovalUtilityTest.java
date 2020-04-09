@@ -28,8 +28,9 @@ package de.unijena.cheminf.deglycosylation;
  * TODO:
  * - write docs
  * - update the used COCONUT version to the latest publicly available one
- * - print sugar removal util settings
+ * - make another visual inspection of COCONUT molecules after sugar removal
  * - see to dos at failing tests
+ * - include tests for static methods
  */
 
 import com.mongodb.MongoClientSettings;
@@ -57,6 +58,7 @@ import org.openscience.cdk.smiles.SmilesParser;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -93,7 +95,9 @@ public class SugarRemovalUtilityTest {
         tmpSugarRemovalUtil.setPropertyOfSugarContainingMolecules(true);
         for (int i = 0; i < tmpSmilesArray.length; i++) {
             tmpOriginalMolecule = tmpSmiPar.parseSmiles(tmpSmilesArray[i]);
-            tmpOriginalMolecule = tmpSugarRemovalUtil.removeCircularSugars(tmpOriginalMolecule, false);
+            Assert.assertTrue(tmpSugarRemovalUtil.hasCircularSugars(tmpOriginalMolecule));
+            Assert.assertTrue(tmpSugarRemovalUtil.hasSugars(tmpOriginalMolecule));
+            tmpOriginalMolecule = tmpSugarRemovalUtil.removeAllSugars(tmpOriginalMolecule, false);
             String tmpSmilesAfterDeglycosylation = tmpSmiGen.create(tmpOriginalMolecule);
             System.out.println(tmpSmilesAfterDeglycosylation);
             Assert.assertEquals(tmpDeglycosylatedSmilesArray[i], tmpSmilesAfterDeglycosylation);
@@ -150,6 +154,14 @@ public class SugarRemovalUtilityTest {
         tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
         tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
         tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
+        System.out.println(tmpSugarRemovalUtil.isGlycosidicBondDetected());
+        System.out.println(tmpSugarRemovalUtil.areOnlyTerminalSugarsRemoved());
+        System.out.println(tmpSugarRemovalUtil.getStructuresToKeepMode());
+        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeThreshold());
+        System.out.println(tmpSugarRemovalUtil.isNrOfAttachedOxygensIncluded());
+        System.out.println(tmpSugarRemovalUtil.getAttachedOxygensToAtomsInRingRatioThreshold());
+        System.out.println(tmpSugarRemovalUtil.areLinearSugarsInRingsRemoved());
+        System.out.println(tmpSugarRemovalUtil.arePropertiesOfSugarContainingMoleculesSet());
         Document tmpCurrentDoc = null;
         String tmpID = "";
         String tmpSmilesCode = "";
@@ -677,6 +689,34 @@ public class SugarRemovalUtilityTest {
         System.out.println(tmpSmilesCode);
         //Only the aliphatic chain remains
         Assert.assertEquals("CCCCCCCCCCC", tmpSmilesCode);
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void classPropertiesTest() throws Exception {
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        tmpSugarRemovalUtil.addLinearSugar("CO");
+        List<String> tmpLinearSugarsList = tmpSugarRemovalUtil.getLinearSugars();
+        for (String tmpSmiles : tmpLinearSugarsList) {
+            System.out.println(tmpSmiles);
+        }
+        System.out.println("-------------------");
+        tmpSugarRemovalUtil.addCircularSugar("O1CCCCCCC1");
+        List<String> tmpCircularSugarsList = tmpSugarRemovalUtil.getCircularSugars();
+        for (String tmpSmiles : tmpCircularSugarsList) {
+            System.out.println(tmpSmiles);
+        }
+        System.out.println("-------------------");
+        System.out.println(tmpSugarRemovalUtil.isGlycosidicBondDetected());
+        System.out.println(tmpSugarRemovalUtil.areOnlyTerminalSugarsRemoved());
+        System.out.println(tmpSugarRemovalUtil.getStructuresToKeepMode());
+        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeThreshold());
+        System.out.println(tmpSugarRemovalUtil.isNrOfAttachedOxygensIncluded());
+        System.out.println(tmpSugarRemovalUtil.getAttachedOxygensToAtomsInRingRatioThreshold());
+        System.out.println(tmpSugarRemovalUtil.areLinearSugarsInRingsRemoved());
+        System.out.println(tmpSugarRemovalUtil.arePropertiesOfSugarContainingMoleculesSet());
     }
 
     /**
