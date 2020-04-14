@@ -26,15 +26,14 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
- * - Check the exceptions the private methods throw, are they passed on by the public methods?
- *      - plus, check for other contingencies (can something be null or empty etc)
- *      - has been done up to the public methods
- * - where it is unnecessary, do not return the molecule (mainly private methods)
  * - make a console application to deploy as jar; see google doc for input and output
  * - return a list of the removed sugars; that will be complicated if the given molecule should be cloned!
  *      - change all return types to lists?
  * - maybe make some more methods public that might be of interest
  *      - note: e.g. making getCircular/LinearSugarCandidates public is problematic because of the new caching work-around
+ *          - this could be disentangled because only is Terminal() needs to know whether an atom is part of a candidate!
+ *      - also, it is important that the index property is set correctly in all molecules that are passed to certain methods!
+ *          - this could maybe also be disentangled but more difficultly
  * - Is there a way to combine overlapping matches of linear patterns? Would that be better? Maybe do not remove linear
  * sugar matches if they are too small after removal of overlapping atoms, e.g. only a CH3 group could get removed (see tests)
  *      - Is that elegant? For structures connected to rings, sure, but what about linear structures?
@@ -78,10 +77,11 @@ import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import org.openscience.cdk.tools.manipulator.BondManipulator;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -353,6 +353,10 @@ public class SugarRemovalUtility {
                 SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             }
         }
+        //sorting for size decreasing; the patterns parsed afterwards are not sorted that easily, so sorting is done now
+        Comparator tmpComparator = new AtomContainerComparator().reversed();
+        //note: this can throw various exceptions but they should not appear here
+        this.linearSugars.sort(tmpComparator);
         //adding ring sugars to list
         for (String tmpSmiles : SugarRemovalUtility.RING_SUGARS_SMILES) {
             try {
@@ -361,6 +365,7 @@ public class SugarRemovalUtility {
                 SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             }
         }
+        this.ringSugars.sort(tmpComparator);
         //parsing linear sugars into patterns
         for(IAtomContainer tmpSugarAC : this.linearSugars){
             try {
@@ -587,6 +592,9 @@ public class SugarRemovalUtility {
             SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             throw new IllegalArgumentException("Could not add sugar to the list of circular sugars.");
         }
+        Comparator tmpComparator = new AtomContainerComparator().reversed();
+        //note: this can throw various exceptions but they should not appear here
+        this.ringSugars.sort(tmpComparator);
     }
 
     /**
@@ -655,10 +663,20 @@ public class SugarRemovalUtility {
         //</editor-fold>
         try {
             this.linearSugars.add(aLinearSugar);
-            this.linearSugarPatterns.add(DfPattern.findSubstructure(aLinearSugar));
         } catch (Exception anException) {
             SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             throw new IllegalArgumentException("Could not add sugar to the list of linear sugars");
+        }
+        Comparator tmpComparator = new AtomContainerComparator().reversed();
+        //note: this can throw various exceptions but they should not appear here
+        this.linearSugars.sort(tmpComparator);
+        //parsing linear sugars into patterns; this has to be re-done completely because the patterns cannot be sorted
+        for(IAtomContainer tmpSugarAC : this.linearSugars){
+            try {
+                this.linearSugarPatterns.add(DfPattern.findSubstructure(tmpSugarAC));
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            }
         }
     }
 
@@ -864,7 +882,7 @@ public class SugarRemovalUtility {
             return false;
         }
         //throws NullPointerException if molecule is null
-        aMolecule = this.setIndices(aMolecule);
+        this.setIndices(aMolecule);
         //throws NullPointerException if molecule is null
         List<IAtomContainer> tmpSugarCandidates = this.getLinearSugarCandidates(aMolecule);
         boolean tmpContainsSugar = !tmpSugarCandidates.isEmpty();
@@ -894,7 +912,7 @@ public class SugarRemovalUtility {
             return false;
         }
         //throws NullPointerException if molecule is null
-        aMolecule = this.setIndices(aMolecule);
+        this.setIndices(aMolecule);
         //throws NullPointerException if molecule is null
         List<IAtomContainer> tmpSugarCandidates = this.getCircularSugarCandidates(aMolecule);
         boolean tmpContainsSugar = !tmpSugarCandidates.isEmpty();
@@ -922,7 +940,7 @@ public class SugarRemovalUtility {
             return false;
         }
         //throws NullPointerException if molecule is null
-        aMolecule = this.setIndices(aMolecule);
+        this.setIndices(aMolecule);
         //throws NullPointerException if molecule is null
         List<IAtomContainer> tmpCircularSugarCandidates = this.getCircularSugarCandidates(aMolecule);
         boolean tmpContainsCircularSugar = !tmpCircularSugarCandidates.isEmpty();
@@ -999,7 +1017,7 @@ public class SugarRemovalUtility {
             tmpNewMolecule = aMolecule;
         }
         //throws NullPointerException if molecule is null
-        tmpNewMolecule = this.setIndices(tmpNewMolecule);
+        this.setIndices(tmpNewMolecule);
         //throws NullPointerException if molecule is null
         List<IAtomContainer> tmpSugarCandidates = this.getCircularSugarCandidates(tmpNewMolecule);
         /*note: this means that there are matches of the circular sugar patterns and that they adhere to most of
@@ -1011,7 +1029,7 @@ public class SugarRemovalUtility {
         }
         if (tmpContainsSugar) {
             //throws NullPointerException and IllegalArgumentException
-            tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpSugarCandidates);
+            this.removeSugarCandidates(tmpNewMolecule, tmpSugarCandidates);
         }
         //May be empty and may be unconnected, based on the settings
         return tmpNewMolecule;
@@ -1078,7 +1096,7 @@ public class SugarRemovalUtility {
             tmpNewMolecule = aMolecule;
         }
         //throws NullPointerException if molecule is null
-        tmpNewMolecule = this.setIndices(tmpNewMolecule);
+        this.setIndices(tmpNewMolecule);
         //throws NullPointerException if molecule is null
         List<IAtomContainer> tmpSugarCandidates = this.getLinearSugarCandidates(tmpNewMolecule);
         /*note: this means that there are matches of the linear sugar patterns and that they adhere to most of
@@ -1090,7 +1108,7 @@ public class SugarRemovalUtility {
         }
         if (tmpContainsSugar) {
             //throws NullPointerException and IllegalArgumentException
-            tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpSugarCandidates);
+            this.removeSugarCandidates(tmpNewMolecule, tmpSugarCandidates);
         }
         //May be empty and may be unconnected, based on the settings
         return tmpNewMolecule;
@@ -1139,7 +1157,7 @@ public class SugarRemovalUtility {
             tmpNewMolecule = aMolecule;
         }
         //throws NullPointerException if molecule is null
-        tmpNewMolecule = this.setIndices(tmpNewMolecule);
+        this.setIndices(tmpNewMolecule);
         boolean tmpContainsCircularSugars = false;
         boolean tmpContainsLinearSugars = false;
         boolean tmpContainsAnyTypeOfSugars = false;
@@ -1151,7 +1169,7 @@ public class SugarRemovalUtility {
             int tmpCircularSugarCandidatesSizeBeforeRemoval = tmpCircularSugarCandidates.size();
             if (tmpCandidateListIsNotEmpty) {
                 //throws NullPointerException and IllegalArgumentException
-                tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpCircularSugarCandidates);
+                this.removeSugarCandidates(tmpNewMolecule, tmpCircularSugarCandidates);
                 if (!tmpContainsCircularSugars) {
                     tmpContainsCircularSugars = true;
                 }
@@ -1168,7 +1186,7 @@ public class SugarRemovalUtility {
             int tmpLinearSugarCandidatesSizeBeforeRemoval = tmpLinearSugarCandidates.size();
             if (tmpCandidateListIsNotEmpty) {
                 //throws NullPointerException and IllegalArgumentException
-                tmpNewMolecule = this.removeSugarCandidates(tmpNewMolecule, tmpLinearSugarCandidates);
+                this.removeSugarCandidates(tmpNewMolecule, tmpLinearSugarCandidates);
                 if (!tmpContainsLinearSugars) {
                     tmpContainsLinearSugars = true;
                 }
@@ -1323,7 +1341,8 @@ public class SugarRemovalUtility {
             Compare bond count
             Compare sum of bond orders (heavy atoms only)
         If no difference can be found with the above criteria, the IAtomContainers are considered equal.*/
-        AtomContainerComparator tmpComparator = new AtomContainerComparator();
+        Comparator tmpComparator = new AtomContainerComparator().reversed();
+        //note: this can throw various exceptions but they should not appear here
         tmpSortedList.sort(tmpComparator);
         return tmpSortedList;
     }
@@ -1335,17 +1354,17 @@ public class SugarRemovalUtility {
      * atom container and its clones. This is required e.g. for the determination of terminal vs. non-terminal sugar
      * moieties.
      *
-     * @param aMolecule the molecule to process
-     * @return the same atom container object
      * @throws NullPointerException if molecule is 'null' (note: no further parameter tests are implemented!)
      */
-    private IAtomContainer setIndices(IAtomContainer aMolecule) throws NullPointerException {
+    private void setIndices(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        if (aMolecule.isEmpty()) {
+            return;
+        }
         for (int i = 0; i < aMolecule.getAtomCount(); i++) {
             IAtom tmpAtom = aMolecule.getAtom(i);
             tmpAtom.setProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY, i);
         }
-        return aMolecule;
     }
 
     /**
@@ -1527,14 +1546,13 @@ public class SugarRemovalUtility {
      * threshold setting. If all structures are too small/light, an empty atom container is returned. This does not
      * guarantee that the resulting atom container consists of only one connected structure.
      *
-     * @param aMolecule the molecule to clear
-     * @return the same atom container object, may be empty
+     * @param aMolecule the molecule to clear; it might be empty after this method call but not null
      * @throws NullPointerException if molecule is 'null' (note: no further parameter tests are implemented!)
      */
-    private IAtomContainer clearTooSmallStructures(IAtomContainer aMolecule) throws NullPointerException {
+    private void clearTooSmallStructures(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (this.structuresToKeepMode == StructuresToKeepMode.ALL) {
-            return aMolecule;
+            return;
         }
         IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(aMolecule);
         for (int i = 0; i < tmpComponents.getAtomContainerCount(); i++) {
@@ -1553,8 +1571,6 @@ public class SugarRemovalUtility {
                 }
             }
         }
-        //does not return null, but the atom container might be empty!
-        return aMolecule;
     }
 
     /**
@@ -1588,7 +1604,8 @@ public class SugarRemovalUtility {
      *
      * @param aMolecule the molecule to check
      * @return true, if the given structure is part of a sugar candidate
-     * @throws NullPointerException if molecule is 'null' (note: no further parameter tests are implemented!)
+     * @throws NullPointerException if molecule is 'null' (note: no further parameter tests are implemented,
+     * e.g. a test to determine whether the index properties have been set!)
      */
     private boolean isPartOfSugarCandidate(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
@@ -1616,7 +1633,8 @@ public class SugarRemovalUtility {
      * @return true, if the substructure is terminal
      * @throws NullPointerException if any parameter is 'null'
      * @throws IllegalArgumentException if the substructure is not part of the parent molecule or if the parent molecule
-     * is already unconnected (i.e. consists of multiple, unconnected substructures)
+     * is already unconnected (i.e. consists of multiple, unconnected substructures) or if the index property has not
+     * been set in at least one atom of the molecule
      * @throws CloneNotSupportedException if one of the atom containers cannot be cloned
      */
     private boolean isTerminal(IAtomContainer aSubstructure, IAtomContainer aParentMolecule)
@@ -1626,6 +1644,9 @@ public class SugarRemovalUtility {
         Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
         boolean tmpIsParent = true;
         for (IAtom tmpAtom : aSubstructure.atoms()) {
+            if (Objects.isNull(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY))) {
+                throw new IllegalArgumentException("There is at least one atom in the molecule with an index property.");
+            }
             if (!aParentMolecule.contains(tmpAtom)) {
                 tmpIsParent = false;
                 break;
@@ -1664,11 +1685,12 @@ public class SugarRemovalUtility {
                     }
                     //May throw UnsupportedOperationException if a new StructureToKeepMode option has been added but not implemented
                     // in this method yet. Since this is a serious issue, the code is supposed to crash.
-                    // And throws NullPointerException if molecule is null
+                    //throws NullPointerException if molecule is null
                     boolean tmpIsTooSmall = this.isTooSmall(tmpComponent);
                     //throws NullPointerException if molecule is null
                     boolean tmpIsPartOfSugarCandidate = this.isPartOfSugarCandidate(tmpComponent);
                     if (tmpIsTooSmall && !tmpIsPartOfSugarCandidate) {
+                        //note: no check whether the clone actually contains the component
                         tmpMoleculeClone.remove(tmpComponent);
                     }
                 }
@@ -1694,19 +1716,18 @@ public class SugarRemovalUtility {
      *
      * @param aMolecule the molecule to remove the sugar candidates from
      * @param aCandidateList the list of candidate sugar moieties in the given molecule
-     * @return the given molecule (i.e. atom container object) after removal of the sugar moieties
      * @throws NullPointerException if any parameter is 'null'
      * @throws IllegalArgumentException if at least one atom in the candidate list is not actually part of the molecule
      * or if it cannot be cloned to determine whether it is terminal (if only terminal moieties are removed according
-     * to the current settings) or if an unexpected error occurs
+     * to the current settings) or if an internal logic error occurs
      */
-    private IAtomContainer removeSugarCandidates(IAtomContainer aMolecule, List<IAtomContainer> aCandidateList)
+    private void removeSugarCandidates(IAtomContainer aMolecule, List<IAtomContainer> aCandidateList)
             throws NullPointerException, IllegalArgumentException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
-            return aMolecule;
+            return;
         }
         for (IAtomContainer tmpSubstructure : aCandidateList) {
             boolean tmpIsParent = true;
@@ -1742,13 +1763,14 @@ public class SugarRemovalUtility {
                     }
                     boolean tmpIsTerminal = false;
                     try {
-                        //also throws NullPointerExceptions or IllegalArgumentExceptions
+                        //also throws NullPointerExceptions or IllegalArgumentExceptions but they are simply passed on
+                        // by this calling method
                         tmpIsTerminal = this.isTerminal(tmpCandidate, tmpNewMolecule);
                     } catch (CloneNotSupportedException aCloneNotSupportedException) {
                         SugarRemovalUtility.LOGGER.log(Level.WARNING, aCloneNotSupportedException.toString(),
                                 aCloneNotSupportedException);
-                        throw new IllegalArgumentException("Could not clone one candidate and therefore not determine " +
-                                "whether it is terminal or not.");
+                        throw new IllegalArgumentException("Could not clone one candidate sugar structure and therefore " +
+                                "not determine whether it is terminal or not.");
                     }
                     if (tmpIsTerminal) {
                         for (IAtom tmpAtom : tmpCandidate.atoms()) {
@@ -1763,7 +1785,7 @@ public class SugarRemovalUtility {
                             //to clear away leftover unconnected fragments that are not to be kept due to the settings and
                             // to generate valid valences by adding implicit hydrogen atoms
                             //throws NullPointerException if molecule is null
-                            tmpNewMolecule = this.postProcessAfterRemoval(tmpNewMolecule);
+                            this.postProcessAfterRemoval(tmpNewMolecule);
                         }
                         //atom container may be empty after that
                         if (tmpNewMolecule.isEmpty()) {
@@ -1791,21 +1813,19 @@ public class SugarRemovalUtility {
             //to clear away leftover unconnected fragments that are not to be kept due to the settings and
             // to generate valid valences by adding implicit hydrogen atoms
             //throws NullPointerException if molecule is null
-            tmpNewMolecule = this.postProcessAfterRemoval(tmpNewMolecule);
+            this.postProcessAfterRemoval(tmpNewMolecule);
         }
         this.clearCache();
-        return tmpNewMolecule;
     }
 
     /**
      * Clears away too small/light structures from the given molecule (may result in an empty atom container) and
      * generates valid valences on the remaining molecule by the addition of implicit hydrogen atoms to open valences.
      *
-     * @param aMolecule the molecule to post-process
-     * @return the same molecule (i.e. atom container object), which might be empty
+     * @param aMolecule the molecule to post-process; might be empty after this method call
      * @throws NullPointerException if the given molecule is 'null' (note: no further parameter tests are implemented!)
      */
-    private IAtomContainer postProcessAfterRemoval(IAtomContainer aMolecule) throws NullPointerException {
+    private void postProcessAfterRemoval(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'");
         IAtomContainer tmpNewMolecule = aMolecule;
         //if too small / too light, unconnected structures should be discarded, this is done now
@@ -1813,7 +1833,7 @@ public class SugarRemovalUtility {
         //Even if only terminal sugars are removed, the resulting, connected structure may still be too small to keep!
         if (this.structuresToKeepMode != StructuresToKeepMode.ALL) {
             //throws NullPointerException if molecule is null
-            tmpNewMolecule = this.clearTooSmallStructures(tmpNewMolecule);
+            this.clearTooSmallStructures(tmpNewMolecule);
         }
         if (!tmpNewMolecule.isEmpty()) {
             try {
@@ -1823,7 +1843,6 @@ public class SugarRemovalUtility {
                 SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
             }
         }
-        return tmpNewMolecule;
     }
 
     /**
@@ -1837,8 +1856,8 @@ public class SugarRemovalUtility {
      *
      * @param aMolecule the molecule to extract circular sugar candidates from
      * @return a list of substructures in the given molecule that are regarded as circular sugar moieties
-     * @throws NullPointerException if the given molecule is 'null' (note: no further parameter tests are implemented!)
-     * or if an unexpected internal error occurs
+     * @throws NullPointerException if the given molecule is 'null' (note: no further parameter tests are implemented
+     * e.g. a test to determine whether the index properties have been set!)
      */
     private List<IAtomContainer> getCircularSugarCandidates(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'");
@@ -1872,14 +1891,12 @@ public class SugarRemovalUtility {
                      * This is not tested here because all the structures in the reference rings do meet this criterion.
                      * But a structure that does not meet this criterion could be added to the references by the user.*/
                     //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
-                    //throws NullPointerException if a parameter is null
                     boolean tmpAreAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(tmpIsolatedRing, tmpNewMolecule);
                     if (!tmpAreAllExocyclicBondsSingle) {
                         continue;
                     }
                     //do not remove rings without an attached glycosidic bond if this option is set
                     if (this.detectGlycosidicBond) {
-                        //throws NullPointerException if a parameter is null
                         boolean tmpHasGlycosidicBond = this.hasGlycosidicBond(tmpIsolatedRing, tmpNewMolecule);
                         if (!tmpHasGlycosidicBond) {
                             continue;
@@ -1887,7 +1904,6 @@ public class SugarRemovalUtility {
                     }
                     //do not remove rings with 'too few' attached oxygens if this option is set
                     if (this.includeNrOfAttachedOxygens) {
-                        //throws NullPointerException if a parameter is null
                         int tmpExocyclicOxygenCount = this.getAttachedOxygenAtomCount(tmpIsolatedRing, tmpNewMolecule);
                         int tmpAtomsInRing = tmpIsolatedRing.getAtomCount();
                         boolean tmpAreEnoughOxygensAttached = this.doesRingHaveEnoughOxygenAtomsAttached(tmpAtomsInRing,
@@ -1925,28 +1941,36 @@ public class SugarRemovalUtility {
      *
      * @param aMolecule the molecule to extract linear sugar candidates from
      * @return a list of substructures in the given molecule that are regarded as linear sugar moieties
-     * @throws NullPointerException if the given molecule is 'null' (note: no further parameter tests are implemented!)
+     * @throws NullPointerException if the given molecule is 'null' (note: no further parameter tests are implemented,
+     * e.g. a test to determine whether the index properties have been set!)
      */
     private List<IAtomContainer> getLinearSugarCandidates(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'");
         IAtomContainer tmpNewMolecule = aMolecule;
-        if (aMolecule.isEmpty()) {
+        if (tmpNewMolecule.isEmpty()) {
             return new ArrayList<IAtomContainer>(0);
         }
-        List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(aMolecule.getAtomCount() / 2);
-        for(DfPattern tmpLinearSugarPattern : this.linearSugarPatterns) {
+        List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpNewMolecule.getAtomCount() / 2);
+        for (DfPattern tmpLinearSugarPattern : this.linearSugarPatterns) {
+            if (Objects.isNull(tmpLinearSugarPattern)) {
+                continue;
+            }
             /*unique in this case means that the same match cannot be in this collection multiple times but they can
             still overlap! Overlapping atoms are removed in the following lines.*/
             Mappings tmpMappings = tmpLinearSugarPattern.matchAll(tmpNewMolecule);
             Mappings tmpUniqueMappings = tmpMappings.uniqueAtoms();
             Iterable<IAtomContainer> tmpUniqueSubstructureMappings = tmpUniqueMappings.toSubstructures();
             for (IAtomContainer tmpMatchedStructure : tmpUniqueSubstructureMappings) {
+                if (Objects.isNull(tmpMatchedStructure)) {
+                    continue;
+                }
                 tmpSugarCandidates.add(tmpMatchedStructure);
             }
         }
         //TODO/discuss: Is there a better way to get non-overlapping matches?
-        HashSet<Integer> tmpSugarCandidateAtomsSet = new HashSet<>(aMolecule.getAtomCount() + 2, 1);
+        HashSet<Integer> tmpSugarCandidateAtomsSet = new HashSet<>(tmpNewMolecule.getAtomCount() + 2, 1);
         for (int i = 0; i < tmpSugarCandidates.size(); i++) {
+            //cannot be null
             IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
             for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
                 IAtom tmpAtom = tmpCandidate.getAtom(j);
@@ -1963,6 +1987,19 @@ public class SugarRemovalUtility {
             if (tmpCandidate.isEmpty()) {
                 tmpSugarCandidates.remove(tmpCandidate);
                 //The removal shifts the remaining indices!
+                i = i - 1;
+            }
+        }
+        //sugar candidates may be disconnected in themselves, this is corrected here
+        for (int i = 0; i < tmpSugarCandidates.size(); i++) {
+            IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
+            if (!tmpIsConnected) {
+                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
+                for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+                    tmpSugarCandidates.add(tmpComponent);
+                }
+                tmpSugarCandidates.remove(i);
                 i = i - 1;
             }
         }
@@ -2015,7 +2052,7 @@ public class SugarRemovalUtility {
      * atom objects lead to unwanted confusion/entanglement between the removal of linear and circular sugar moieties.
      */
     private void clearCache() {
-        //the initial capacity was randomly chosen
+        //note: the initial capacity was arbitrarily chosen
         this.atomIndicesThatArePartOfSugarCandidatesCache = new HashSet<Integer>(20, 0.8f);
     }
     //</editor-fold>

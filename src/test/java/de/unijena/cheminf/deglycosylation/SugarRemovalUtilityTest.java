@@ -145,7 +145,7 @@ public class SugarRemovalUtilityTest {
         tmpLogFileHandler.setLevel(Level.ALL);
         tmpLogFileHandler.setFormatter(new SimpleFormatter());
         Logger.getLogger("").addHandler(tmpLogFileHandler);
-        Logger.getLogger("").setLevel(Level.ALL);
+        Logger.getLogger("").setLevel(Level.WARNING);
         SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
         tmpSugarRemovalUtil.setStructuresToKeepMode(SugarRemovalUtility.StructuresToKeepMode.HEAVY_ATOM_COUNT);
@@ -662,7 +662,7 @@ public class SugarRemovalUtilityTest {
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
         //The circular sugar moiety is NOT connected to the core structure via a glycosidic bond, so it is not removed
-        Assert.assertEquals("O=C1C=C(OC=2C1=C(O)C=C(O)C2C3OC(CO)C(O)C(O)C3O)C=4C=CC(O)=C(O)C4", tmpSmilesCode);
+        Assert.assertEquals("O=C1C=C(OC=2C1=C(O)C=C(O)C2C3OC(C)C(O)C(O)C3O)C=4C=CC(O)=C(O)C4", tmpSmilesCode);
         tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeAllSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -687,8 +687,27 @@ public class SugarRemovalUtilityTest {
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeAllSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
+        //TODO: In fact, three carbon atoms of the aliphatic chain are removed which should not happen
         //Only the aliphatic chain remains
         Assert.assertEquals("CCCCCCCCCCC", tmpSmilesCode);
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void mariasExampleTest() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(false);
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)C(CCC)C(OC)C(OC1CC2OC(O)C(O)C(O)C(O)CC3OC(OC2C(C)O1)C(O)C(OC)C3O)C1OC1=O");
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
     }
 
     /**
