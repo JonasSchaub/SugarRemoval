@@ -46,8 +46,11 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.openscience.cdk.Atom;
+import org.openscience.cdk.AtomContainer;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.depict.DepictionGenerator;
+import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
@@ -57,7 +60,9 @@ import org.openscience.cdk.smiles.SmilesParser;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
@@ -189,7 +194,14 @@ public class SugarRemovalUtilityTest {
                         tmpContainsCircularSugarsCounter++;
                     }
                     if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
+                        //tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
+                        //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
                         tmpContainsLinearSugarsCounter++;
+                    }
+                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true
+                    && (boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
+                        tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
+                        tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
                     }
                     if (tmpMolecule.isEmpty()) {
                         tmpBasicallyASugarCounter++;
@@ -208,6 +220,80 @@ public class SugarRemovalUtilityTest {
         System.out.println("Linear-sugar-containing molecules counter: " + tmpContainsLinearSugarsCounter);
         System.out.println("Circular-sugar-containing molecules counter: " + tmpContainsCircularSugarsCounter);
         System.out.println("Basically a sugar counter: " + tmpBasicallyASugarCounter);
+        tmpCursor.close();
+    }
+
+    @Ignore
+    @Test
+    public void linearSugarPatternsAppearanceTest() throws Exception {
+        MongoClientSettings.Builder tmpBuilder = MongoClientSettings.builder();
+        ServerAddress tmpAddress = new ServerAddress("localhost", 27017);
+        tmpBuilder.applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(tmpAddress)));
+        MongoClientSettings tmpSettings = tmpBuilder.build();
+        MongoClient tmpMongoClient = MongoClients.create(tmpSettings);
+        String tmpCollectionName = "COCONUTfebruary20";
+        MongoDatabase tmpDatabase = tmpMongoClient.getDatabase(tmpCollectionName);
+        String tmpDatabaseName = "uniqueNaturalProduct";
+        MongoCollection<Document> tmpCollection = tmpDatabase.getCollection(tmpDatabaseName);
+        MongoCursor<Document> tmpCursor = null;
+        Logger tmpLogger = Logger.getLogger(SugarRemovalUtilityTest.class.getName());
+        try {
+            tmpCursor = tmpCollection.find().iterator();
+        } catch (MongoTimeoutException aMongoTimeoutException) {
+            tmpLogger.log(Level.SEVERE, aMongoTimeoutException.toString(), aMongoTimeoutException);
+            System.out.println("Timed out while trying to connect to MongoDB. Test is ignored.");
+            Assume.assumeTrue(false);
+        }
+        System.out.println("Connection to MongoDB successful.");
+        System.out.println("Collection " + tmpCollectionName + " in database " + tmpDatabaseName + " is loaded.");
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        //Note: Here, additional molecules could be added to the list to also test them
+        List<String> tmpLinearSugarsList = tmpSugarRemovalUtil.getLinearSugars();
+        List<List<Object>> tmpLinearSugarPatterns = new ArrayList<>(tmpLinearSugarsList.size());
+        for (String tmpLinearSugarString : tmpLinearSugarsList) {
+            List<Object> tmpList = new ArrayList<>(4);
+            tmpList.add(0, tmpLinearSugarString);
+            tmpList.add(1, DfPattern.findSubstructure(tmpSmiPar.parseSmiles(tmpLinearSugarString)));
+            tmpList.add(2, 0);
+            tmpLinearSugarPatterns.add(tmpList);
+        }
+        Document tmpCurrentDoc = null;
+        String tmpID = "";
+        String tmpSmilesCode = "";
+        IAtomContainer tmpMolecule = null;
+        int tmpMoleculeCounter = 0;
+        int tmpContainsLinearSugarCounter = 0;
+        while (tmpCursor.hasNext()) {
+            try {
+                tmpCurrentDoc = tmpCursor.next();
+                tmpMoleculeCounter++;
+                tmpID = tmpCurrentDoc.getString("coconut_id");
+                tmpSmilesCode = tmpCurrentDoc.getString("clean_smiles");
+                tmpMolecule = tmpSmiPar.parseSmiles(tmpSmilesCode);
+                tmpMolecule.setTitle(tmpID);
+                boolean tmpMolHasAMatch = false;
+                for (List<Object> tmpEntry : tmpLinearSugarPatterns) {
+                    DfPattern tmpPattern = (DfPattern) tmpEntry.get(1);
+                    if (tmpPattern.matches(tmpMolecule)) {
+                        tmpEntry.set(2, (int)tmpEntry.get(2) + 1);
+                        tmpMolHasAMatch = true;
+                    }
+                }
+                if (tmpMolHasAMatch) {
+                    tmpContainsLinearSugarCounter++;
+                }
+            } catch (Exception anException) {
+                tmpLogger.log(Level.SEVERE, anException.toString() + " ID: " + tmpID, anException);
+                continue;
+            }
+        }
+        System.out.println("Done.");
+        System.out.println("Molecules counter: " + tmpMoleculeCounter);
+        System.out.println("Molecules that have at least one match counter: " + tmpContainsLinearSugarCounter);
+        for (List<Object> tmpEntry : tmpLinearSugarPatterns) {
+           System.out.println((String)tmpEntry.get(0) + " " + (int)tmpEntry.get(2));
+        }
         tmpCursor.close();
     }
 
@@ -688,8 +774,27 @@ public class SugarRemovalUtilityTest {
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
         //TODO: In fact, three carbon atoms of the aliphatic chain are removed which should not happen
+        // another example is CNP0001976
         //Only the aliphatic chain remains
         Assert.assertEquals("CCCCCCCCCCC", tmpSmilesCode);
+    }
+
+
+    @Test
+    public void specificTest20() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=CC1(C)C(OC2OC(C(=O)O)C(O)C(OC3OCC(O)C(O)C3O)C2OC4OC(CO)C(O)C(O)C4O)CCC5(C)C6CC=C7C8CC(C)(C)CCC8(C(=O)OC9OC(C)C(OC(=O)CC(O)CC(OC(=O)CC(O)CC(OC%10OC(CO)C(O)C%10O)C(C)CC)C(C)CC)C(O)C9OC%11OC(C)C(OC%12OCC(O)C(O)C%12O)C(O)C%11O)C(O)CC7(C)C6(C)CCC15"); //CNP0000306
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeAllSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //TODO: Not all sugar moieties are removed here
+        //Only the aliphatic chain remains
+        Assert.assertEquals("O=CC1(C)C(O)CCC2(C)C3CC=C4C5CC(C)(C)CCC5(C(=O)O)C(O)CC4(C)C3(C)CCC12", tmpSmilesCode);
     }
 
     /**
@@ -755,5 +860,14 @@ public class SugarRemovalUtilityTest {
             System.out.println(tmpSmiGen.create(tmpMap));
         }
         System.out.println(tmpMappings.countUnique());
+    }
+
+    @Test
+    public void experiments() throws Exception {
+        IAtomContainer tmpMol = new AtomContainer();
+        IAtom tmpAtom = new Atom();
+        tmpMol.addAtom(tmpAtom);
+        tmpMol.addAtom(tmpAtom);
+        System.out.println(tmpMol.getAtomCount());
     }
 }

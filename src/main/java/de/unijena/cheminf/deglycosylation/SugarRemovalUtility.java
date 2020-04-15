@@ -26,7 +26,12 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
+ * - discuss the two options for linear sugar detection: splitting or combining overlapping pattern matches
+ * - Is there a way to add explicit Hs to the patterns? Is that possible with SMARTS?
  * - make a console application to deploy as jar; see google doc for input and output
+ * - reject linear sugar candidates if they contain (not part of, contain!) rings? E.g. hexitol, pentitol and tetraitol match
+ * six-membered sugar rings
+ *      - this can be a real issue if matches are combined and not split
  * - return a list of the removed sugars; that will be complicated if the given molecule should be cloned!
  *      - change all return types to lists?
  * - maybe make some more methods public that might be of interest
@@ -39,10 +44,10 @@ package de.unijena.cheminf.deglycosylation;
  *      - Is that elegant? For structures connected to rings, sure, but what about linear structures?
  * - General problem: Sometimes, very small substructures like CH3OH or CH3 or OH or =O or CH4CH3 or CH3-C(=O)O or similar get
  * removed in the removal of linear sugars, seen especially at circular structures
- * - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses
+ *      - this can be fixed by switching to combining overlapping linear sugar candidates
+ * - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses, more di-acids, more sugar acids
  * - minimum size for linear sugar pattern? (same threshold could be set above for removal of too small linear candidates)
- *      - maybe 4 carbons?
- * - check occurrence of 'questionable' linear sugars
+ *      - maybe 5 carbons?
  * - after all the changes: Check the documentation again
  * - see to dos in the code
  *
@@ -55,6 +60,7 @@ package de.unijena.cheminf.deglycosylation;
  * - see 'to do / to discuss' points in the code
  */
 
+import org.openscience.cdk.AtomContainer;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.InvalidSmilesException;
@@ -175,32 +181,34 @@ public class SugarRemovalUtility {
             //TODO: Order by size decreasing
             //*aldoses*
             //note: no octose and so on
-            "C(C(C(C(C(C(C=O)O)O)O)O)O)O", //aldoheptose
+            "C(C(C(C(C(C(C=O)O)O)O)O)O)O", //aldoheptose TODO/discuss: Only 63 matches in COCONUT
             "C(C(C(C(C(C=O)O)O)O)O)O", //aldohexose
             "C(C(C(C(C=O)O)O)O)O", //aldopentose
-            //"C(C(C(C=O)O)O)O", //aldotetrose
+            "C(C(C(C=O)O)O)O", //aldotetrose TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 6795 matches
             //"C(C(C=O)O)O", //aldotriose
             //*ketoses*
             //note: no octose and so on
-            "C(C(C(C(C(C(CO)O)O)O)O)=O)O", //2-ketoheptose
-            "C(C(C(C(C(CO)O)O)O)=O)O", //2-ketohexose
+            "C(C(C(C(C(C(CO)O)O)O)O)=O)O", //2-ketoheptose TODO/discuss: only 16 matches in COCONUT
+            "C(C(C(C(C(CO)O)O)O)=O)O", //2-ketohexose TODO/discuss: only 61 matches in COCONUT
             "C(C(C(C(CO)O)O)=O)O", //2-ketopentose
-            //"C(C(C(CO)O)=O)O", //2-ketotetrose
+            "C(C(C(CO)O)=O)O", //2-ketotetrose TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 535 matches
             //"C(C(CO)=O)O", //2-ketotriose
             //*sugar alcohols*
             //note: no octitol and so on
             "C(C(C(C(C(C(CO)O)O)O)O)O)O", //heptitol
-            "C(C(C(C(C(CO)O)O)O)O)O", //hexitol
-            "C(C(C(C(CO)O)O)O)O", //pentitol
-            //"C(C(C(CO)O)O)O", //tetraitol
-            //"C(C(CO)O)O", //triol
+            "C(C(C(C(C(CO)O)O)O)O)O", //hexitol TODO/discuss: matches six-membered sugar rings
+            "C(C(C(C(CO)O)O)O)O", //pentitol TODO/discuss: matches six-membered sugar rings
+            "C(C(C(CO)O)O)O", //tetraitol TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 53407 matches
+            // because it matches five-membered sugar rings
+            //"C(C(CO)O)O", //triol TODO/discuss: also appears quite often... See e.g. CNP0001327
 
             "C(C(C(C(CC=O)O)O)O)O", //2-deoxyhexose
-            "CCCCC(O)C(=O)O", //2-hydroxyhexanoic acid TODO/discuss: Is this a sugar? -> check 'sugar acid' or 'acidic sugar'
-            "CC(=O)CC(=O)CCC(=O)O", //4,6-dioxoheptanoic acid TODO/discuss: Is this a sugar?
-            "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid TODO/discuss: Is this a sugar?
-            "O=C(O)C(=O)C(=O)C(O)C(O)CO", //hexo-2,3-diulosonic acid
-            "O=C(O)CCC(O)C(=O)O", //2-hydroxypentanedioic acid TODO/discuss: Is this a sugar?
+            "CCCCC(O)C(=O)O", //2-hydroxyhexanoic acid TODO/discuss: Is this a sugar? Too many cases were it
+            // unnecessarily removes carbons from an aliphatic chain! But it has 10,834 matches in COCONUT...
+            "CC(=O)CC(=O)CCC(=O)O", //4,6-dioxoheptanoic acid TODO/discuss: Is this a sugar? -> only 29 matches in COCONUT
+            "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid
+            "O=C(O)C(=O)C(=O)C(O)C(O)CO", //hexo-2,3-diulosonic acid TODO/discuss: only two matches in COCONUT
+            "O=C(O)CCC(O)C(=O)O", //2-hydroxypentanedioic acid
             "C(C(CC(C(CO)O)O)O)(O)=O", //3-deoxyhexonic acid
             "C(C(C(CC(=O)O)O)O)O" //2-deoxypentonic acid
     };
@@ -1968,40 +1976,79 @@ public class SugarRemovalUtility {
             }
         }
         //TODO/discuss: Is there a better way to get non-overlapping matches?
-        HashSet<Integer> tmpSugarCandidateAtomsSet = new HashSet<>(tmpNewMolecule.getAtomCount() + 2, 1);
-        for (int i = 0; i < tmpSugarCandidates.size(); i++) {
-            //cannot be null
-            IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
-            for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
-                IAtom tmpAtom = tmpCandidate.getAtom(j);
-                int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                boolean tmpIsAtomAlreadyInCandidates = tmpSugarCandidateAtomsSet.contains(tmpAtomIndex);
-                if (tmpIsAtomAlreadyInCandidates) {
-                    tmpCandidate.removeAtom(tmpAtom);
+        if (!tmpSugarCandidates.isEmpty()) {
+            //  ***routine to combine overlapping matches***
+            /*SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Unique);
+            for (IAtomContainer tmpCandidate : tmpSugarCandidates) {
+                try {
+                    System.out.println(tmpSmiGen.create(tmpCandidate));
+                } catch (CDKException e) {
+                    e.printStackTrace();
+                }
+            }*/
+            List<IAtomContainer> tmpSplittedSugarCandidates = new ArrayList<>(tmpNewMolecule.getAtomCount() / 2);
+            IAtomContainer tmpMatchesContainer = new AtomContainer();
+            for (int i = 0; i < tmpSugarCandidates.size(); i++) {
+                IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
+                tmpMatchesContainer.add(tmpCandidate);
+            }
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpMatchesContainer);
+            boolean tmpIsEmpty = tmpMatchesContainer.isEmpty();
+            if (tmpIsConnected) {
+                tmpSplittedSugarCandidates.add(tmpMatchesContainer);
+            } else {
+                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpMatchesContainer);
+                Iterable<IAtomContainer> tmpMolecules = tmpComponents.atomContainers();
+                for (IAtomContainer tmpComponent : tmpMolecules) {
+                    tmpSplittedSugarCandidates.add(tmpComponent);
+                }
+            }
+            tmpSugarCandidates = tmpSplittedSugarCandidates;
+            /*for (IAtomContainer tmpCandidate : tmpSugarCandidates) {
+                try {
+                    System.out.println(tmpSmiGen.create(tmpCandidate));
+                } catch (CDKException e) {
+                    e.printStackTrace();
+                }
+            }*/
+            //  ***end of routine to combine overlapping matches***
+            //  ***routine to split overlapping matches***
+            /*HashSet<Integer> tmpSugarCandidateAtomsSet = new HashSet<>(tmpNewMolecule.getAtomCount() + 2, 1);
+            for (int i = 0; i < tmpSugarCandidates.size(); i++) {
+                //cannot be null
+                IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
+                for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
+                    IAtom tmpAtom = tmpCandidate.getAtom(j);
+                    int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                    boolean tmpIsAtomAlreadyInCandidates = tmpSugarCandidateAtomsSet.contains(tmpAtomIndex);
+                    if (tmpIsAtomAlreadyInCandidates) {
+                        tmpCandidate.removeAtom(tmpAtom);
+                        //The removal shifts the remaining indices!
+                        j = j - 1;
+                    } else {
+                        tmpSugarCandidateAtomsSet.add(tmpAtomIndex);
+                    }
+                }
+                if (tmpCandidate.isEmpty()) {
+                    tmpSugarCandidates.remove(tmpCandidate);
                     //The removal shifts the remaining indices!
-                    j = j - 1;
-                } else {
-                    tmpSugarCandidateAtomsSet.add(tmpAtomIndex);
+                    i = i - 1;
                 }
             }
-            if (tmpCandidate.isEmpty()) {
-                tmpSugarCandidates.remove(tmpCandidate);
-                //The removal shifts the remaining indices!
-                i = i - 1;
-            }
-        }
-        //sugar candidates may be disconnected in themselves, this is corrected here
-        for (int i = 0; i < tmpSugarCandidates.size(); i++) {
-            IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
-            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
-            if (!tmpIsConnected) {
-                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
-                for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
-                    tmpSugarCandidates.add(tmpComponent);
+            //sugar candidates may be disconnected in themselves, this is corrected here
+            for (int i = 0; i < tmpSugarCandidates.size(); i++) {
+                IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
+                boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
+                if (!tmpIsConnected) {
+                    IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
+                    for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+                        tmpSugarCandidates.add(tmpComponent);
+                    }
+                    tmpSugarCandidates.remove(i);
+                    i = i - 1;
                 }
-                tmpSugarCandidates.remove(i);
-                i = i - 1;
-            }
+            }*/
+            //  ***end of routine to split overlapping matches***
         }
         if (!this.removeLinearSugarsInRing && !tmpSugarCandidates.isEmpty()) {
             int[][] tmpAdjList = GraphUtil.toAdjList(tmpNewMolecule);
@@ -2011,25 +2058,28 @@ public class SugarRemovalUtility {
                 for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
                     IAtom tmpAtom = tmpCandidate.getAtom(j);
                     if (tmpRingSearch.cyclic(tmpAtom)) {
-                        //  *this is the routine to remove the whole candidate*
+                        //  **this is the routine to remove the whole candidate**
                         tmpSugarCandidates.remove(i);
                         //removal shifts the remaining indices
                         i = i - 1;
                         break;
-                        //  *this would be the routine to remove only the cyclic atoms (see also add. part below)*
+                        //  **end of this routine**
+                        //  **this would be the routine to remove only the cyclic atoms (see also add. part below)**
                         /*if (tmpCandidate.contains(tmpAtom)) {
                             tmpCandidate.removeAtom(tmpAtom);
                             //The removal shifts the remaining indices!
                             j = j - 1;
                         }*/
+                        //  **end of part 1**
                     }
                 }
-                //  *this would be the routine to remove only the cyclic atoms (part 2)*
+                //  **this would be the routine to remove only the cyclic atoms (part 2)**
                 /*if (tmpCandidate.isEmpty()) {
                     tmpSugarCandidates.remove(i);
                     //The removal shifts the remaining indices!
                     i = i - 1;
                 }*/
+                //  **end of part 2**
             }
         }
         this.clearCache();
