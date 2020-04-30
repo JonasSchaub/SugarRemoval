@@ -26,37 +26,49 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
- * - discuss the two options for linear sugar detection: splitting or combining overlapping pattern matches
- * - Is there a way to add explicit Hs to the patterns? Is that possible with SMARTS?
+ * - Linear sugar detection/removal:
+ *      - put the different routines in separate methods (combining vs splitting, discarding the whole candidate vs
+ *      discarding only the atoms in a circle, detection by patterns vs detection by Ertl vs detection by SMARTS, etc)
+ *      - discuss the two options for linear sugar detection: splitting or combining overlapping pattern matches
+ *      - investigate use of Ertl algorithm, maybe all C-O FG with a ratio of C to O?
+ *      - investigate use of SMARTS pattern for linear sugars
+ *      - Is there a way to add explicit Hs to the patterns? Is that possible with SMARTS?
+ *      - try combination "combining overlapping candidates" + "only not remove the circular atoms if the option is set"
+ *      - for combine method: try to split again at ether, ester and peroxide
+ *      - reject linear sugar candidates if they contain (not part of, contain!) rings? E.g. hexitol, pentitol and tetraitol match
+ *      six-membered sugar rings
+ *          - this can be a real issue if matches are combined and not split
+ *          - maybe check candidates for containing a ring sugar pattern as substructure?
+ *      - Is there a way to combine overlapping matches of linear patterns? Would that be better? Maybe do not remove linear
+ *      sugar matches if they are too small after removal of overlapping atoms, e.g. only a CH3 group could get removed (see tests)
+ *          - Is that elegant? For structures connected to rings, sure, but what about linear structures?
+ *      - General problem: Sometimes, very small substructures like CH3OH or CH3 or OH or =O or CH4CH3 or CH3-C(=O)O or similar get
+ *      removed in the removal of linear sugars, seen especially at circular structures
+ *          - this can be fixed by switching to combining overlapping linear sugar candidates
+ *      - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses, more di-acids, more sugar acids
+ *      - minimum size for linear sugar pattern? (same threshold could be set above for removal of too small linear candidates)
+ *          - maybe 5 carbons?
+ *          - also add maximal length?
+ * - If check for glycosidic bond is set to true, molecules that are only one ring-sugar are not removed.
+ *      - create special exemption: remove circular sugar anyway if the molecule has only one ring (= the sugar
+ *      candidate) and would be empty if this ring is removed (meaning the possibly remaining structure is too small
+ *      to keep)
+ *      - check could be done in a similar way to the terminal check
+ * - maintain connection info for reconstruction?
+ * - Include method to get number of attached (ring) sugars
+ * - add rule for ring-sugars to have no connection to hetero-atoms? Option? Would exclude amino-sugars
  * - make a console application to deploy as jar; see google doc for input and output
- * - reject linear sugar candidates if they contain (not part of, contain!) rings? E.g. hexitol, pentitol and tetraitol match
- * six-membered sugar rings
- *      - this can be a real issue if matches are combined and not split
+ *      - check input for disconnected molecules if only terminal sugars should be removed
  * - return a list of the removed sugars; that will be complicated if the given molecule should be cloned!
  *      - change all return types to lists?
+ *      - do this anyway because it will be useful for MORTAR!
  * - maybe make some more methods public that might be of interest
- *      - note: e.g. making getCircular/LinearSugarCandidates public is problematic because of the new caching work-around
- *          - this could be disentangled because only is Terminal() needs to know whether an atom is part of a candidate!
- *      - also, it is important that the index property is set correctly in all molecules that are passed to certain methods!
+ *      - it is important that the index property is set correctly in all molecules that are passed to certain methods!
  *          - this could maybe also be disentangled but more difficultly
- * - Is there a way to combine overlapping matches of linear patterns? Would that be better? Maybe do not remove linear
- * sugar matches if they are too small after removal of overlapping atoms, e.g. only a CH3 group could get removed (see tests)
- *      - Is that elegant? For structures connected to rings, sure, but what about linear structures?
- * - General problem: Sometimes, very small substructures like CH3OH or CH3 or OH or =O or CH4CH3 or CH3-C(=O)O or similar get
- * removed in the removal of linear sugars, seen especially at circular structures
- *      - this can be fixed by switching to combining overlapping linear sugar candidates
- * - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses, more di-acids, more sugar acids
- * - minimum size for linear sugar pattern? (same threshold could be set above for removal of too small linear candidates)
- *      - maybe 5 carbons?
  * - after all the changes: Check the documentation again
  * - see to dos in the code
  *
  * To discuss:
- * - If check for glycosidic bond is set to true, molecules that are only one ring-sugar are not removed.
- *      - could create special exemption: remove circular sugar anyway if the molecule has only one ring (= the sugar
- *      candidate) and would be empty if this ring is removed (meaning the possibly remaining structure is too small
- *      to keep)
- *      - check could be done in a similar way to the terminal check
  * - see 'to do / to discuss' points in the code
  */
 
@@ -89,6 +101,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -178,21 +191,21 @@ public class SugarRemovalUtility {
      * the detection of linear sugars.
      */
     public static final String[] LINEAR_SUGARS_SMILES = {
-            //TODO: Order by size decreasing
+            //TODO: Order by size decreasing to save time in the constructor
             //*aldoses*
             //note: no octose and so on
             "C(C(C(C(C(C(C=O)O)O)O)O)O)O", //aldoheptose TODO/discuss: Only 63 matches in COCONUT
             "C(C(C(C(C(C=O)O)O)O)O)O", //aldohexose
             "C(C(C(C(C=O)O)O)O)O", //aldopentose
             "C(C(C(C=O)O)O)O", //aldotetrose TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 6795 matches
-            //"C(C(C=O)O)O", //aldotriose
+            "C(C(C=O)O)O", //aldotriose
             //*ketoses*
             //note: no octose and so on
             "C(C(C(C(C(C(CO)O)O)O)O)=O)O", //2-ketoheptose TODO/discuss: only 16 matches in COCONUT
             "C(C(C(C(C(CO)O)O)O)=O)O", //2-ketohexose TODO/discuss: only 61 matches in COCONUT
             "C(C(C(C(CO)O)O)=O)O", //2-ketopentose
             "C(C(C(CO)O)=O)O", //2-ketotetrose TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 535 matches
-            //"C(C(CO)=O)O", //2-ketotriose
+            "C(C(CO)=O)O", //2-ketotriose
             //*sugar alcohols*
             //note: no octitol and so on
             "C(C(C(C(C(C(CO)O)O)O)O)O)O", //heptitol
@@ -200,17 +213,14 @@ public class SugarRemovalUtility {
             "C(C(C(C(CO)O)O)O)O", //pentitol TODO/discuss: matches six-membered sugar rings
             "C(C(C(CO)O)O)O", //tetraitol TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 53407 matches
             // because it matches five-membered sugar rings
-            //"C(C(CO)O)O", //triol TODO/discuss: also appears quite often... See e.g. CNP0001327
-
-            "C(C(C(C(CC=O)O)O)O)O", //2-deoxyhexose
-            "CCCCC(O)C(=O)O", //2-hydroxyhexanoic acid TODO/discuss: Is this a sugar? Too many cases were it
-            // unnecessarily removes carbons from an aliphatic chain! But it has 10,834 matches in COCONUT...
-            "CC(=O)CC(=O)CCC(=O)O", //4,6-dioxoheptanoic acid TODO/discuss: Is this a sugar? -> only 29 matches in COCONUT
+            "C(C(CO)O)O", //triol TODO/discuss: also appears quite often... See e.g. CNP0001327
+            //*sugar acids / acidic sugars*
             "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid
-            "O=C(O)C(=O)C(=O)C(O)C(O)CO", //hexo-2,3-diulosonic acid TODO/discuss: only two matches in COCONUT
             "O=C(O)CCC(O)C(=O)O", //2-hydroxypentanedioic acid
             "C(C(CC(C(CO)O)O)O)(O)=O", //3-deoxyhexonic acid
-            "C(C(C(CC(=O)O)O)O)O" //2-deoxypentonic acid
+            "C(C(C(CC(=O)O)O)O)O", //2-deoxypentonic acid
+            //*deoxy sugars*
+            "C(C(C(C(CC=O)O)O)O)O" //2-deoxyhexose
     };
 
     /**
@@ -334,13 +344,6 @@ public class SugarRemovalUtility {
      * Add a property to sugar-containing, given atom containers setting.
      */
     private boolean setPropertyOfSugarContainingMolecules;
-
-    /**
-     * Set containing the indices of atoms that are part of sugar candidates in the molecule currently under investigation.
-     * This cache needs to be cleared before new sugar candidates are detected in a molecule and to be sure also after
-     * removal of sugar moieties.
-     */
-    private HashSet<Integer> atomIndicesThatArePartOfSugarCandidatesCache;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
@@ -391,8 +394,6 @@ public class SugarRemovalUtility {
                 SugarRemovalUtility.ATTACHED_OXYGENS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT;
         this.removeLinearSugarsInRing = SugarRemovalUtility.REMOVE_LINEAR_SUGARS_IN_RING_DEFAULT;
         this.setPropertyOfSugarContainingMolecules = SugarRemovalUtility.SET_PROPERTY_OF_SUGAR_CONTAINING_MOLECULES_DEFAULT;
-        //to instantiate the cache collections/variables
-        this.clearCache();
     }
     //</editor-fold>
     //
@@ -1608,36 +1609,18 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Checks whether at least one atom of the given molecule or structure is part of a sugar candidate.
-     *
-     * @param aMolecule the molecule to check
-     * @return true, if the given structure is part of a sugar candidate
-     * @throws NullPointerException if molecule is 'null' (note: no further parameter tests are implemented,
-     * e.g. a test to determine whether the index properties have been set!)
-     */
-    private boolean isPartOfSugarCandidate(IAtomContainer aMolecule) throws NullPointerException {
-        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
-        boolean tmpIsPartOfSugarCandidate = false;
-        for (IAtom tmpAtom : aMolecule.atoms()) {
-            int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-            if (this.atomIndicesThatArePartOfSugarCandidatesCache.contains(tmpIndex)) {
-                tmpIsPartOfSugarCandidate = true;
-                break;
-            }
-        }
-        return tmpIsPartOfSugarCandidate;
-    }
-
-    /**
      * Checks whether the given substructure is terminal in the given parent molecule. To do this, the substructure and
      * the parent molecule are cloned, the substructure is removed in the parent molecule clone (identified via the index
      * properties) and finally it is checked whether the parent molecule clone still consists of only one connected
      * structure. If that is the case, the substructure is terminal. If the structure to keep mode is not set to 'keep
      * all structures', too small resulting fragments are cleared away in between.
-     * TODO: Add note here about the new condition
+     * TODO: Add note here about the new condition (see param below)
      *
      * @param aSubstructure the substructure to check for whether it is terminal
      * @param aParentMolecule the molecule the substructure is a part of
+     * @param aSetOfCandidateAtomIndices  a set containing the indices of atoms that are part of the detected sugar
+     *                                    candidates to check whether atoms of other candidates would be cleared away if
+     *                                    the given substructure was removed
      * @return true, if the substructure is terminal
      * @throws NullPointerException if any parameter is 'null'
      * @throws IllegalArgumentException if the substructure is not part of the parent molecule or if the parent molecule
@@ -1645,11 +1628,14 @@ public class SugarRemovalUtility {
      * been set in at least one atom of the molecule
      * @throws CloneNotSupportedException if one of the atom containers cannot be cloned
      */
-    private boolean isTerminal(IAtomContainer aSubstructure, IAtomContainer aParentMolecule)
+    private boolean isTerminal(IAtomContainer aSubstructure,
+                               IAtomContainer aParentMolecule,
+                               Set<Integer> aSetOfCandidateAtomIndices)
             throws NullPointerException, IllegalArgumentException, CloneNotSupportedException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aSubstructure, "Given substructure is 'null'.");
         Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
+        Objects.requireNonNull(aSetOfCandidateAtomIndices, "Given set of atom indices in sugar candidates is 'null'.");
         boolean tmpIsParent = true;
         for (IAtom tmpAtom : aSubstructure.atoms()) {
             if (Objects.isNull(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY))) {
@@ -1695,8 +1681,14 @@ public class SugarRemovalUtility {
                     // in this method yet. Since this is a serious issue, the code is supposed to crash.
                     //throws NullPointerException if molecule is null
                     boolean tmpIsTooSmall = this.isTooSmall(tmpComponent);
-                    //throws NullPointerException if molecule is null
-                    boolean tmpIsPartOfSugarCandidate = this.isPartOfSugarCandidate(tmpComponent);
+                    boolean tmpIsPartOfSugarCandidate = false;
+                    for (IAtom tmpAtom : tmpComponent.atoms()) {
+                        int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                        if (aSetOfCandidateAtomIndices.contains(tmpIndex)) {
+                            tmpIsPartOfSugarCandidate = true;
+                            break;
+                        }
+                    }
                     if (tmpIsTooSmall && !tmpIsPartOfSugarCandidate) {
                         //note: no check whether the clone actually contains the component
                         tmpMoleculeClone.remove(tmpComponent);
@@ -1761,6 +1753,13 @@ public class SugarRemovalUtility {
             //but the definition of terminal depends on the set structures to keep mode!
             //decisions based on this setting are made in the respective private method
             //No unconnected structures result at the end or at an intermediate step
+            HashSet<Integer> tmpAtomIndicesThatArePartOfSugarCandidates = new HashSet<>(tmpNewMolecule.getAtomCount(), 0.8f);
+            for (IAtomContainer tmpCandidate : tmpSugarCandidates) {
+                for (IAtom tmpAtom : tmpCandidate.atoms()) {
+                    int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                    tmpAtomIndicesThatArePartOfSugarCandidates.add(tmpIndex);
+                }
+            }
             boolean tmpContainsNoTerminalSugar = false;
             while (!tmpContainsNoTerminalSugar) {
                 boolean tmpSomethingWasRemoved = false;
@@ -1773,7 +1772,7 @@ public class SugarRemovalUtility {
                     try {
                         //also throws NullPointerExceptions or IllegalArgumentExceptions but they are simply passed on
                         // by this calling method
-                        tmpIsTerminal = this.isTerminal(tmpCandidate, tmpNewMolecule);
+                        tmpIsTerminal = this.isTerminal(tmpCandidate, tmpNewMolecule, tmpAtomIndicesThatArePartOfSugarCandidates);
                     } catch (CloneNotSupportedException aCloneNotSupportedException) {
                         SugarRemovalUtility.LOGGER.log(Level.WARNING, aCloneNotSupportedException.toString(),
                                 aCloneNotSupportedException);
@@ -1823,12 +1822,14 @@ public class SugarRemovalUtility {
             //throws NullPointerException if molecule is null
             this.postProcessAfterRemoval(tmpNewMolecule);
         }
-        this.clearCache();
     }
 
     /**
      * Clears away too small/light structures from the given molecule (may result in an empty atom container) and
      * generates valid valences on the remaining molecule by the addition of implicit hydrogen atoms to open valences.
+     * Note: This method does not check whether a removed disconnected structure is part of a sugar candidate
+     * because in the case where only terminal structures are removed, this is checked elsewhere and in the case where
+     * all sugar candidates are removed, this method is not called in-between the removal steps.
      *
      * @param aMolecule the molecule to post-process; might be empty after this method call
      * @throws NullPointerException if the given molecule is 'null' (note: no further parameter tests are implemented!)
@@ -1926,14 +1927,6 @@ public class SugarRemovalUtility {
                 }
             }
         }
-        this.clearCache();
-        this.atomIndicesThatArePartOfSugarCandidatesCache = new HashSet<>(tmpNewMolecule.getAtomCount(), 0.8f);
-        for (IAtomContainer tmpCandidate : tmpSugarCandidates) {
-            for (IAtom tmpAtom : tmpCandidate.atoms()) {
-                int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                this.atomIndicesThatArePartOfSugarCandidatesCache.add(tmpIndex);
-            }
-        }
         return tmpSugarCandidates;
     }
 
@@ -1964,7 +1957,7 @@ public class SugarRemovalUtility {
                 continue;
             }
             /*unique in this case means that the same match cannot be in this collection multiple times but they can
-            still overlap! Overlapping atoms are removed in the following lines.*/
+            still overlap! The overlapping problem is addressed in the following lines.*/
             Mappings tmpMappings = tmpLinearSugarPattern.matchAll(tmpNewMolecule);
             Mappings tmpUniqueMappings = tmpMappings.uniqueAtoms();
             Iterable<IAtomContainer> tmpUniqueSubstructureMappings = tmpUniqueMappings.toSubstructures();
@@ -1977,7 +1970,7 @@ public class SugarRemovalUtility {
         }
         //TODO/discuss: Is there a better way to get non-overlapping matches?
         if (!tmpSugarCandidates.isEmpty()) {
-            //  ***routine to combine overlapping matches***
+            //*Debugging*
             /*SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Unique);
             for (IAtomContainer tmpCandidate : tmpSugarCandidates) {
                 try {
@@ -1986,24 +1979,25 @@ public class SugarRemovalUtility {
                     e.printStackTrace();
                 }
             }*/
-            List<IAtomContainer> tmpSplittedSugarCandidates = new ArrayList<>(tmpNewMolecule.getAtomCount() / 2);
+            //  ***routine to combine overlapping matches***
+            List<IAtomContainer> tmpSeparatedSugarCandidates = new ArrayList<>(tmpNewMolecule.getAtomCount() / 2);
             IAtomContainer tmpMatchesContainer = new AtomContainer();
             for (int i = 0; i < tmpSugarCandidates.size(); i++) {
                 IAtomContainer tmpCandidate = tmpSugarCandidates.get(i);
                 tmpMatchesContainer.add(tmpCandidate);
             }
             boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpMatchesContainer);
-            boolean tmpIsEmpty = tmpMatchesContainer.isEmpty();
             if (tmpIsConnected) {
-                tmpSplittedSugarCandidates.add(tmpMatchesContainer);
+                tmpSeparatedSugarCandidates.add(tmpMatchesContainer);
             } else {
                 IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpMatchesContainer);
                 Iterable<IAtomContainer> tmpMolecules = tmpComponents.atomContainers();
                 for (IAtomContainer tmpComponent : tmpMolecules) {
-                    tmpSplittedSugarCandidates.add(tmpComponent);
+                    tmpSeparatedSugarCandidates.add(tmpComponent);
                 }
             }
-            tmpSugarCandidates = tmpSplittedSugarCandidates;
+            tmpSugarCandidates = tmpSeparatedSugarCandidates;
+            //*Debugging*
             /*for (IAtomContainer tmpCandidate : tmpSugarCandidates) {
                 try {
                     System.out.println(tmpSmiGen.create(tmpCandidate));
@@ -2082,28 +2076,7 @@ public class SugarRemovalUtility {
                 //  **end of part 2**
             }
         }
-        this.clearCache();
-        this.atomIndicesThatArePartOfSugarCandidatesCache = new HashSet<>(tmpNewMolecule.getAtomCount(), 0.8f);
-        for (IAtomContainer tmpCandidate : tmpSugarCandidates) {
-            for (IAtom tmpAtom : tmpCandidate.atoms()) {
-                int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                this.atomIndicesThatArePartOfSugarCandidatesCache.add(tmpIndex);
-            }
-        }
         return tmpSugarCandidates;
-    }
-
-    /**
-     * Clears the cache containing the indices of atoms that are part of sugar candidates. It must be done before new
-     * candidates are detected and should be done after removal of candidates.
-     * <br>This method must NOT be called in-between the detection and removal of sugars from a molecule! At least, if
-     * only terminal moieties are removed.
-     * <br>Note: This internal caching was introduced because adding the information as property to the respective
-     * atom objects lead to unwanted confusion/entanglement between the removal of linear and circular sugar moieties.
-     */
-    private void clearCache() {
-        //note: the initial capacity was arbitrarily chosen
-        this.atomIndicesThatArePartOfSugarCandidatesCache = new HashSet<Integer>(20, 0.8f);
     }
     //</editor-fold>
 }
