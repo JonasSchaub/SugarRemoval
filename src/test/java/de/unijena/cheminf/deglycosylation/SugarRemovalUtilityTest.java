@@ -32,6 +32,7 @@ package de.unijena.cheminf.deglycosylation;
  *      - check for false-negatives
  * - see to dos at failing tests or rather check the failing tests again after revising the algorithm for linear sugars
  * - include tests for static methods
+ * - test the private routines!
  */
 
 import com.mongodb.MongoClientSettings;
@@ -49,22 +50,24 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.openscience.cdk.Atom;
 import org.openscience.cdk.AtomContainer;
+import org.openscience.cdk.Bond;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.depict.DepictionGenerator;
+import org.openscience.cdk.graph.ConnectivityChecker;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.interfaces.IAtomContainerSet;
+import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
+import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -73,7 +76,7 @@ import java.util.logging.SimpleFormatter;
 /**
  * TODO: Add doc
  */
-public class SugarRemovalUtilityTest {
+public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     /**
      * TODO
      * @throws Exception
@@ -189,17 +192,17 @@ public class SugarRemovalUtilityTest {
                 tmpSmilesCode = tmpCurrentDoc.getString("clean_smiles");
                 tmpMolecule = tmpSmiPar.parseSmiles(tmpSmilesCode);
                 tmpMolecule.setTitle(tmpID);
-                tmpMolecule = tmpSugarRemovalUtil.removeLinearSugars(tmpMolecule, true);
+                tmpMolecule = tmpSugarRemovalUtil.removeAllSugars(tmpMolecule, true);
                 if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY) == true) {
                     //tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
                     //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
                     tmpSugarContainingMoleculesCounter++;
-                    /*if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true) {
+                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true) {
                         tmpContainsCircularSugarsCounter++;
-                    }*/
+                    }
                     if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
-                        tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
-                        tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
+                        //tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
+                        //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
                         tmpContainsLinearSugarsCounter++;
                     }
                     /*if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true
@@ -894,6 +897,25 @@ public class SugarRemovalUtilityTest {
     }
 
     /**
+     * TODO
+     */
+    @Test
+    public void testEtherEsterPeroxideSplitting() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer target1 = tmpSmiPar.parseSmiles("CCOCC");
+        IAtomContainer target2 = tmpSmiPar.parseSmiles("CC(=O)OCC");
+        IAtomContainer target3 = tmpSmiPar.parseSmiles("CCOOCC");
+        List<IAtomContainer> tmpCandidates = new ArrayList<>(3);
+        tmpCandidates.add(target1);
+        tmpCandidates.add(target2);
+        tmpCandidates.add(target3);
+        for (IAtomContainer tmpCandidate : this.splitEtherEsterAndPeroxideBonds(tmpCandidates)) {
+            System.out.println(tmpSmiGen.create(tmpCandidate));
+        }
+    }
+
+    /**
      *
      * @throws Exception
      */
@@ -919,5 +941,47 @@ public class SugarRemovalUtilityTest {
         tmpMol.addAtom(tmpAtom);
         tmpMol.addAtom(tmpAtom);
         System.out.println(tmpMol.getAtomCount());
+    }
+
+    @Test
+    public void smartsTest() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer target = tmpSmiPar.parseSmiles("CCOCC");
+        SmartsPattern tmpEtherPattern = SmartsPattern.create("[CD2]-[OX2]-[CD2]");
+        Mappings tmpMappings = tmpEtherPattern.matchAll(target).uniqueAtoms();
+        for (IAtomContainer tmpMap : tmpMappings.toSubstructures()) {
+            System.out.println(tmpSmiGen.create(tmpMap));
+            IAtom tmpCarbon1 = null;
+            IAtom tmpCarbon2 = null;
+            IAtom tmpOxygen = null;
+            for (IAtom tmpAtom : tmpMap.atoms()) {
+                if (tmpAtom.getSymbol().equals("O")) {
+                    tmpOxygen = tmpAtom;
+                } else if (tmpAtom.getSymbol().equals("C") && Objects.isNull(tmpCarbon1)) {
+                    tmpCarbon1 = tmpAtom;
+                } else {
+                    tmpCarbon2 = tmpAtom;
+                }
+            }
+            target.removeBond(tmpOxygen, tmpCarbon2);
+            tmpOxygen.setImplicitHydrogenCount(1);
+            IAtom tmpNewOxygen = new Atom("O");
+            tmpNewOxygen.setImplicitHydrogenCount(1);
+            target.addAtom(tmpNewOxygen);
+            IBond tmpNewBond = new Bond(tmpNewOxygen, tmpCarbon2, IBond.Order.SINGLE);
+            target.addBond(tmpNewBond);
+        }
+        IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(target);
+        for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+            System.out.println(tmpSmiGen.create(tmpComponent));
+        }
+        target = tmpSmiPar.parseSmiles("CC(=O)OCC");
+        SmartsPattern tmpEsterPattern = SmartsPattern.create("[CD3](=[OX1])-[OX2]-[CD2]");
+        tmpMappings = tmpEsterPattern.matchAll(target).uniqueAtoms();
+        for (IAtomContainer tmpMap : tmpMappings.toSubstructures()) {
+            System.out.println(tmpSmiGen.create(tmpMap));
+        }
+
     }
 }

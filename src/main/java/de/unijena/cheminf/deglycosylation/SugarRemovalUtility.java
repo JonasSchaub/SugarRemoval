@@ -32,6 +32,8 @@ package de.unijena.cheminf.deglycosylation;
  *      - discuss the two options for treating linear sugars in larger rings (if they should not be removed)
  *      - investigate use of Ertl algorithm for detection of initial candidates, maybe all C-O FG with a ratio of C to O?
  *      - investigate use of SMARTS pattern for detection of initial candidates
+ *      - Is it possible with DfPattern to get the first match of the biggest pattern and then exclude the matched atoms
+ *      for the next matching and so on?
  *      - Is there a way to add explicit Hs to the patterns? Is that possible with SMARTS?
  *      - try combination "combining overlapping candidates" + "only not remove the circular atoms if the option is set"
  *      - for combine method: try to split again at ether, ester and peroxide
@@ -67,6 +69,7 @@ import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
 import org.openscience.cdk.ringsearch.RingSearch;
+import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
@@ -82,7 +85,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -346,7 +348,7 @@ public class SugarRemovalUtility {
             }
         }
         //sorting for size decreasing; the patterns parsed afterwards are not sorted that easily, so sorting is done now
-        Comparator tmpComparator = new AtomContainerComparator().reversed();
+        Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
         //note: this can throw various exceptions but they should not appear here
         this.linearSugars.sort(tmpComparator);
         //adding ring sugars to list
@@ -582,7 +584,7 @@ public class SugarRemovalUtility {
             SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             throw new IllegalArgumentException("Could not add sugar to the list of circular sugars.");
         }
-        Comparator tmpComparator = new AtomContainerComparator().reversed();
+        Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
         //note: this can throw various exceptions but they should not appear here
         this.ringSugars.sort(tmpComparator);
     }
@@ -657,7 +659,7 @@ public class SugarRemovalUtility {
             SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             throw new IllegalArgumentException("Could not add sugar to the list of linear sugars");
         }
-        Comparator tmpComparator = new AtomContainerComparator().reversed();
+        Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
         //note: this can throw various exceptions but they should not appear here
         this.linearSugars.sort(tmpComparator);
         //parsing linear sugars into patterns; this has to be re-done completely because the patterns cannot be sorted
@@ -947,7 +949,7 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO (idea to use it as a descriptor like in the macrocycle paper)
+     * TODO (the idea was to use it as a descriptor like in the macrocycle paper)
      */
     public int getNumberOfCircularSugars(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
@@ -2401,6 +2403,107 @@ public class SugarRemovalUtility {
             }
         }
         return aCandidateList;
+    }
+
+    /**
+     * TODO
+     */
+    protected List<IAtomContainer> splitEtherEsterAndPeroxideBonds(List<IAtomContainer> aCandidateList) throws NullPointerException {
+        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
+        if (aCandidateList.isEmpty()) {
+            return aCandidateList;
+        }
+        List<IAtomContainer> tmpProcessedCandidates = new ArrayList<>(aCandidateList.size() * 2);
+        SmartsPattern tmpEtherPattern = SmartsPattern.create("[CD2]-[OX2]-[CD2]");
+        SmartsPattern tmpEsterPattern = SmartsPattern.create("[CD3](=[OX1])-[OX2]-[CD2]");
+        SmartsPattern tmpPeroxidePattern = SmartsPattern.create("[CD2]-[OX2]-[OX2]-[CD2]");
+        for (IAtomContainer tmpCandidate : aCandidateList) {
+
+            Mappings tmpEtherMappings = tmpEtherPattern.matchAll(tmpCandidate).uniqueAtoms();
+            if (tmpEtherMappings.count() > 0) {
+                for (IAtomContainer tmpEtherGroup : tmpEtherMappings.toSubstructures()) {
+                    IAtom tmpCarbon1 = null;
+                    IAtom tmpCarbon2 = null;
+                    IAtom tmpOxygen = null;
+                    for (IAtom tmpAtom : tmpEtherGroup.atoms()) {
+                        String tmpSymbol = tmpAtom.getSymbol();
+                        if (tmpSymbol.equals("O")) {
+                            tmpOxygen = tmpAtom;
+                        } else if (tmpSymbol.equals("C") && Objects.isNull(tmpCarbon1)) {
+                            tmpCarbon1 = tmpAtom;
+                        } else {
+                            tmpCarbon2 = tmpAtom;
+                        }
+                    }
+                    tmpCandidate.removeBond(tmpOxygen, tmpCarbon2);
+                    tmpOxygen.setImplicitHydrogenCount(1);
+                    tmpCarbon2.setImplicitHydrogenCount(tmpCarbon2.getImplicitHydrogenCount() + 1);
+                }
+            }
+
+            Mappings tmpEsterMappings = tmpEsterPattern.matchAll(tmpCandidate).uniqueAtoms();
+            if (tmpEsterMappings.count() > 0) {
+                for (IAtomContainer tmpEsterGroup : tmpEsterMappings.toSubstructures()) {
+                    IAtom tmpCarbon1 = null;
+                    IAtom tmpDoubleBondedOxygen = null;
+                    IAtom tmpConnectingOxygen = null;
+                    IAtom tmpCarbon2 = null;
+                    for (IAtom tmpAtom : tmpEsterGroup.atoms()) {
+                        String tmpSymbol = tmpAtom.getSymbol();
+                        if (tmpSymbol.equals("C")) {
+                            if (Objects.isNull(tmpCarbon1)) {
+                                tmpCarbon1 = tmpAtom;
+                            } else {
+                                tmpCarbon2 = tmpAtom;
+                            }
+                        } else {
+                            int tmpBondCount = tmpAtom.getBondCount();
+                            if (tmpBondCount == 1) {
+                                tmpDoubleBondedOxygen = tmpAtom;
+                            } else {
+                                tmpConnectingOxygen = tmpAtom;
+                            }
+                        }
+                    }
+                    tmpCandidate.removeBond(tmpCarbon1, tmpConnectingOxygen);
+                    tmpConnectingOxygen.setImplicitHydrogenCount(1);
+                    tmpCarbon1.setImplicitHydrogenCount(tmpCarbon1.getImplicitHydrogenCount() + 1);
+                }
+            }
+
+            Mappings tmpPeroxideMappings = tmpPeroxidePattern.matchAll(tmpCandidate).uniqueAtoms();
+            if (tmpPeroxideMappings.count() > 0) {
+                for (IAtomContainer tmpPeroxideGroup : tmpPeroxideMappings.toSubstructures()) {
+                    IAtom tmpOxygen1 = null;
+                    IAtom tmpOxygen2 =  null;
+                    for (IAtom tmpAtom : tmpPeroxideGroup.atoms()) {
+                        String tmpSymbol = tmpAtom.getSymbol();
+                        if (tmpSymbol.equals("O")) {
+                            if (Objects.isNull(tmpOxygen1)) {
+                                tmpOxygen1 = tmpAtom;
+                            } else {
+                                tmpOxygen2 = tmpAtom;
+                            }
+                        }
+                    }
+                    tmpCandidate.removeBond(tmpOxygen1, tmpOxygen2);
+                    tmpOxygen1.setImplicitHydrogenCount(1);
+                    tmpOxygen2.setImplicitHydrogenCount(1);
+                }
+            }
+
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
+            if (tmpIsConnected) {
+                tmpProcessedCandidates.add(tmpCandidate);
+            } else {
+                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
+                for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+                    tmpProcessedCandidates.add(tmpComponent);
+                }
+            }
+
+        }
+        return tmpProcessedCandidates;
     }
     //</editor-fold>
     //</editor-fold>
