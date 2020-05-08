@@ -36,11 +36,8 @@ package de.unijena.cheminf.deglycosylation;
  *      for the next matching and so on?
  *      - Is there a way to add explicit Hs to the patterns? Is that possible with SMARTS?
  *      - try combination "combining overlapping candidates" + "only not remove the circular atoms if the option is set"
- *      - for combine method: try to split again at ether, ester and peroxide
  *      - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses, more di-acids, more sugar acids
- *      - minimum size for linear sugar pattern/candidate?
- *          - maybe 4 or 5 carbons?
- *          - also add maximal size?
+ *      - think about where to also filter linear sugar patterns for min and max size
  * - maintain connection info for reconstruction?
  * - make a console application to deploy as jar; see google doc for input and output
  *      - check input for disconnected molecules if only terminal sugars should be removed
@@ -263,6 +260,16 @@ public class SugarRemovalUtility {
      * (or contained before removal) sugar moieties. See property keys in the public constants of this class.
      */
     public static final boolean SET_PROPERTY_OF_SUGAR_CONTAINING_MOLECULES_DEFAULT = true;
+
+    /**
+     * TODO
+     */
+    public static final int LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT = 4;
+
+    /**
+     * TODO
+     */
+    public static final int LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT = 7;
     //</editor-fold>
     //<editor-fold desc="Private static final constants">
     /**
@@ -327,6 +334,16 @@ public class SugarRemovalUtility {
      * Add a property to sugar-containing, given atom containers setting.
      */
     private boolean setPropertyOfSugarContainingMolecules;
+
+    /**
+     * TODO
+     */
+    private int linearSugarCandidateMinSize;
+
+    /**
+     * TODO
+     */
+    private int linearSugarCandidateMaxSize;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
@@ -377,6 +394,8 @@ public class SugarRemovalUtility {
                 SugarRemovalUtility.ATTACHED_OXYGENS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT;
         this.removeLinearSugarsInRing = SugarRemovalUtility.REMOVE_LINEAR_SUGARS_IN_RING_DEFAULT;
         this.setPropertyOfSugarContainingMolecules = SugarRemovalUtility.SET_PROPERTY_OF_SUGAR_CONTAINING_MOLECULES_DEFAULT;
+        this.linearSugarCandidateMinSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT;
+        this.linearSugarCandidateMaxSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT;
     }
     //</editor-fold>
     //
@@ -525,6 +544,20 @@ public class SugarRemovalUtility {
      */
     public boolean arePropertiesOfSugarContainingMoleculesSet() {
         return this.setPropertyOfSugarContainingMolecules;
+    }
+
+    /**
+     * TODO
+     */
+    public int getLinearSugarCandidateMinSize() {
+        return this.linearSugarCandidateMinSize;
+    }
+
+    /**
+     * TODO
+     */
+    public int getLinearSugarCandidateMaxSize() {
+        return this.linearSugarCandidateMaxSize;
     }
     //</editor-fold>
     //
@@ -853,6 +886,28 @@ public class SugarRemovalUtility {
      */
     public void setPropertyOfSugarContainingMolecules(boolean aBoolean) {
         this.setPropertyOfSugarContainingMolecules = aBoolean;
+    }
+
+    /**
+     * TODO
+     * add test that it must be smaller than the current max size?
+     */
+    public void setLinearSugarCandidateMinSize(int aMinSize) throws IllegalArgumentException {
+        if (aMinSize < 1) {
+            throw new IllegalArgumentException("Given minimum size is smaller than 1.");
+        }
+        this.linearSugarCandidateMinSize = aMinSize;
+    }
+
+    /**
+     * TODO
+     * add test that it must be higher than the current min size?
+     */
+    public void setLinearSugarCandidateMaxSize(int aMaxSize) throws IllegalArgumentException {
+        if (aMaxSize < 1) {
+            throw new IllegalArgumentException("Given maximum size is smaller than 1.");
+        }
+        this.linearSugarCandidateMaxSize = aMaxSize;
     }
     //</editor-fold>
     //
@@ -1352,7 +1407,7 @@ public class SugarRemovalUtility {
             this.setIndices(aMolecule);
         }
         List<IAtomContainer> tmpSugarCandidates = this.linearSugarCandidatesByPatternMatching(tmpNewMolecule);
-        //alternative:
+        //alternative: SMARTS or Ertl
         if (!tmpSugarCandidates.isEmpty()) {
 
             //*Debugging*
@@ -1364,8 +1419,18 @@ public class SugarRemovalUtility {
             //*Debugging*
             //this.printAllMolsAsSmiles(tmpSugarCandidates);
 
-            tmpSugarCandidates = this.removeCandidatesContainingCircularSugars(tmpSugarCandidates);
+            tmpSugarCandidates = this.splitEtherEsterAndPeroxideBonds(tmpSugarCandidates);
+
+            //*Debugging*
+            //this.printAllMolsAsSmiles(tmpSugarCandidates);
+
+            tmpSugarCandidates = this.removeCandidatesContainingCircularSugars(tmpSugarCandidates, tmpNewMolecule);
             //alternative: tmpSugarCandidates = this.removeCircularSugarsFromCandidates(tmpSugarCandidates);
+
+            //*Debugging*
+            //this.printAllMolsAsSmiles(tmpSugarCandidates);
+
+            tmpSugarCandidates = this.removeTooSmallAndTooLargeCandidates(tmpSugarCandidates);
         }
         if (!this.removeLinearSugarsInRing && !tmpSugarCandidates.isEmpty()) {
             tmpSugarCandidates = this.removeSugarCandidatesWithCyclicAtoms(tmpSugarCandidates, tmpNewMolecule);
@@ -1445,7 +1510,7 @@ public class SugarRemovalUtility {
      * the substructure is terminal. If the structure to keep mode is not set to 'keep all structures', too small
      * resulting fragments are cleared away in between.
      * TODO: Add note here about the new condition (see param below)
-     * TODO: Add note that a substructure that would be terminal after the removal of another candidate is NOT deemed
+     * TODO: Add note that a substructure that would only be terminal after the removal of another candidate is NOT deemed
      * terminal here!
      *
      * @param aSubstructure the substructure to check for whether it is terminal
@@ -1818,7 +1883,7 @@ public class SugarRemovalUtility {
     }
     //</editor-fold>
     //
-    //<editor-fold desc="Private methods">
+    //<editor-fold desc="Protected methods">
     //<editor-fold desc="General processing">
     /**
      * Adds indices as properties to all atom objects of the given atom container to identify them uniquely within the
@@ -1827,7 +1892,7 @@ public class SugarRemovalUtility {
      *
      * @throws NullPointerException if molecule is 'null' (note: no further parameter tests are implemented!)
      */
-    private void setIndices(IAtomContainer aMolecule) throws NullPointerException {
+    protected void setIndices(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
             return;
@@ -1841,7 +1906,7 @@ public class SugarRemovalUtility {
     /**
      * TODO
      */
-    private boolean checkUniqueIndicesOfAtoms(IAtomContainer aMolecule) throws NullPointerException, IllegalArgumentException {
+    protected boolean checkUniqueIndicesOfAtoms(IAtomContainer aMolecule) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
             throw new IllegalArgumentException("Given molecule is empty.");
@@ -1866,7 +1931,7 @@ public class SugarRemovalUtility {
     /**
      * Used for debugging
      */
-    private void printAllMolsAsSmiles(List<IAtomContainer> aMoleculeList) {
+    protected void printAllMolsAsSmiles(List<IAtomContainer> aMoleculeList) {
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Unique);
         for (IAtomContainer tmpCandidate : aMoleculeList) {
             try {
@@ -1892,7 +1957,7 @@ public class SugarRemovalUtility {
      * @return true, if all exocyclic bonds connected to the ring are of single order
      * @throws NullPointerException if a parameter is 'null' (note: no further parameter tests are implemented!)
      */
-    private boolean areAllExocyclicBondsSingle(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
+    protected boolean areAllExocyclicBondsSingle(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
             throws NullPointerException {
         Objects.requireNonNull(aRingToTest, "Given ring atom container is 'null'");
         Objects.requireNonNull(anOriginalMolecule, "Given atom container representing the original molecule " +
@@ -1933,7 +1998,7 @@ public class SugarRemovalUtility {
      * @return true, if a glycosidic bond is detected
      * @throws NullPointerException if any parameter is 'null' (note: no further parameter tests are implemented!)
      */
-    private boolean hasGlycosidicBond(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
+    protected boolean hasGlycosidicBond(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
             throws NullPointerException {
         Objects.requireNonNull(aRingToTest, "Given ring atom container is 'null'");
         Objects.requireNonNull(anOriginalMolecule, "Given atom container representing the original molecule " +
@@ -1984,7 +2049,7 @@ public class SugarRemovalUtility {
      * TODO
      * Note: Number of rings = 1 and sugar ring has no glycosidic bond are not checked again!
      */
-    private boolean checkCircularSugarGlycosidicBondExemption(IAtomContainer aRing, IAtomContainer aMolecule)
+    protected boolean checkCircularSugarGlycosidicBondExemption(IAtomContainer aRing, IAtomContainer aMolecule)
             throws NullPointerException, IllegalArgumentException, CloneNotSupportedException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aRing, "Given ring is 'null'.");
@@ -2043,7 +2108,7 @@ public class SugarRemovalUtility {
      * @return number of attached exocyclic oxygen atoms
      * @throws NullPointerException if a parameter is 'null' (note: no further parameter tests are implemented!)
      */
-   private int getAttachedOxygenAtomCount(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
+    protected int getAttachedOxygenAtomCount(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
            throws NullPointerException {
         Objects.requireNonNull(aRingToTest, "Given ring atom container is 'null'");
         Objects.requireNonNull(anOriginalMolecule, "Given atom container representing the original molecule " +
@@ -2082,7 +2147,7 @@ public class SugarRemovalUtility {
      *                                              investigation (if zero, false is returned)
      * @return true, if the calculated ratio is equal to or higher than the currently set threshold
      */
-    private boolean doesRingHaveEnoughOxygenAtomsAttached(int aNumberOfAtomsInRing,
+    protected boolean doesRingHaveEnoughOxygenAtomsAttached(int aNumberOfAtomsInRing,
                                                           int aNumberOfAttachedExocyclicOxygenAtoms) {
         if (aNumberOfAtomsInRing == 0) {
             //better than throwing an exception here?
@@ -2099,7 +2164,7 @@ public class SugarRemovalUtility {
     /**
      * TODO
      */
-    private List<IAtomContainer> linearSugarCandidatesByPatternMatching(IAtomContainer aMolecule) throws NullPointerException {
+    protected List<IAtomContainer> linearSugarCandidatesByPatternMatching(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'");
         IAtomContainer tmpNewMolecule = aMolecule;
         if (tmpNewMolecule.isEmpty()) {
@@ -2130,7 +2195,7 @@ public class SugarRemovalUtility {
      * Con: Resulting candidates can grow to big and need to be split at specific bonds
      * Con: Circular sugars end up in the linear sugar candidates
      */
-    private List<IAtomContainer> combineOverlappingCandidates(List<IAtomContainer> aCandidateList) throws NullPointerException  {
+    protected List<IAtomContainer> combineOverlappingCandidates(List<IAtomContainer> aCandidateList) throws NullPointerException  {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
             return aCandidateList;
@@ -2161,7 +2226,7 @@ public class SugarRemovalUtility {
      * Con: This is a black box!
      * Con: Very small moieties like CH3OH, OH, CH3 etc can get removed this way, especially at rings
      */
-    private List<IAtomContainer> splitOverlappingCandidatesPseudoRandomly(List<IAtomContainer> aCandidateList) throws NullPointerException {
+    protected List<IAtomContainer> splitOverlappingCandidatesPseudoRandomly(List<IAtomContainer> aCandidateList) throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
             return aCandidateList;
@@ -2214,8 +2279,9 @@ public class SugarRemovalUtility {
      * TODO
      * note: the list is altered
      * Con: again, things like OH groups do not get removed, they appear later as sugar candidates themselves!
+     * TODO: Add comparison to isolated cycles in parent molecule as in the alternative method!
      */
-    private List<IAtomContainer> removeCircularSugarsFromCandidates(List<IAtomContainer> aCandidateList) throws NullPointerException {
+    protected List<IAtomContainer> removeCircularSugarsFromCandidates(List<IAtomContainer> aCandidateList) throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
             return aCandidateList;
@@ -2282,12 +2348,17 @@ public class SugarRemovalUtility {
     /**
      * TODO
      * Con: A possibly connected linear moiety also gets discarded
+     * add test for actual 'parenthood'?
      */
-    private List<IAtomContainer> removeCandidatesContainingCircularSugars(List<IAtomContainer> aCandidateList) throws NullPointerException {
+    protected List<IAtomContainer> removeCandidatesContainingCircularSugars(List<IAtomContainer> aCandidateList, IAtomContainer aParentMolecule) throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
             return aCandidateList;
         }
+        Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
+        int[][] tmpAdjListParent = GraphUtil.toAdjList(aParentMolecule);
+        RingSearch tmpRingSearchParent = new RingSearch(aParentMolecule, tmpAdjListParent);
+        List<IAtomContainer> tmpIsolatedRingsParent = tmpRingSearchParent.isolatedRingFragments();
         // iterating over candidates
         for (int i = 0; i < aCandidateList.size(); i++) {
             IAtomContainer tmpCandidate = aCandidateList.get(i);
@@ -2319,10 +2390,14 @@ public class SugarRemovalUtility {
                         }
                         // whole candidate is now discarded if it contains a matching circle
                         if (tmpIsIsomorph) {
-                            aCandidateList.remove(i);
-                            i = i -1;
-                            tmpBreakLoop = true;
-                            break;
+                            boolean tmpIsAlsoIsolatedInParent = false;
+                            tmpIsAlsoIsolatedInParent = tmpIsolatedRingsParent.contains(tmpIsolatedRing);
+                            if (tmpIsAlsoIsolatedInParent) {
+                                aCandidateList.remove(i);
+                                i = i -1;
+                                tmpBreakLoop = true;
+                                break;
+                            }
                         }
                     }
                     if (tmpBreakLoop) {
@@ -2340,7 +2415,7 @@ public class SugarRemovalUtility {
      * note: list is altered
      * Con: Very small moieties like CH3OH, OH, CH3 etc can get removed this way
      */
-    private List<IAtomContainer> removeCyclicAtomsFromSugarCandidates(List<IAtomContainer> aCandidateList,
+    protected List<IAtomContainer> removeCyclicAtomsFromSugarCandidates(List<IAtomContainer> aCandidateList,
                                                                       IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
@@ -2381,7 +2456,7 @@ public class SugarRemovalUtility {
      * note: the list is altered
      * Con: Rejecting the whole candidate also discards a possibly connected linear moiety
      */
-    private List<IAtomContainer> removeSugarCandidatesWithCyclicAtoms(List<IAtomContainer> aCandidateList,
+    protected List<IAtomContainer> removeSugarCandidatesWithCyclicAtoms(List<IAtomContainer> aCandidateList,
                                                                       IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
@@ -2414,9 +2489,10 @@ public class SugarRemovalUtility {
             return aCandidateList;
         }
         List<IAtomContainer> tmpProcessedCandidates = new ArrayList<>(aCandidateList.size() * 2);
-        SmartsPattern tmpEtherPattern = SmartsPattern.create("[CD2]-[OX2]-[CD2]");
-        SmartsPattern tmpEsterPattern = SmartsPattern.create("[CD3](=[OX1])-[OX2]-[CD2]");
-        SmartsPattern tmpPeroxidePattern = SmartsPattern.create("[CD2]-[OX2]-[OX2]-[CD2]");
+        //TODO: Add explanations! Maybe put it in the constants
+        SmartsPattern tmpEtherPattern = SmartsPattern.create("[CD2,CD3]-[OX2;!R]-[CD2,CD3]");
+        SmartsPattern tmpEsterPattern = SmartsPattern.create("[CD3](=[OX1])-[OX2]-[CD2,CD3]");
+        SmartsPattern tmpPeroxidePattern = SmartsPattern.create("[C]-[OX2]-[OX2]-[C]");
         for (IAtomContainer tmpCandidate : aCandidateList) {
 
             Mappings tmpEtherMappings = tmpEtherPattern.matchAll(tmpCandidate).uniqueAtoms();
@@ -2436,8 +2512,9 @@ public class SugarRemovalUtility {
                         }
                     }
                     tmpCandidate.removeBond(tmpOxygen, tmpCarbon2);
-                    tmpOxygen.setImplicitHydrogenCount(1);
-                    tmpCarbon2.setImplicitHydrogenCount(tmpCarbon2.getImplicitHydrogenCount() + 1);
+                    //note: this should be done but it changes valences in the parent molecule also!
+                    //tmpOxygen.setImplicitHydrogenCount(1);
+                    //tmpCarbon2.setImplicitHydrogenCount(tmpCarbon2.getImplicitHydrogenCount() + 1);
                 }
             }
 
@@ -2466,8 +2543,8 @@ public class SugarRemovalUtility {
                         }
                     }
                     tmpCandidate.removeBond(tmpCarbon1, tmpConnectingOxygen);
-                    tmpConnectingOxygen.setImplicitHydrogenCount(1);
-                    tmpCarbon1.setImplicitHydrogenCount(tmpCarbon1.getImplicitHydrogenCount() + 1);
+                    //tmpConnectingOxygen.setImplicitHydrogenCount(1);
+                    //tmpCarbon1.setImplicitHydrogenCount(tmpCarbon1.getImplicitHydrogenCount() + 1);
                 }
             }
 
@@ -2487,8 +2564,8 @@ public class SugarRemovalUtility {
                         }
                     }
                     tmpCandidate.removeBond(tmpOxygen1, tmpOxygen2);
-                    tmpOxygen1.setImplicitHydrogenCount(1);
-                    tmpOxygen2.setImplicitHydrogenCount(1);
+                    //tmpOxygen1.setImplicitHydrogenCount(1);
+                    //tmpOxygen2.setImplicitHydrogenCount(1);
                 }
             }
 
@@ -2502,6 +2579,30 @@ public class SugarRemovalUtility {
                 }
             }
 
+        }
+        return tmpProcessedCandidates;
+    }
+
+    /**
+     * TODO
+     */
+    protected List<IAtomContainer> removeTooSmallAndTooLargeCandidates(List<IAtomContainer> aCandidateList) throws NullPointerException {
+        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
+        if (aCandidateList.isEmpty()) {
+            return aCandidateList;
+        }
+        List<IAtomContainer> tmpProcessedCandidates = new ArrayList<>(aCandidateList.size());
+        for (IAtomContainer tmpCandidate : aCandidateList) {
+            int tmpCarbonCount = 0;
+            for (IAtom tmpAtom : tmpCandidate.atoms()) {
+                String tmpSymbol = tmpAtom.getSymbol();
+                if (tmpSymbol.equals("C")) {
+                    tmpCarbonCount++;
+                }
+            }
+            if (tmpCarbonCount >= this.linearSugarCandidateMinSize && tmpCarbonCount <= this.linearSugarCandidateMaxSize) {
+                tmpProcessedCandidates.add(tmpCandidate);
+            }
         }
         return tmpProcessedCandidates;
     }
