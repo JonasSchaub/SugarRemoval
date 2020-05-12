@@ -31,14 +31,15 @@ package de.unijena.cheminf.deglycosylation;
  *      - discuss the two options for treating candidates containing circular sugars
  *      - discuss the two options for treating linear sugars in larger rings (if they should not be removed)
  *      - investigate use of Ertl algorithm for detection of initial candidates, maybe all C-O FG with a ratio of C to O?
- *      - investigate use of SMARTS pattern for detection of initial candidates
+ *      - investigate use of SMARTS pattern for detection of initial candidates maybe with explicit Hs to avoid matching cross-linked structures)
  *      - Is it possible with DfPattern to get the first match of the biggest pattern and then exclude the matched atoms
  *      for the next matching and so on?
- *      - Is there a way to add explicit Hs to the patterns? Is that possible with SMARTS?
  *      - try combination "combining overlapping candidates" + "only not remove the circular atoms if the option is set"
  *      - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses, more di-acids, more sugar acids
+ *      - review existing linear sugar patterns
  *      - think about where to also filter linear sugar patterns for min and max size
  * - maintain connection info for reconstruction?
+ * - replace isomorphism testing with hash codes? Faster?
  * - make a console application to deploy as jar; see google doc for input and output
  *      - check input for disconnected molecules if only terminal sugars should be removed
  * - return a list of the removed sugars; that will be complicated if the given molecule should be cloned!
@@ -89,6 +90,7 @@ import java.util.logging.Logger;
  * Utility class to remove sugar moieties from molecular structures, primarily natural products.
  *
  * @author Jonas Schaub, Maria Sorokina
+ * @version 0.0.0.1
  */
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum StructuresToKeepMode">
@@ -199,6 +201,7 @@ public class SugarRemovalUtility {
             "O=C(O)CCC(O)C(=O)O", //2-hydroxypentanedioic acid
             "C(C(CC(C(CO)O)O)O)(O)=O", //3-deoxyhexonic acid
             "C(C(C(CC(=O)O)O)O)O", //2-deoxypentonic acid
+            "CC(CC(CC(=O)O)O)O", //3,5-Dihydroxyhexanoic acid
             //*deoxy sugars*
             "C(C(C(C(CC=O)O)O)O)O" //2-deoxyhexose
     };
@@ -652,6 +655,7 @@ public class SugarRemovalUtility {
         this.addCircularSugar(tmpRingSugar);
     }
 
+    //TODO: If circular candidates are discarded in the final algorithm, the param requirements need to be adjusted here!
     /**
      * Allows to add an additional linear sugar to the list of linear sugar structures an input molecule is scanned for
      * by the methods for sugar detection and removal. The given structure must not be isomorph to the already present
@@ -908,6 +912,24 @@ public class SugarRemovalUtility {
             throw new IllegalArgumentException("Given maximum size is smaller than 1.");
         }
         this.linearSugarCandidateMaxSize = aMaxSize;
+    }
+
+    /**
+     * TODO
+     * Does not restore the circular and linear sugar patterns to default!
+     */
+    public void restoreDefaultSettings() {
+        this.detectGlycosidicBond = SugarRemovalUtility.DETECT_GLYCOSIDIC_BOND_DEFAULT;
+        this.removeOnlyTerminal = SugarRemovalUtility.REMOVE_ONLY_TERMINAL_DEFAULT;
+        this.structuresToKeepMode = SugarRemovalUtility.STRUCTURES_TO_KEEP_MODE_DEFAULT;
+        this.structureToKeepModeThreshold = this.structuresToKeepMode.defaultThreshold;
+        this.includeNrOfAttachedOxygens = SugarRemovalUtility.INCLUDE_NR_OF_ATTACHED_OXYGEN_DEFAULT;
+        this.attachedOxygensToAtomsInRingRatioThreshold =
+                SugarRemovalUtility.ATTACHED_OXYGENS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT;
+        this.removeLinearSugarsInRing = SugarRemovalUtility.REMOVE_LINEAR_SUGARS_IN_RING_DEFAULT;
+        this.setPropertyOfSugarContainingMolecules = SugarRemovalUtility.SET_PROPERTY_OF_SUGAR_CONTAINING_MOLECULES_DEFAULT;
+        this.linearSugarCandidateMinSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT;
+        this.linearSugarCandidateMaxSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT;
     }
     //</editor-fold>
     //
@@ -1196,7 +1218,7 @@ public class SugarRemovalUtility {
      * contains multiple, unconnected structures which makes the determination of terminal and non-terminal structures
      * impossible or if an unexpected error occurs
      */
-    public IAtomContainer removeAllSugars(IAtomContainer aMolecule, boolean aShouldBeCloned)
+    public IAtomContainer removeCircularAndLinearSugars(IAtomContainer aMolecule, boolean aShouldBeCloned)
             throws NullPointerException, CloneNotSupportedException, IllegalArgumentException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
@@ -2391,7 +2413,17 @@ public class SugarRemovalUtility {
                         // whole candidate is now discarded if it contains a matching circle
                         if (tmpIsIsomorph) {
                             boolean tmpIsAlsoIsolatedInParent = false;
-                            tmpIsAlsoIsolatedInParent = tmpIsolatedRingsParent.contains(tmpIsolatedRing);
+                            for (IAtomContainer tmpIsolatedRingInParent : tmpIsolatedRingsParent) {
+                                try {
+                                    tmpIsAlsoIsolatedInParent = tmpUnivIsoTester.isIsomorph(tmpIsolatedRing, tmpIsolatedRingInParent);
+                                } catch (CDKException aCDKException) {
+                                    SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+                                    continue;
+                                }
+                                if (tmpIsAlsoIsolatedInParent) {
+                                    break;
+                                }
+                            }
                             if (tmpIsAlsoIsolatedInParent) {
                                 aCandidateList.remove(i);
                                 i = i -1;
@@ -2489,14 +2521,17 @@ public class SugarRemovalUtility {
             return aCandidateList;
         }
         List<IAtomContainer> tmpProcessedCandidates = new ArrayList<>(aCandidateList.size() * 2);
-        //TODO: Add explanations! Maybe put it in the constants
-        SmartsPattern tmpEtherPattern = SmartsPattern.create("[CD2,CD3]-[OX2;!R]-[CD2,CD3]");
-        SmartsPattern tmpEsterPattern = SmartsPattern.create("[CD3](=[OX1])-[OX2]-[CD2,CD3]");
-        SmartsPattern tmpPeroxidePattern = SmartsPattern.create("[C]-[OX2]-[OX2]-[C]");
+        //TODO: Add explanations! Maybe put it in the constants. Does the ether pattern match the ester bonds? Correct this?
+        //SmartsPattern tmpEtherPattern = SmartsPattern.create("[CD2,CD3]-[OX2;!R]-[CD2,CD3]");
+        SmartsPattern tmpEtherPattern = SmartsPattern.create("[C]-[O!R]-[C]");
+        //SmartsPattern tmpEsterPattern = SmartsPattern.create("[CD3](=[OX1])-[OX2]-[CD2,CD3]");
+        SmartsPattern tmpEsterPattern = SmartsPattern.create("[C](=O)-[O!R]-[C]");
+        SmartsPattern tmpPeroxidePattern = SmartsPattern.create("[C]-[O!R]-[O!R]-[C]");
         for (IAtomContainer tmpCandidate : aCandidateList) {
+            SmartsPattern.prepare(tmpCandidate);
 
             Mappings tmpEtherMappings = tmpEtherPattern.matchAll(tmpCandidate).uniqueAtoms();
-            if (tmpEtherMappings.count() > 0) {
+            if (tmpEtherMappings.atLeast(1)) {
                 for (IAtomContainer tmpEtherGroup : tmpEtherMappings.toSubstructures()) {
                     IAtom tmpCarbon1 = null;
                     IAtom tmpCarbon2 = null;
@@ -2512,14 +2547,11 @@ public class SugarRemovalUtility {
                         }
                     }
                     tmpCandidate.removeBond(tmpOxygen, tmpCarbon2);
-                    //note: this should be done but it changes valences in the parent molecule also!
-                    //tmpOxygen.setImplicitHydrogenCount(1);
-                    //tmpCarbon2.setImplicitHydrogenCount(tmpCarbon2.getImplicitHydrogenCount() + 1);
                 }
             }
 
             Mappings tmpEsterMappings = tmpEsterPattern.matchAll(tmpCandidate).uniqueAtoms();
-            if (tmpEsterMappings.count() > 0) {
+            if (tmpEsterMappings.atLeast(1)) {
                 for (IAtomContainer tmpEsterGroup : tmpEsterMappings.toSubstructures()) {
                     IAtom tmpCarbon1 = null;
                     IAtom tmpDoubleBondedOxygen = null;
@@ -2543,13 +2575,11 @@ public class SugarRemovalUtility {
                         }
                     }
                     tmpCandidate.removeBond(tmpCarbon1, tmpConnectingOxygen);
-                    //tmpConnectingOxygen.setImplicitHydrogenCount(1);
-                    //tmpCarbon1.setImplicitHydrogenCount(tmpCarbon1.getImplicitHydrogenCount() + 1);
                 }
             }
 
             Mappings tmpPeroxideMappings = tmpPeroxidePattern.matchAll(tmpCandidate).uniqueAtoms();
-            if (tmpPeroxideMappings.count() > 0) {
+            if (tmpPeroxideMappings.atLeast(1)) {
                 for (IAtomContainer tmpPeroxideGroup : tmpPeroxideMappings.toSubstructures()) {
                     IAtom tmpOxygen1 = null;
                     IAtom tmpOxygen2 =  null;
@@ -2564,8 +2594,6 @@ public class SugarRemovalUtility {
                         }
                     }
                     tmpCandidate.removeBond(tmpOxygen1, tmpOxygen2);
-                    //tmpOxygen1.setImplicitHydrogenCount(1);
-                    //tmpOxygen2.setImplicitHydrogenCount(1);
                 }
             }
 
@@ -2578,7 +2606,6 @@ public class SugarRemovalUtility {
                     tmpProcessedCandidates.add(tmpComponent);
                 }
             }
-
         }
         return tmpProcessedCandidates;
     }
