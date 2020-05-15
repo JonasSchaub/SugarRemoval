@@ -39,7 +39,7 @@ package de.unijena.cheminf.deglycosylation;
  *      - review existing linear sugar patterns
  *      - think about where to also filter linear sugar patterns for min and max size
  * - maintain connection info for reconstruction?
- * - replace isomorphism testing with hash codes? Faster?
+ * - replace isomorphism testing with hash codes or the ids for substructures (for better performance)?
  *
  * - after all the changes: Check the documentation again
  * - see to dos in the code (mainly concerning docs)
@@ -72,12 +72,14 @@ import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import org.openscience.cdk.tools.manipulator.BondManipulator;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -1404,75 +1406,58 @@ public class SugarRemovalUtility {
         int[][] tmpAdjList = GraphUtil.toAdjList(aMolecule);
         //efficient computation/partitioning of the ring systems
         RingSearch tmpRingSearch = new RingSearch(aMolecule, tmpAdjList);
-        List<IAtomContainer> tmpIsolatedRings = tmpRingSearch.isolatedRingFragments();
-        if (tmpIsolatedRings.isEmpty()) {
+        List<IAtomContainer> tmpPotentialSugarRings = this.getPotentialSugarCycles(aMolecule);
+        if (tmpPotentialSugarRings.isEmpty()) {
             return new ArrayList<IAtomContainer>(0);
         }
-        List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpIsolatedRings.size());
-        for(IAtomContainer tmpReferenceRing : this.ringSugars) {
-            for(IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
-                if (Objects.isNull(tmpIsolatedRing) || tmpIsolatedRing.isEmpty()) {
-                    continue;
-                }
-                boolean tmpIsIsomorph = false;
-                UniversalIsomorphismTester tmpUnivIsoTester = new UniversalIsomorphismTester();
-                try {
-                    tmpIsIsomorph = tmpUnivIsoTester.isIsomorph(tmpReferenceRing, tmpIsolatedRing);
-                } catch (CDKException aCDKException) {
-                    SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
-                    continue;
-                }
-                if (tmpIsIsomorph) {
-                    /*note: another requirement of a suspected sugar ring is that it contains only single bonds.
-                     * This is not tested here because all the structures in the reference rings do meet this criterion.
-                     * But a structure that does not meet this criterion could be added to the references by the user.*/
-                    //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
-                    boolean tmpAreAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(tmpIsolatedRing, aMolecule);
-                    if (!tmpAreAllExocyclicBondsSingle) {
-                        continue;
-                    }
-                    //do not remove rings without an attached glycosidic bond if this option is set
-                    if (this.detectGlycosidicBond) {
-                        boolean tmpHasGlycosidicBond = this.hasGlycosidicBond(tmpIsolatedRing, aMolecule);
-                        if (!tmpHasGlycosidicBond) {
-                            //special exemption for molecules that only consist of a sugar ring and nothing else:
-                            // they should also be seen as candidate even though they do not have a glycosidic bond
-                            // (because there is nothing to bind to)
-                            if (tmpRingSearch.numRings() == 1) {
-                                boolean tmpMoleculeIsOnlyOneSugarRing = false;
-                                try {
-                                    tmpMoleculeIsOnlyOneSugarRing = this.checkCircularSugarGlycosidicBondExemption(tmpIsolatedRing, aMolecule);
-                                } catch (CloneNotSupportedException | IllegalArgumentException | NullPointerException anException) {
-                                    SugarRemovalUtility.LOGGER.log(Level.SEVERE, anException.toString(), anException);
-                                    //there is sth wrong here, do not add this ring to the candidates
-                                    continue;
-                                }
-                                if (!tmpMoleculeIsOnlyOneSugarRing) {
-                                    //isolated ring is not a candidate because it has no glycosidic bond and does not
-                                    // qualify for the exemption
-                                    continue;
-                                } //else, go on investigating this candidate, even though it does not have a glycosidic bond
-                            } else {
-                                //not a candidate
-                                continue;
-                            }
-                        }
-                    }
-                    //do not remove rings with 'too few' attached oxygens if this option is set
-                    if (this.includeNrOfAttachedOxygens) {
-                        int tmpExocyclicOxygenCount = this.getAttachedOxygenAtomCount(tmpIsolatedRing, aMolecule);
-                        int tmpAtomsInRing = tmpIsolatedRing.getAtomCount();
-                        boolean tmpAreEnoughOxygensAttached = this.doesRingHaveEnoughOxygenAtomsAttached(tmpAtomsInRing,
-                                tmpExocyclicOxygenCount);
-                        if (!tmpAreEnoughOxygensAttached) {
+        List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpPotentialSugarRings.size());
+        for(IAtomContainer tmpPotentialSugarRing : tmpPotentialSugarRings) {
+            if (Objects.isNull(tmpPotentialSugarRing) || tmpPotentialSugarRing.isEmpty()) {
+                continue;
+            }
+            /*note: another requirement of a suspected sugar ring is that it contains only single bonds.
+             * This is not tested here because all the structures in the reference rings do meet this criterion.
+             * But a structure that does not meet this criterion could be added to the references by the user.*/
+            //do not remove rings without an attached glycosidic bond if this option is set
+            if (this.detectGlycosidicBond) {
+                boolean tmpHasGlycosidicBond = this.hasGlycosidicBond(tmpPotentialSugarRing, aMolecule);
+                if (!tmpHasGlycosidicBond) {
+                    //special exemption for molecules that only consist of a sugar ring and nothing else:
+                    // they should also be seen as candidate even though they do not have a glycosidic bond
+                    // (because there is nothing to bind to)
+                    if (tmpRingSearch.numRings() == 1) {
+                        boolean tmpMoleculeIsOnlyOneSugarRing = false;
+                        try {
+                            tmpMoleculeIsOnlyOneSugarRing = this.checkCircularSugarGlycosidicBondExemption(tmpPotentialSugarRing, aMolecule);
+                        } catch (CloneNotSupportedException | IllegalArgumentException | NullPointerException anException) {
+                            SugarRemovalUtility.LOGGER.log(Level.SEVERE, anException.toString(), anException);
+                            //there is sth wrong here, do not add this ring to the candidates
                             continue;
                         }
+                        if (!tmpMoleculeIsOnlyOneSugarRing) {
+                            //isolated ring is not a candidate because it has no glycosidic bond and does not
+                            // qualify for the exemption
+                            continue;
+                        } //else, go on investigating this candidate, even though it does not have a glycosidic bond
+                    } else {
+                        //not a candidate
+                        continue;
                     }
-                    //if sugar ring has not been excluded yet, the molecule contains sugars, although they might not
-                    // be terminal
-                    tmpSugarCandidates.add(tmpIsolatedRing);
                 }
             }
+            //do not remove rings with 'too few' attached oxygens if this option is set
+            if (this.includeNrOfAttachedOxygens) {
+                int tmpExocyclicOxygenCount = this.getAttachedOxygenAtomCount(tmpPotentialSugarRing, aMolecule);
+                int tmpAtomsInRing = tmpPotentialSugarRing.getAtomCount();
+                boolean tmpAreEnoughOxygensAttached = this.doesRingHaveEnoughOxygenAtomsAttached(tmpAtomsInRing,
+                        tmpExocyclicOxygenCount);
+                if (!tmpAreEnoughOxygensAttached) {
+                    continue;
+                }
+            }
+            //if sugar ring has not been excluded yet, the molecule contains sugars, although they might not
+            // be terminal
+            tmpSugarCandidates.add(tmpPotentialSugarRing);
         }
         return tmpSugarCandidates;
     }
@@ -1502,7 +1487,7 @@ public class SugarRemovalUtility {
             this.setIndices(aMolecule);
         }
         List<IAtomContainer> tmpSugarCandidates = this.linearSugarCandidatesByPatternMatching(aMolecule);
-        //alternative: SMARTS or Ertl
+        //alternative: SMARTS or Ertl or matching the biggest patterns first and exclude the matched atoms
         if (!tmpSugarCandidates.isEmpty()) {
 
             //*Debugging*
@@ -2004,6 +1989,54 @@ public class SugarRemovalUtility {
     /**
      * TODO
      */
+    protected Set<String> createSubstructureIdentifier(List<IAtomContainer> aSubstructureList) throws NullPointerException, IllegalArgumentException {
+        Objects.requireNonNull(aSubstructureList, "Given list is 'null'");
+        for (IAtomContainer tmpSubstructure : aSubstructureList) {
+            //method checks that no index appears multiple times but does not check whether there are numbers missing
+            boolean tmpAreIndicesSet = this.checkUniqueIndicesOfAtoms(tmpSubstructure);
+            if (!tmpAreIndicesSet) {
+                throw new IllegalArgumentException("This method requires that every atom has a unique index.");
+            }
+        }
+        HashSet<String> tmpIdentifierSet = new HashSet(aSubstructureList.size(), 1.0f);
+        for (IAtomContainer tmpSubstructure: aSubstructureList) {
+            if (Objects.isNull(tmpSubstructure)) {
+                continue;
+            }
+            if (tmpSubstructure.isEmpty()) {
+                continue;
+            }
+            String tmpSubstructureIdentifier = this.createSubstructureIdentifier(tmpSubstructure);
+            tmpIdentifierSet.add(tmpSubstructureIdentifier);
+        }
+        return tmpIdentifierSet;
+    }
+
+    /**
+     * TODO
+     */
+    protected String createSubstructureIdentifier(IAtomContainer aSubstructure) throws NullPointerException, IllegalArgumentException {
+        Objects.requireNonNull(aSubstructure, "Given substructure is 'null'.");
+        boolean tmpAreIndicesSet = this.checkUniqueIndicesOfAtoms(aSubstructure);
+        if (!tmpAreIndicesSet) {
+            throw new IllegalArgumentException("This method requires that every atom has a unique index.");
+        }
+        List<Integer> tmpIndicesList = new ArrayList<>(aSubstructure.getAtomCount());
+        for (IAtom tmpAtom : aSubstructure.atoms()) {
+            int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+            tmpIndicesList.add(tmpAtomIndex);
+        }
+        Collections.sort(tmpIndicesList);
+        String tmpSubstructureIdentifier = "";
+        for (int tmpAtomIndex : tmpIndicesList) {
+            tmpSubstructureIdentifier += Integer.toString(tmpAtomIndex);
+        }
+        return tmpSubstructureIdentifier;
+    }
+
+    /**
+     * TODO
+     */
     protected boolean checkUniqueIndicesOfAtoms(IAtomContainer aMolecule) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
@@ -2041,6 +2074,54 @@ public class SugarRemovalUtility {
     }
     //</editor-fold>
     //<editor-fold desc="Methods for circular sugars">
+    /**
+     * TODO
+     */
+    protected List<IAtomContainer> getPotentialSugarCycles(IAtomContainer aMolecule) throws NullPointerException {
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        if (aMolecule.isEmpty()) {
+            return new ArrayList<IAtomContainer>(0);
+        }
+        boolean tmpIndicesAreSet = this.checkUniqueIndicesOfAtoms(aMolecule);
+        if (!tmpIndicesAreSet) {
+            this.setIndices(aMolecule);
+        }
+        int[][] tmpAdjList = GraphUtil.toAdjList(aMolecule);
+        //efficient computation/partitioning of the ring systems
+        RingSearch tmpRingSearch = new RingSearch(aMolecule, tmpAdjList);
+        List<IAtomContainer> tmpIsolatedRings = tmpRingSearch.isolatedRingFragments();
+        if (tmpIsolatedRings.isEmpty()) {
+            return new ArrayList<IAtomContainer>(0);
+        }
+        List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpIsolatedRings.size());
+        for(IAtomContainer tmpReferenceRing : this.ringSugars) {
+            for (IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
+                if (Objects.isNull(tmpIsolatedRing) || tmpIsolatedRing.isEmpty()) {
+                    continue;
+                }
+                boolean tmpIsIsomorph = false;
+                UniversalIsomorphismTester tmpUnivIsoTester = new UniversalIsomorphismTester();
+                try {
+                    tmpIsIsomorph = tmpUnivIsoTester.isIsomorph(tmpReferenceRing, tmpIsolatedRing);
+                } catch (CDKException aCDKException) {
+                    SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+                    continue;
+                }
+                if (tmpIsIsomorph) {
+                    /*note: another requirement of a suspected sugar ring is that it contains only single bonds.
+                     * This is not tested here because all the structures in the reference rings do meet this criterion.
+                     * But a structure that does not meet this criterion could be added to the references by the user.*/
+                    //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
+                    boolean tmpAreAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(tmpIsolatedRing, aMolecule);
+                    if (tmpAreAllExocyclicBondsSingle) {
+                        tmpSugarCandidates.add(tmpIsolatedRing);
+                    }
+                }
+            }
+        }
+        return tmpSugarCandidates;
+    }
+
     /**
      * Checks whether all exocyclic bonds connected to a given ring fragment of an original atom container are of single
      * order. The method iterates over all cyclic atoms and all of their bonds. So the runtime scales linear with the number
@@ -2384,14 +2465,20 @@ public class SugarRemovalUtility {
     protected void removeCircularSugarsFromCandidates(List<IAtomContainer> aCandidateList,
                                                       IAtomContainer aParentMolecule)
             throws NullPointerException {
+        //<editor-fold desc="Checks">
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
             return;
         }
         Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
-        int[][] tmpAdjListParent = GraphUtil.toAdjList(aParentMolecule);
-        RingSearch tmpRingSearchParent = new RingSearch(aParentMolecule, tmpAdjListParent);
-        List<IAtomContainer> tmpIsolatedRingsParent = tmpRingSearchParent.isolatedRingFragments();
+        //</editor-fold>
+        // generating ids for the isolated potential sugar circles in the parent molecule
+        List<IAtomContainer> tmpPotentialSugarRingsParent = this.getPotentialSugarCycles(aParentMolecule);
+        // nothing to process
+        if (tmpPotentialSugarRingsParent.isEmpty()) {
+            return;
+        }
+        Set<String> tmpPotentialSugarRingsParentIdentifierSet = this.createSubstructureIdentifier(tmpPotentialSugarRingsParent);
         // iterating over candidates
         for (int i = 0; i < aCandidateList.size(); i++) {
             IAtomContainer tmpCandidate = aCandidateList.get(i);
@@ -2401,52 +2488,21 @@ public class SugarRemovalUtility {
                 i = i - 1;
                 continue;
             }
-            int[][] tmpAdjList = GraphUtil.toAdjList(tmpCandidate);
-            RingSearch tmpRingSearch = new RingSearch(tmpCandidate, tmpAdjList);
-            List<IAtomContainer> tmpIsolatedRings = tmpRingSearch.isolatedRingFragments();
-            UniversalIsomorphismTester tmpUnivIsoTester = new UniversalIsomorphismTester();
-            if (!tmpIsolatedRings.isEmpty()) {
-                //iterating over isolated rings in candidate
-                for(IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
-                    boolean tmpBreakLoop = false;
-                    if (Objects.isNull(tmpIsolatedRing) || tmpIsolatedRing.isEmpty()) {
+            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.getPotentialSugarCycles(tmpCandidate);
+            if (!tmpPotentialSugarRingsCandidate.isEmpty()) {
+                //iterating over potential sugar rings in candidate
+                for(IAtomContainer tmpRing : tmpPotentialSugarRingsCandidate) {
+                    if (Objects.isNull(tmpRing) || tmpRing.isEmpty()) {
                         continue;
                     }
-                    // iterating over reference rings for circular sugars and removing matching cycles in the candidate
-                    for(IAtomContainer tmpReferenceRing : this.ringSugars) {
-                        boolean tmpIsIsomorph = false;
-                        try {
-                            tmpIsIsomorph = tmpUnivIsoTester.isIsomorph(tmpReferenceRing, tmpIsolatedRing);
-                        } catch (CDKException aCDKException) {
-                            SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
-                            continue;
-                        }
-                        if (tmpIsIsomorph) {
-                            //TODO: Here, isomorphism is no guarantee for being exactly this circle in the parent!
-                            // The ring can be isomorph to a another circle in the parent, even though it is not isolated itself!
-                            boolean tmpIsAlsoIsolatedInParent = false;
-                            for (IAtomContainer tmpIsolatedRingInParent : tmpIsolatedRingsParent) {
-                                try {
-                                    tmpIsAlsoIsolatedInParent = tmpUnivIsoTester.isIsomorph(tmpIsolatedRing, tmpIsolatedRingInParent);
-                                } catch (CDKException aCDKException) {
-                                    SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
-                                    continue;
-                                }
-                                if (tmpIsAlsoIsolatedInParent) {
-                                    for (IAtom tmpAtom : tmpIsolatedRing.atoms()) {
-                                        if (tmpCandidate.contains(tmpAtom)) {
-                                            tmpCandidate.removeAtom(tmpAtom);
-                                        }
-                                    }
-                                    tmpBreakLoop = true;
-                                    break;
-                                }
+                    String tmpRingIdentifier = this.createSubstructureIdentifier(tmpRing);
+                    boolean tmpIsAlsoIsolatedInParent = tmpPotentialSugarRingsParentIdentifierSet.contains(tmpRingIdentifier);
+                    if (tmpIsAlsoIsolatedInParent) {
+                        for (IAtom tmpAtom : tmpRing.atoms()) {
+                            if (tmpCandidate.contains(tmpAtom)) {
+                                tmpCandidate.removeAtom(tmpAtom);
                             }
                         }
-                    }
-                    if (tmpBreakLoop) {
-                        // go to the next candidate
-                        break;
                     }
                 }
                 // remove the candidate if it is empty after removal of cycles
@@ -2479,14 +2535,20 @@ public class SugarRemovalUtility {
     protected void removeCandidatesContainingCircularSugars(List<IAtomContainer> aCandidateList,
                                                                             IAtomContainer aParentMolecule)
             throws NullPointerException {
+        //<editor-fold desc="Checks">
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
             return;
         }
         Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
-        int[][] tmpAdjListParent = GraphUtil.toAdjList(aParentMolecule);
-        RingSearch tmpRingSearchParent = new RingSearch(aParentMolecule, tmpAdjListParent);
-        List<IAtomContainer> tmpIsolatedRingsParent = tmpRingSearchParent.isolatedRingFragments();
+        //</editor-fold>
+        // generating ids for the isolated potential sugar circles in the parent molecule
+        List<IAtomContainer> tmpPotentialSugarRingsParent = this.getPotentialSugarCycles(aParentMolecule);
+        // nothing to process
+        if (tmpPotentialSugarRingsParent.isEmpty()) {
+            return;
+        }
+        Set<String> tmpPotentialSugarRingsParentIdentifierSet = this.createSubstructureIdentifier(tmpPotentialSugarRingsParent);
         // iterating over candidates
         for (int i = 0; i < aCandidateList.size(); i++) {
             IAtomContainer tmpCandidate = aCandidateList.get(i);
@@ -2496,52 +2558,20 @@ public class SugarRemovalUtility {
                 i = i - 1;
                 continue;
             }
-            int[][] tmpAdjList = GraphUtil.toAdjList(tmpCandidate);
-            RingSearch tmpRingSearch = new RingSearch(tmpCandidate, tmpAdjList);
-            List<IAtomContainer> tmpIsolatedRings = tmpRingSearch.isolatedRingFragments();
-            UniversalIsomorphismTester tmpUnivIsoTester = new UniversalIsomorphismTester();
-            if (!tmpIsolatedRings.isEmpty()) {
-                //iterating over isolated rings in candidate
-                for(IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
-                    boolean tmpBreakLoop = false;
-                    if (Objects.isNull(tmpIsolatedRing) || tmpIsolatedRing.isEmpty()) {
+            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.getPotentialSugarCycles(tmpCandidate);
+            boolean tmpIsAlsoIsolatedInParent = false;
+            if (!tmpPotentialSugarRingsCandidate.isEmpty()) {
+                //iterating over potential sugar rings in candidate
+                for(IAtomContainer tmpRing : tmpPotentialSugarRingsCandidate) {
+                    if (Objects.isNull(tmpRing) || tmpRing.isEmpty()) {
                         continue;
                     }
-                    // iterating over reference rings for circular sugars and removing matching cycles in the candidate
-                    for(IAtomContainer tmpReferenceRing : this.ringSugars) {
-                        boolean tmpIsIsomorph = false;
-                        try {
-                            tmpIsIsomorph = tmpUnivIsoTester.isIsomorph(tmpReferenceRing, tmpIsolatedRing);
-                        } catch (CDKException aCDKException) {
-                            SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
-                            continue;
-                        }
-                        // whole candidate is now discarded if it contains a matching circle
-                        if (tmpIsIsomorph) {
-                            //TODO: Here, isomorphism is no guarantee for being exactly this circle in the parent!
-                            // The ring can be isomorph to a another circle in the parent, even though it is not isolated itself!
-                            boolean tmpIsAlsoIsolatedInParent = false;
-                            for (IAtomContainer tmpIsolatedRingInParent : tmpIsolatedRingsParent) {
-                                try {
-                                    tmpIsAlsoIsolatedInParent = tmpUnivIsoTester.isIsomorph(tmpIsolatedRing, tmpIsolatedRingInParent);
-                                } catch (CDKException aCDKException) {
-                                    SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
-                                    continue;
-                                }
-                                if (tmpIsAlsoIsolatedInParent) {
-                                    break;
-                                }
-                            }
-                            if (tmpIsAlsoIsolatedInParent) {
-                                aCandidateList.remove(i);
-                                i = i -1;
-                                tmpBreakLoop = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (tmpBreakLoop) {
-                        // go to the next candidate
+                    String tmpRingIdentifier = this.createSubstructureIdentifier(tmpRing);
+                    tmpIsAlsoIsolatedInParent = tmpPotentialSugarRingsParentIdentifierSet.contains(tmpRingIdentifier);
+                    if (tmpIsAlsoIsolatedInParent) {
+                        aCandidateList.remove(i);
+                        i = i - 1;
+                        // break the iteration of rings and go to the next candidate
                         break;
                     }
                 }
@@ -2630,7 +2660,8 @@ public class SugarRemovalUtility {
             return aCandidateList;
         }
         List<IAtomContainer> tmpProcessedCandidates = new ArrayList<>(aCandidateList.size() * 2);
-        //TODO: Add explanations! Maybe put it in the constants. Does the ether pattern match the ester bonds? Correct this?
+        //
+        // TODO: Add explanations! Maybe put it in the constants. Does the ether pattern match the ester bonds? Correct this?
         //SmartsPattern tmpEtherPattern = SmartsPattern.create("[CD2,CD3]-[OX2;!R]-[CD2,CD3]");
         SmartsPattern tmpEtherPattern = SmartsPattern.create("[C]-[O!R]-[C]");
         //SmartsPattern tmpEsterPattern = SmartsPattern.create("[CD3](=[OX1])-[OX2]-[CD2,CD3]");
