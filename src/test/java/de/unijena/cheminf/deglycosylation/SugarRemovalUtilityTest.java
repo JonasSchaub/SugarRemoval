@@ -32,6 +32,7 @@ package de.unijena.cheminf.deglycosylation;
  * - include tests for static methods
  * - test the private routines
  * - remove some of the 'experiments' in the end
+ * - add a test analyzing ZINC SM db
  */
 
 import com.mongodb.MongoClientSettings;
@@ -66,6 +67,7 @@ import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
 
+import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -1288,5 +1290,50 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         for (IAtomContainer tmpNewCandidate : this.splitEtherEsterAndPeroxideBonds(tmpList)) {
             System.out.println(tmpSmiGen.create(tmpNewCandidate));
         }
+    }
+
+    /**
+     * Molecule from specificTest10
+     * @throws Exception
+     */
+    @Test
+    public void depictionTest() throws Exception {
+        String tmpOutputFolderPath = (new File("SugarRemovalUtilityTest_Output")).getAbsolutePath() + File.separator;
+        File tmpOutputFolderFile = new File(tmpOutputFolderPath);
+        if (!tmpOutputFolderFile.exists()) {
+            tmpOutputFolderFile.mkdirs();
+        }
+        System.out.println("Output directory: " + tmpOutputFolderPath);
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        DepictionGenerator tmpDepictionGenerator = new DepictionGenerator();
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
+        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
+        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
+        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
+        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
+        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
+        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
+        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        //Interesting case because there is a macrocycle containing a sugar cycle that is not isolated
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO"); //CNP0000509 in COCONUTfebruary20
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+        List<IAtomContainer> tmpCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpOriginalMolecule);
+        for (int i = 0; i < tmpCandidates.size(); i++) {
+            IAtomContainer tmpCandidate = tmpCandidates.get(i);
+            List<IAtomContainer> tmpToHighlight = new ArrayList<>(1);
+            tmpToHighlight.add(tmpCandidate);
+            tmpDepictionGenerator.withHighlight(tmpToHighlight, Color.BLUE)
+                    .withSize(2000, 2000)
+                    .withFillToFit()
+                    .depict(tmpOriginalMolecule)
+                    .writeTo(tmpOutputFolderPath + File.separator + "Test" + i + ".png");
+        }
+
     }
 }

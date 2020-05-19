@@ -40,9 +40,11 @@ package de.unijena.cheminf.deglycosylation;
  *      - think about where to also filter linear sugar patterns for min and max size
  * - maintain connection info for reconstruction?
  * - replace isomorphism testing with hash codes or the ids for substructures (for better performance)?
+ * - include all connected oxygen atoms in the circular sugars?
  *
  * - after all the changes: Check the documentation again
  * - see to dos in the code (mainly concerning docs)
+ * - command line app: create class for main() to call, named SugarRemovalService
  *
  * To discuss:
  * - see 'to do / to discuss' points in the code
