@@ -1513,6 +1513,9 @@ public class SugarRemovalUtility {
             //this.printAllMolsAsSmiles(tmpSugarCandidates);
 
             tmpSugarCandidates = this.removeTooSmallAndTooLargeCandidates(tmpSugarCandidates);
+
+            //*Debugging*
+            //this.printAllMolsAsSmiles(tmpSugarCandidates);
         }
         if (!this.removeLinearSugarsInRing && !tmpSugarCandidates.isEmpty()) {
             this.removeSugarCandidatesWithCyclicAtoms(tmpSugarCandidates, aMolecule);
