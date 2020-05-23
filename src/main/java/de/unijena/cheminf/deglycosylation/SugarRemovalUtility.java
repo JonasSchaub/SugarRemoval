@@ -30,24 +30,22 @@ package de.unijena.cheminf.deglycosylation;
  *      - discuss the two options for generation of non-overlapping matches
  *      - discuss the two options for treating candidates containing circular sugars
  *      - discuss the two options for treating linear sugars in larger rings (if they should not be removed)
- *      - investigate use of Ertl algorithm for detection of initial candidates, maybe all C-O FG with a ratio of C to O?
- *      - investigate use of SMARTS pattern for detection of initial candidates maybe with explicit Hs to avoid matching cross-linked structures)
- *      - Is it possible with DfPattern to get the first match of the biggest pattern and then exclude the matched atoms
- *      for the next matching and so on?
  *      - try combination "combining overlapping candidates" + "only not remove the circular atoms if the option is set"
  *      - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses, more di-acids, more sugar acids
  *      - review existing linear sugar patterns
  *      - think about where to also filter linear sugar patterns for min and max size
- * - maintain connection info for reconstruction?
- * - replace isomorphism testing with hash codes or the ids for substructures (for better performance)?
- * - include all connected oxygen atoms in the circular sugars?
- *
  * - after all the changes: Check the documentation again
  * - see to dos in the code (mainly concerning docs)
  * - command line app: create class for main() to call, named SugarRemovalService
  *
- * To discuss:
- * - see 'to do / to discuss' points in the code
+ * Future perspectives / ideas:
+ * - investigate use of Ertl algorithm for detection of initial candidates, maybe all C-O FG with a ratio of C to O?
+ * - investigate use of SMARTS pattern for detection of initial candidates( maybe with explicit Hs to avoid matching cross-linked structures)
+ * - Is it possible with DfPattern to get the first match of the biggest pattern and then exclude the matched atoms
+ *   for the next matching and so on?
+ * - maintain connection info for reconstruction?
+ * - replace isomorphism testing with hash codes or the ids for substructures (for better performance)?
+ * - include all connected oxygen atoms in the circular sugars?
  */
 
 import org.openscience.cdk.AtomContainer;
@@ -172,7 +170,8 @@ public class SugarRemovalUtility {
      * the detection of linear sugars.
      */
     public static final String[] LINEAR_SUGARS_SMILES = {
-            //TODO: Order by size decreasing to save time in the constructor
+            //note: even though it would save time in the constructor to already sort for length decreasing here, the author
+            // decided against it to keep this more readable.
             //*aldoses*
             //note: no octose and so on
             "C(C(C(C(C(C(C=O)O)O)O)O)O)O", //aldoheptose TODO/discuss: Only 63 matches in COCONUT
@@ -272,6 +271,29 @@ public class SugarRemovalUtility {
      * TODO
      */
     public static final int LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT = 7;
+
+    /**
+     * Daylight SMARTS pattern for matching ester bonds between linear sugars.
+     * Defines a carbon atom connected to a double-bonded oxygen atom and a single-bonded oxygen atom that must not be
+     * in a ring and is connected to another carbon atom via a single bond.
+     */
+    public static final SmartsPattern ESTER_SMARTS_PATTERN = SmartsPattern.create("[C](=O)-[O!R]-[C]");
+
+    /**
+     * Daylight SMARTS pattern for matching ether bonds between linear sugars.
+     * Defines a carbon atom connected via single bond to an oxygen atom that must not be in a ring and is in turn connected
+     * to another carbon atom. The oxygen atom must not be in a ring to avoid breaking circular sugars.
+     * This pattern also matches ester bonds which is why esters must be detected and processed before ethers.
+     */
+    public static final SmartsPattern ETHER_SMARTS_PATTERN = SmartsPattern.create("[C]-[O!R]-[C]");
+
+    /**
+     * Daylight SMARTS pattern for matching peroxide bonds between linear sugars.
+     * Defines a carbon atom connected via single bond to an oxygen atom that must not be in a ring and is connected to
+     * another oxygen atom of the same kind, followed by another carbon atom.
+     * Even tough it is highly unlikely for a peroxide bond to be in a ring, every ring should be preserved.
+     */
+    public static final SmartsPattern PEROXIDE_SMARTS_PATTERN = SmartsPattern.create("[C]-[O!R]-[O!R]-[C]");
     //</editor-fold>
     //<editor-fold desc="Private static final constants">
     /**
@@ -1635,7 +1657,6 @@ public class SugarRemovalUtility {
             this.setIndices(aParentMolecule);
         }
         //</editor-fold>
-        //TODO/discuss: Is there a better way?
         boolean tmpIsTerminal;
         IAtomContainer tmpMoleculeClone = aParentMolecule.clone();
         IAtomContainer tmpSubstructureClone = aSubstructure.clone();
@@ -2662,20 +2683,37 @@ public class SugarRemovalUtility {
     protected List<IAtomContainer> splitEtherEsterAndPeroxideBonds(List<IAtomContainer> aCandidateList) throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
-            return aCandidateList;
+            return new ArrayList<IAtomContainer>(0);
         }
         List<IAtomContainer> tmpProcessedCandidates = new ArrayList<>(aCandidateList.size() * 2);
-        //
-        // TODO: Add explanations! Maybe put it in the constants. Does the ether pattern match the ester bonds? Correct this?
-        //SmartsPattern tmpEtherPattern = SmartsPattern.create("[CD2,CD3]-[OX2;!R]-[CD2,CD3]");
-        SmartsPattern tmpEtherPattern = SmartsPattern.create("[C]-[O!R]-[C]");
-        //SmartsPattern tmpEsterPattern = SmartsPattern.create("[CD3](=[OX1])-[OX2]-[CD2,CD3]");
-        SmartsPattern tmpEsterPattern = SmartsPattern.create("[C](=O)-[O!R]-[C]");
-        SmartsPattern tmpPeroxidePattern = SmartsPattern.create("[C]-[O!R]-[O!R]-[C]");
         for (IAtomContainer tmpCandidate : aCandidateList) {
             SmartsPattern.prepare(tmpCandidate);
 
-            Mappings tmpEtherMappings = tmpEtherPattern.matchAll(tmpCandidate).uniqueAtoms();
+            // note: ester matching has to precede the ether matching because the ether pattern also matches esters
+            // note 2: here, which bond is removed is specifically defined. This is not the case for the ether
+            Mappings tmpEsterMappings = SugarRemovalUtility.ESTER_SMARTS_PATTERN.matchAll(tmpCandidate).uniqueAtoms();
+            if (tmpEsterMappings.atLeast(1)) {
+                for (IAtomContainer tmpEsterGroup : tmpEsterMappings.toSubstructures()) {
+                    IAtom tmpDoubleBondedOxygen = null;
+                    IAtom tmpConnectingOxygen = null;
+                    for (IAtom tmpAtom : tmpEsterGroup.atoms()) {
+                        String tmpSymbol = tmpAtom.getSymbol();
+                        if (tmpSymbol.equals("O")) {
+                            int tmpBondCount = tmpAtom.getBondCount();
+                            if (tmpBondCount == 1) {
+                                tmpDoubleBondedOxygen = tmpAtom;
+                            } else {
+                                tmpConnectingOxygen = tmpAtom;
+                            }
+                        }
+                    }
+                    IAtom tmpCarbonBoundToDoubleBondedOxygen = tmpEsterGroup.getConnectedAtomsList(tmpDoubleBondedOxygen).get(0);
+                    tmpCandidate.removeBond(tmpCarbonBoundToDoubleBondedOxygen, tmpConnectingOxygen);
+                }
+            }
+
+            // note: which bond is actually removed is 'random', i.e. not to predict by a human
+            Mappings tmpEtherMappings = SugarRemovalUtility.ETHER_SMARTS_PATTERN.matchAll(tmpCandidate).uniqueAtoms();
             if (tmpEtherMappings.atLeast(1)) {
                 for (IAtomContainer tmpEtherGroup : tmpEtherMappings.toSubstructures()) {
                     IAtom tmpCarbon1 = null;
@@ -2695,35 +2733,7 @@ public class SugarRemovalUtility {
                 }
             }
 
-            Mappings tmpEsterMappings = tmpEsterPattern.matchAll(tmpCandidate).uniqueAtoms();
-            if (tmpEsterMappings.atLeast(1)) {
-                for (IAtomContainer tmpEsterGroup : tmpEsterMappings.toSubstructures()) {
-                    IAtom tmpCarbon1 = null;
-                    IAtom tmpDoubleBondedOxygen = null;
-                    IAtom tmpConnectingOxygen = null;
-                    IAtom tmpCarbon2 = null;
-                    for (IAtom tmpAtom : tmpEsterGroup.atoms()) {
-                        String tmpSymbol = tmpAtom.getSymbol();
-                        if (tmpSymbol.equals("C")) {
-                            if (Objects.isNull(tmpCarbon1)) {
-                                tmpCarbon1 = tmpAtom;
-                            } else {
-                                tmpCarbon2 = tmpAtom;
-                            }
-                        } else {
-                            int tmpBondCount = tmpAtom.getBondCount();
-                            if (tmpBondCount == 1) {
-                                tmpDoubleBondedOxygen = tmpAtom;
-                            } else {
-                                tmpConnectingOxygen = tmpAtom;
-                            }
-                        }
-                    }
-                    tmpCandidate.removeBond(tmpCarbon1, tmpConnectingOxygen);
-                }
-            }
-
-            Mappings tmpPeroxideMappings = tmpPeroxidePattern.matchAll(tmpCandidate).uniqueAtoms();
+            Mappings tmpPeroxideMappings = SugarRemovalUtility.PEROXIDE_SMARTS_PATTERN.matchAll(tmpCandidate).uniqueAtoms();
             if (tmpPeroxideMappings.atLeast(1)) {
                 for (IAtomContainer tmpPeroxideGroup : tmpPeroxideMappings.toSubstructures()) {
                     IAtom tmpOxygen1 = null;

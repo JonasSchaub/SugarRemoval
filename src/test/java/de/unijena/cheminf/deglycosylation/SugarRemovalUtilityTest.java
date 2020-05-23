@@ -30,7 +30,7 @@ package de.unijena.cheminf.deglycosylation;
  * - update the used COCONUT version to the latest publicly available one
  * - make another visual inspection of COCONUT molecules after sugar removal to validate new linear sugar detection algorithm
  * - include tests for static methods
- * - test the private routines
+ * - test the protected routines
  * - remove some of the 'experiments' in the end
  * - add a test analyzing ZINC SM db
  */
@@ -987,7 +987,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSmilesCode);
         //The circular sugar moiety is NOT connected to the core structure via a glycosidic bond, so it is not removed
         //also, the removal of linear sugars leaves the circular sugar untouched
-        Assert.assertEquals("O=C1C=C(OC=2C1=C(O)C=C(O)C2C3OC(C)C(O)C(O)C3O)C=4C=CC(O)=C(O)C4", tmpSmilesCode);
+        Assert.assertEquals("O=C1C=C(OC=2C1=C(O)C=C(O)C2C3OC(CO)C(O)C(O)C3O)C=4C=CC(O)=C(O)C4", tmpSmilesCode);
         tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
