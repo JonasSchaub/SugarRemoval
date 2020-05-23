@@ -31,12 +31,14 @@ package de.unijena.cheminf.deglycosylation;
  *      - discuss the two options for treating candidates containing circular sugars
  *      - discuss the two options for treating linear sugars in larger rings (if they should not be removed)
  *      - try combination "combining overlapping candidates" + "only not remove the circular atoms if the option is set"
- *      - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses, more di-acids, more sugar acids
+ *
+ *      - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses, more di-acids, more sugar acids, deoxy sugar alcohols
  *      - review existing linear sugar patterns
+ *
  *      - think about where to also filter linear sugar patterns for min and max size
+ *
  * - after all the changes: Check the documentation again
  * - see to dos in the code (mainly concerning docs)
- * - command line app: create class for main() to call, named SugarRemovalService
  *
  * Future perspectives / ideas:
  * - investigate use of Ertl algorithm for detection of initial candidates, maybe all C-O FG with a ratio of C to O?
@@ -170,8 +172,8 @@ public class SugarRemovalUtility {
      * the detection of linear sugars.
      */
     public static final String[] LINEAR_SUGARS_SMILES = {
-            //note: even though it would save time in the constructor to already sort for length decreasing here, the author
-            // decided against it to keep this more readable.
+            /*note: even though it would save time in the constructor to already sort for length decreasing here, the author
+             decided against it to keep this more readable and easier to inspect or extend.*/
             //*aldoses*
             //note: no octose and so on
             "C(C(C(C(C(C(C=O)O)O)O)O)O)O", //aldoheptose TODO/discuss: Only 63 matches in COCONUT
@@ -191,8 +193,7 @@ public class SugarRemovalUtility {
             "C(C(C(C(C(C(CO)O)O)O)O)O)O", //heptitol
             "C(C(C(C(C(CO)O)O)O)O)O", //hexitol TODO/discuss: matches six-membered sugar rings
             "C(C(C(C(CO)O)O)O)O", //pentitol TODO/discuss: matches six-membered sugar rings
-            "C(C(C(CO)O)O)O", //tetraitol TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 53407 matches
-            // because it matches five-membered sugar rings
+            "C(C(C(CO)O)O)O", //tetraitol TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 53407 matches because it matches five-membered sugar rings
             "C(C(CO)O)O", //triol TODO/discuss: also appears quite often... See e.g. CNP0001327
             //*sugar acids / acidic sugars*
             "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid
@@ -916,6 +917,7 @@ public class SugarRemovalUtility {
     /**
      * TODO
      * add test that it must be smaller than the current max size?
+     * note in doc that the minimum is inclusive
      */
     public void setLinearSugarCandidateMinSize(int aMinSize) throws IllegalArgumentException {
         if (aMinSize < 1) {
@@ -927,6 +929,7 @@ public class SugarRemovalUtility {
     /**
      * TODO
      * add test that it must be higher than the current min size?
+     * note in doc that the maximum is inclusive
      */
     public void setLinearSugarCandidateMaxSize(int aMaxSize) throws IllegalArgumentException {
         if (aMaxSize < 1) {
