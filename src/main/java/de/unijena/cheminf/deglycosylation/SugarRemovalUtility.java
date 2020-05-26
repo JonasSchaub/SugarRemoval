@@ -1124,6 +1124,30 @@ public class SugarRemovalUtility {
 
     /**
      * TODO
+     */
+    public boolean removeCircularSugars(IAtomContainer aMolecule)
+            throws NullPointerException, CloneNotSupportedException, IllegalArgumentException {
+        //<editor-fold desc="Checks">
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        if (aMolecule.isEmpty()) {
+            return false;
+        }
+        if (this.removeOnlyTerminal) {
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(aMolecule);
+            if (!tmpIsConnected) {
+                throw new IllegalArgumentException("Only terminal sugar moieties should be removed but the given atom" +
+                        "container already contains multiple unconnected structures.");
+            }
+        }
+        //</editor-fold>
+        List<IAtomContainer> tmpDeglycosylatedMoleculeAndSugarMoietiesList =
+                this.removeAndReturnCircularSugars(aMolecule, false);
+        boolean tmpSomethingWasRemoved = (tmpDeglycosylatedMoleculeAndSugarMoietiesList.size() > 1);
+        return tmpSomethingWasRemoved;
+    }
+
+    /**
+     * TODO
      * note: returned removed moieties have invalid valences while the valences on the remaining core structure are saturated
      */
     public List<IAtomContainer> removeAndReturnCircularSugars(IAtomContainer aMolecule, boolean aShouldBeCloned)
@@ -1232,6 +1256,30 @@ public class SugarRemovalUtility {
     /**
      * TODO
      */
+    public boolean removeLinearSugars(IAtomContainer aMolecule)
+            throws NullPointerException, CloneNotSupportedException, IllegalArgumentException {
+        //<editor-fold desc="Checks">
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        if (aMolecule.isEmpty()) {
+            return false;
+        }
+        if (this.removeOnlyTerminal) {
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(aMolecule);
+            if (!tmpIsConnected) {
+                throw new IllegalArgumentException("Only terminal sugar moieties should be removed but the given atom" +
+                        "container already contains multiple unconnected structures.");
+            }
+        }
+        //</editor-fold>
+        List<IAtomContainer> tmpDeglycosylatedMoleculeAndSugarMoietiesList =
+                this.removeAndReturnLinearSugars(aMolecule, false);
+        boolean tmpSomethingWasRemoved = (tmpDeglycosylatedMoleculeAndSugarMoietiesList.size() > 1);
+        return tmpSomethingWasRemoved;
+    }
+
+    /**
+     * TODO
+     */
     public List<IAtomContainer> removeAndReturnLinearSugars(IAtomContainer aMolecule, boolean aShouldBeCloned)
             throws NullPointerException, CloneNotSupportedException, IllegalArgumentException {
         //<editor-fold desc="Checks">
@@ -1313,6 +1361,30 @@ public class SugarRemovalUtility {
         IAtomContainer tmpNewMolecule = this.removeAndReturnCircularAndLinearSugars(aMolecule, aShouldBeCloned).get(0);
         //May be empty and may be unconnected, based on the settings
         return tmpNewMolecule;
+    }
+
+    /**
+     * TODO
+     */
+    public boolean removeCircularAndLinearSugars(IAtomContainer aMolecule)
+            throws NullPointerException, CloneNotSupportedException, IllegalArgumentException {
+        //<editor-fold desc="Checks">
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        if (aMolecule.isEmpty()) {
+            return false;
+        }
+        if (this.removeOnlyTerminal) {
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(aMolecule);
+            if (!tmpIsConnected) {
+                throw new IllegalArgumentException("Only terminal sugar moieties should be removed but the given atom" +
+                        "container already contains multiple unconnected structures.");
+            }
+        }
+        //</editor-fold>
+        List<IAtomContainer> tmpDeglycosylatedMoleculeAndSugarMoietiesList =
+                this.removeAndReturnCircularAndLinearSugars(aMolecule, false);
+        boolean tmpSomethingWasRemoved = (tmpDeglycosylatedMoleculeAndSugarMoietiesList.size() > 1);
+        return tmpSomethingWasRemoved;
     }
 
     /**

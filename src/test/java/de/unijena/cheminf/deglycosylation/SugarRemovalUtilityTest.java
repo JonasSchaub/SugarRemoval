@@ -27,7 +27,6 @@ package de.unijena.cheminf.deglycosylation;
 /**
  * TODO:
  * - write docs
- * - update the used COCONUT version to the latest publicly available one
  * - linear sugar detection: make some inspections about the non-default settings
  * - include tests for static methods
  * - test the protected routines
@@ -98,7 +97,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpBuilder.applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(tmpAddress)));
         MongoClientSettings tmpSettings = tmpBuilder.build();
         MongoClient tmpMongoClient = MongoClients.create(tmpSettings);
-        String tmpCollectionName = "COCONUTfebruary20";
+        String tmpCollectionName = "COCONUTmay";
         MongoDatabase tmpDatabase = tmpMongoClient.getDatabase(tmpCollectionName);
         String tmpDatabaseName = "uniqueNaturalProduct";
         MongoCollection<Document> tmpCollection = tmpDatabase.getCollection(tmpDatabaseName);
@@ -209,6 +208,158 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
     /**
      *
+     */
+    @Ignore
+    @Test
+    public void CoconutStatsTest() throws Exception {
+        MongoClientSettings.Builder tmpBuilder = MongoClientSettings.builder();
+        ServerAddress tmpAddress = new ServerAddress("localhost", 27017);
+        tmpBuilder.applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(tmpAddress)));
+        MongoClientSettings tmpSettings = tmpBuilder.build();
+        MongoClient tmpMongoClient = MongoClients.create(tmpSettings);
+        String tmpCollectionName = "COCONUTmay";
+        MongoDatabase tmpDatabase = tmpMongoClient.getDatabase(tmpCollectionName);
+        String tmpDatabaseName = "uniqueNaturalProduct";
+        MongoCollection<Document> tmpCollection = tmpDatabase.getCollection(tmpDatabaseName);
+        MongoCursor<Document> tmpCursor = null;
+        Logger tmpLogger = Logger.getLogger(SugarRemovalUtilityTest.class.getName());
+        try {
+            tmpCursor = tmpCollection.find().iterator();
+        } catch (MongoTimeoutException aMongoTimeoutException) {
+            tmpLogger.log(Level.SEVERE, aMongoTimeoutException.toString(), aMongoTimeoutException);
+            System.out.println("Timed out while trying to connect to MongoDB. Test is ignored.");
+            Assume.assumeTrue(false);
+        }
+        System.out.println("Connection to MongoDB successful.");
+        System.out.println("Collection " + tmpCollectionName + " in database " + tmpDatabaseName + " is loaded.");
+        String tmpOutputFolderPath = (new File("SugarRemovalUtilityTest_Output")).getAbsolutePath() + File.separator
+                + "coconut_stats_test" + File.separator;
+        File tmpOutputFolderFile = new File(tmpOutputFolderPath);
+        if (!tmpOutputFolderFile.exists()) {
+            tmpOutputFolderFile.mkdirs();
+        }
+        System.out.println("Output directory: " + tmpOutputFolderPath);
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        FileHandler tmpLogFileHandler = null;
+        try {
+            tmpLogFileHandler = new FileHandler(tmpOutputFolderPath + "Log.txt");
+        } catch (IOException anIOException) {
+            tmpLogger.log(Level.SEVERE, anIOException.toString(), anIOException);
+            System.out.println("An exception occurred while setting up the log file. Logging will be done in default configuration.");
+        }
+        tmpLogFileHandler.setLevel(Level.ALL);
+        tmpLogFileHandler.setFormatter(new SimpleFormatter());
+        Logger.getLogger("").addHandler(tmpLogFileHandler);
+        Logger.getLogger("").setLevel(Level.WARNING);
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        //explicitly setting default settings
+        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
+        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
+        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
+        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
+        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
+        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
+        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
+        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        Document tmpCurrentDoc = null;
+        String tmpID = "";
+        String tmpSmilesCode = "";
+        IAtomContainer tmpMolecule = null;
+        int tmpMoleculeCounter = 0; //total number of molecules
+        int tmpExceptionsCounter = 0;
+        int tmpSugarContainingMoleculesCounter = 0; //total number of molecules with sugars
+        List<String> tmpSugarContainingMoleculesCNPs = new ArrayList<>(50000);
+        int tmpContainsCircularSugarsCounter = 0; //number of molecules with rings (all rings)
+        List<String> tmpContainsCircularSugarsCNPs = new ArrayList(50000);
+        int tmpHasTerminalRingsCounter = 0;
+        List<String> tmpHasTerminalRingsCNPS = new ArrayList(50000);
+        int tmpHasNonTerminalRingsCounter = 0;
+        List<String> tmpHasNonTerminalRingsCNPS = new ArrayList(50000);
+        int tmpHasOnlyTerminalRingsCounter = 0;
+        List<String> tmpHasOnlyTerminalRingsCNPS = new ArrayList(50000);
+        int tmpHasOnlyNonTerminalRingsCounter = 0;
+        List<String> tmpHasOnlyNonTerminalRingsCNPS = new ArrayList(50000);
+        int tmpHasOnlyCircularSugarsCounter = 0;
+        List<String> tmpHasOnlyCircularSugarsCNPS = new ArrayList(50000);
+        int tmpHasGlycosidicBondCounter = 0;
+        List<String> tmpHasGlycosidicBondCNPS = new ArrayList(50000);
+        int tmpHasGlycosidicBondOnTerminalSugarCounter = 0;
+        List<String> tmpHasGlycosidicBondOnTerminalSugarCNPS = new ArrayList(50000);
+        int tmpHasGlycosidicBondOnNonTerminalSugarCounter = 0;
+        List<String> tmpHasGlycosidicBondOnNonTerminalSugarCNPS = new ArrayList(50000);
+        int tmpContainsLinearSugarsCounter = 0; //total number of molecules with linear sugars
+        List<String> tmpContainsLinearSugarsCNPS = new ArrayList(3000);
+        int tmpHasTerminalLinearSugarsCounter = 0;
+        List<String> tmpHasTerminalLinearSugarsCNPS = new ArrayList(3000);
+        int tmpHasNonTerminalLinearSugarsCounter = 0;
+        List<String> tmpHasNonTerminalLinearSugarsCNPS = new ArrayList(3000);
+        int tmpHasOnlyTerminalLinearSugarsCounter = 0;
+        List<String> tmpHasOnlyTerminalLinearSugarsCNPS = new ArrayList(3000);
+        int tmpHasOnlyNonTerminalLinearSugarsCounter = 0;
+        List<String> tmpHasOnlyNonTerminalLinearSugarsCNPS = new ArrayList(3000);
+        int tmpHasOnlyLinearSugarsCounter = 0;
+        List<String> tmpHasOnlyLinearSugarsCNPS = new ArrayList(3000);
+        int tmpHasCircularAndLinearSugarsCounter = 0;
+        List<String> tmpHasCircularAndLinearSugarsCNPs = new ArrayList(2000);
+        int tmpBasicallyASugarCounter = 0; //number of molecules that are basically sugars (circular and linear combined)
+        List<String> tmpBasicallyASugarCNPS = new ArrayList(2000);
+        int tmpBasicallyACircularSugarCounter = 0;
+        List<String> tmpBasicallyACircularSugarCNPS = new ArrayList(2000);
+        int tmpBasicallyALinearSugarCounter = 0;
+        List<String> tmpBasicallyALinearSugarCNPS = new ArrayList(2000);
+        while (tmpCursor.hasNext()) {
+            try {
+                tmpCurrentDoc = tmpCursor.next();
+                tmpMoleculeCounter++;
+                tmpID = tmpCurrentDoc.getString("coconut_id");
+                tmpSmilesCode = tmpCurrentDoc.getString("clean_smiles");
+                tmpMolecule = tmpSmiPar.parseSmiles(tmpSmilesCode);
+                tmpMolecule.setTitle(tmpID);
+                //TODO: Check for all the cases above!
+                tmpMolecule = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpMolecule, true);
+                if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY) == true) {
+                    tmpSugarContainingMoleculesCounter++;
+                    tmpSugarContainingMoleculesCNPs.add(tmpID);
+                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true) {
+                        tmpContainsCircularSugarsCounter++;
+                        tmpContainsCircularSugarsCNPs.add(tmpID);
+                    }
+                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
+                        tmpContainsLinearSugarsCounter++;
+                        tmpContainsLinearSugarsCNPS.add(tmpID);
+                    }
+                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true
+                    && (boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
+                        tmpHasCircularAndLinearSugarsCounter++;
+                        tmpHasCircularAndLinearSugarsCNPs.add(tmpID);
+                    }
+                    if (tmpMolecule.isEmpty()) {
+                        tmpBasicallyASugarCounter++;
+                        tmpBasicallyASugarCNPS.add(tmpID);
+                    }
+                }
+            } catch (Exception anException) {
+                tmpLogger.log(Level.SEVERE, anException.toString() + " ID: " + tmpID, anException);
+                tmpExceptionsCounter++;
+                continue;
+            }
+        }
+        //TODO: Outputs in numbers and percentages!
+        //TODO: Output all the counters and lists
+        System.out.println("Done.");
+        System.out.println("Molecules counter: " + tmpMoleculeCounter);
+        System.out.println("Exceptions counter: " + tmpExceptionsCounter);
+        System.out.println("Sugar-containing molecules counter: " + tmpSugarContainingMoleculesCounter);
+        System.out.println("Linear-sugar-containing molecules counter: " + tmpContainsLinearSugarsCounter);
+        System.out.println("Circular-sugar-containing molecules counter: " + tmpContainsCircularSugarsCounter);
+        System.out.println("Molecules containing both circular and linear sugars counter: " + tmpHasCircularAndLinearSugarsCounter);
+        System.out.println("Basically a sugar counter: " + tmpBasicallyASugarCounter);
+        tmpCursor.close();
+    }
+
+    /**
+     *
      * @throws Exception
      */
     @Ignore
@@ -219,7 +370,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpBuilder.applyToClusterSettings(builder -> builder.hosts(Collections.singletonList(tmpAddress)));
         MongoClientSettings tmpSettings = tmpBuilder.build();
         MongoClient tmpMongoClient = MongoClients.create(tmpSettings);
-        String tmpCollectionName = "COCONUTfebruary20";
+        String tmpCollectionName = "COCONUTmay";
         MongoDatabase tmpDatabase = tmpMongoClient.getDatabase(tmpCollectionName);
         String tmpDatabaseName = "uniqueNaturalProduct";
         MongoCollection<Document> tmpCollection = tmpDatabase.getCollection(tmpDatabaseName);
