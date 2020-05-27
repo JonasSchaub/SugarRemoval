@@ -32,12 +32,10 @@ package de.unijena.cheminf.deglycosylation;
  *      - discuss the two options for treating linear sugars in larger rings (if they should not be removed)
  *      - try combination "combining overlapping candidates" + "only not remove the circular atoms if the option is set"
  *
- *      - add more linear sugars, e.g. different deoxypentoses/deoxyhexoses, more di-acids, more sugar acids, deoxy sugar alcohols
- *      - review existing linear sugar patterns
- *
  *      - think about where to also filter linear sugar patterns for min and max size
  *
  * - after all the changes: Check the documentation again
+ * - make it an option to include acidic sugars (default false)
  * - see to dos in the code (mainly concerning docs)
  *
  * Future perspectives / ideas:
@@ -176,25 +174,25 @@ public class SugarRemovalUtility {
              decided against it to keep this more readable and easier to inspect or extend.*/
             //*aldoses*
             //note: no octose and so on
-            "C(C(C(C(C(C(C=O)O)O)O)O)O)O", //aldoheptose TODO/discuss: Only 63 matches in COCONUT
+            "C(C(C(C(C(C(C=O)O)O)O)O)O)O", //aldoheptose
             "C(C(C(C(C(C=O)O)O)O)O)O", //aldohexose
             "C(C(C(C(C=O)O)O)O)O", //aldopentose
-            "C(C(C(C=O)O)O)O", //aldotetrose TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 6795 matches
+            "C(C(C(C=O)O)O)O", //aldotetrose
             "C(C(C=O)O)O", //aldotriose
             //*ketoses*
             //note: no octose and so on
-            "C(C(C(C(C(C(CO)O)O)O)O)=O)O", //2-ketoheptose TODO/discuss: only 16 matches in COCONUT
-            "C(C(C(C(C(CO)O)O)O)=O)O", //2-ketohexose TODO/discuss: only 61 matches in COCONUT
+            "C(C(C(C(C(C(CO)O)O)O)O)=O)O", //2-ketoheptose
+            "C(C(C(C(C(CO)O)O)O)=O)O", //2-ketohexose
             "C(C(C(C(CO)O)O)=O)O", //2-ketopentose
-            "C(C(C(CO)O)=O)O", //2-ketotetrose TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 535 matches
+            "C(C(C(CO)O)=O)O", //2-ketotetrose
             "C(C(CO)=O)O", //2-ketotriose
             //*sugar alcohols*
             //note: no octitol and so on
             "C(C(C(C(C(C(CO)O)O)O)O)O)O", //heptitol
-            "C(C(C(C(C(CO)O)O)O)O)O", //hexitol TODO/discuss: matches six-membered sugar rings
-            "C(C(C(C(CO)O)O)O)O", //pentitol TODO/discuss: matches six-membered sugar rings
-            "C(C(C(CO)O)O)O", //tetraitol TODO/discuss: stick to the minimum of 5 carbon atoms in the pattern? -> 53407 matches because it matches five-membered sugar rings
-            "C(C(CO)O)O", //triol TODO/discuss: also appears quite often... See e.g. CNP0001327
+            "C(C(C(C(C(CO)O)O)O)O)O", //hexitol
+            "C(C(C(C(CO)O)O)O)O", //pentitol
+            "C(C(C(CO)O)O)O", //tetraitol
+            "C(C(CO)O)O", //triol
             //*sugar acids / acidic sugars*
             "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid
             "O=C(O)CCC(O)C(=O)O", //2-hydroxypentanedioic acid
@@ -217,6 +215,7 @@ public class SugarRemovalUtility {
             "C1CCCOCC1" //oxepane to match all 7-membered sugar rings
     };
 
+    //<editor-fold desc="Default settings">
     /**
      * Default setting for whether glycosidic bonds between sugar rings should be detected to determine whether a
      * candidate sugar structure should be removed (default: false).
@@ -272,6 +271,7 @@ public class SugarRemovalUtility {
      * TODO
      */
     public static final int LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT = 7;
+    //</editor-fold>
 
     /**
      * Daylight SMARTS pattern for matching ester bonds between linear sugars.
