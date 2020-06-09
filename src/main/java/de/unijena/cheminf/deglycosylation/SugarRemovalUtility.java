@@ -35,7 +35,6 @@ package de.unijena.cheminf.deglycosylation;
  *      - think about where to also filter linear sugar patterns for min and max size
  *
  * - after all the changes: Check the documentation again
- * - make it an option to include acidic sugars (default false)
  * - see to dos in the code (mainly concerning docs)
  *
  * Future perspectives / ideas:
@@ -87,7 +86,7 @@ import java.util.logging.Logger;
  * Utility class to remove sugar moieties from molecular structures, primarily natural products.
  *
  * @author Jonas Schaub, Maria Sorokina
- * @version 0.0.0.1
+ * @version 0.1.0.0
  */
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum StructuresToKeepMode">
@@ -193,14 +192,20 @@ public class SugarRemovalUtility {
             "C(C(C(C(CO)O)O)O)O", //pentitol
             "C(C(C(CO)O)O)O", //tetraitol
             "C(C(CO)O)O", //triol
-            //*sugar acids / acidic sugars*
-            "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid
-            "O=C(O)CCC(O)C(=O)O", //2-hydroxypentanedioic acid
-            "C(C(CC(C(CO)O)O)O)(O)=O", //3-deoxyhexonic acid
-            "C(C(C(CC(=O)O)O)O)O", //2-deoxypentonic acid
-            "CC(CC(CC(=O)O)O)O", //3,5-Dihydroxyhexanoic acid
             //*deoxy sugars*
             "C(C(C(C(CC=O)O)O)O)O" //2-deoxyhexose
+    };
+
+    /**
+     *
+     */
+    public static final String[] LINEAR_ACIDIC_SUGARS_SMILES = {
+            //*sugar acids / acidic sugars*
+            "C(C(CC(C(CO)O)O)O)(O)=O", //3-deoxyhexonic acid
+            "CC(CC(CC(=O)O)O)O", //3,5-Dihydroxyhexanoic acid
+            "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid
+            "O=C(O)CCC(O)C(=O)O", //2-hydroxypentanedioic acid
+            "C(C(C(CC(=O)O)O)O)O" //2-deoxypentonic acid
     };
 
     /**
@@ -271,6 +276,11 @@ public class SugarRemovalUtility {
      * TODO
      */
     public static final int LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT = 7;
+
+    /**
+     * TODO
+     */
+    public static final boolean DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT = false;
     //</editor-fold>
 
     /**
@@ -318,6 +328,16 @@ public class SugarRemovalUtility {
      * Patterns of linear sugar structures to detect linear sugar moieties in the given molecules.
      */
     private List<DfPattern> linearSugarPatterns;
+
+    /**
+     * TODO
+     */
+    private List<IAtomContainer> linearAcidicSugars;
+
+    /**
+     * TODO
+     */
+    private List<DfPattern> linearAcidicSugarPatterns;
 
     /**
      * Detect glycosidic bond setting.
@@ -369,6 +389,11 @@ public class SugarRemovalUtility {
      * TODO
      */
     private int linearSugarCandidateMaxSize;
+
+    /**
+     * TODO
+     */
+    private boolean detectLinearAcidicSugars;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
@@ -379,7 +404,9 @@ public class SugarRemovalUtility {
     public SugarRemovalUtility() {
         this.linearSugars = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
         this.ringSugars = new ArrayList<>(SugarRemovalUtility.RING_SUGARS_SMILES.length);
+        this.linearAcidicSugars = new ArrayList<>(SugarRemovalUtility.LINEAR_ACIDIC_SUGARS_SMILES.length);
         this.linearSugarPatterns = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
+        this.linearAcidicSugarPatterns = new ArrayList<>(SugarRemovalUtility.LINEAR_ACIDIC_SUGARS_SMILES.length);
         SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         //adding linear sugars to list
         for (String tmpSmiles : SugarRemovalUtility.LINEAR_SUGARS_SMILES) {
@@ -393,6 +420,15 @@ public class SugarRemovalUtility {
         Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
         //note: this can throw various exceptions but they should not appear here
         this.linearSugars.sort(tmpComparator);
+        //adding linear acidic sugars to list
+        for (String tmpSmiles : SugarRemovalUtility.LINEAR_ACIDIC_SUGARS_SMILES) {
+            try {
+                this.linearAcidicSugars.add(tmpSmilesParser.parseSmiles(tmpSmiles));
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            }
+        }
+        this.linearAcidicSugars.sort(tmpComparator);
         //adding ring sugars to list
         for (String tmpSmiles : SugarRemovalUtility.RING_SUGARS_SMILES) {
             try {
@@ -403,9 +439,17 @@ public class SugarRemovalUtility {
         }
         this.ringSugars.sort(tmpComparator);
         //parsing linear sugars into patterns
-        for(IAtomContainer tmpSugarAC : this.linearSugars){
+        for (IAtomContainer tmpSugarAC : this.linearSugars) {
             try {
                 this.linearSugarPatterns.add(DfPattern.findSubstructure(tmpSugarAC));
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            }
+        }
+        //parsing linear acidic sugars into patterns
+        for (IAtomContainer tmpSugarAC : this.linearAcidicSugars) {
+            try {
+                this.linearAcidicSugarPatterns.add(DfPattern.findSubstructure(tmpSugarAC));
             } catch (Exception anException) {
                 SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             }
@@ -421,10 +465,12 @@ public class SugarRemovalUtility {
         this.setPropertyOfSugarContainingMolecules = SugarRemovalUtility.SET_PROPERTY_OF_SUGAR_CONTAINING_MOLECULES_DEFAULT;
         this.linearSugarCandidateMinSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT;
         this.linearSugarCandidateMaxSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT;
+        this.detectLinearAcidicSugars = SugarRemovalUtility.DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT;
     }
     //</editor-fold>
     //
     //<editor-fold desc="Public properties get/is">
+    //TODO: Add note, includes the linear acidic sugars only if the are detected according to the settings
     /**
      * Get a list of (unique) SMILES strings representing the linear sugar structures an input molecule is scanned for
      * by the methods for sugar detection or removal. The default structures can also be retrieved from the respective
@@ -434,9 +480,18 @@ public class SugarRemovalUtility {
      * @return a list of SMILES codes
      */
     public List<String> getLinearSugars() {
-        List<String> tmpSmilesList = new ArrayList<>(this.linearSugars.size());
+        int tmpListSize = this.linearSugars.size();
+        if (this.detectLinearAcidicSugars) {
+            tmpListSize += this.linearAcidicSugars.size();
+        }
+        List<String> tmpSmilesList = new ArrayList<>(tmpListSize);
         SmilesGenerator tmpSmilesGen = new SmilesGenerator(SmiFlavor.Unique);
-        for (IAtomContainer tmpLinearSugar : this.linearSugars) {
+        List<IAtomContainer> tmpListToIterate = new ArrayList<>(tmpListSize);
+        tmpListToIterate.addAll(0, this.linearSugars);
+        if (this.detectLinearAcidicSugars) {
+            tmpListToIterate.addAll(this.linearAcidicSugars);
+        }
+        for (IAtomContainer tmpLinearSugar : tmpListToIterate) {
             String tmpSmiles = null;
             try {
                 tmpSmiles = tmpSmilesGen.create(tmpLinearSugar);
@@ -584,6 +639,13 @@ public class SugarRemovalUtility {
     public int getLinearSugarCandidateMaxSize() {
         return this.linearSugarCandidateMaxSize;
     }
+
+    /**
+     * TODO
+     */
+    public boolean areLinearAcidicSugarsDetected() {
+        return this.detectLinearAcidicSugars;
+    }
     //</editor-fold>
     //
     //<editor-fold desc="Public properties set/add/clear">
@@ -678,6 +740,8 @@ public class SugarRemovalUtility {
     }
 
     //TODO: If circular candidates are discarded in the final algorithm, the param requirements need to be adjusted here!
+    //TODO: note, if the detection of acidic sugars is turned on afterwards, there may be doublets in the lists and
+    // given sugar can also already be present in the acidic sugars
     /**
      * Allows to add an additional linear sugar to the list of linear sugar structures an input molecule is scanned for
      * by the methods for sugar detection and removal. The given structure must not be isomorph to the already present
@@ -698,8 +762,18 @@ public class SugarRemovalUtility {
             throw new IllegalArgumentException("Given atom container is empty.");
         }
         //note: no check for linearity here to allow adding of structures that contain rings, e.g. amino acids
+        int tmpListSize = this.linearSugars.size();
+        if (this.detectLinearAcidicSugars) {
+            tmpListSize += this.linearAcidicSugars.size();
+        }
+        List<IAtomContainer> tmpListToIterate = new ArrayList<>(tmpListSize);
+        tmpListToIterate.addAll(0, this.linearSugars);
+        //if the detection of linear acidic sugars is turned on, the presence of the given sugar here should also be tested
+        if (this.detectLinearAcidicSugars) {
+            tmpListToIterate.addAll(this.linearAcidicSugars);
+        }
         UniversalIsomorphismTester tmpUnivIsomorphTester = new UniversalIsomorphismTester();
-        for (IAtomContainer tmpSugar : this.linearSugars) {
+        for (IAtomContainer tmpSugar : tmpListToIterate) {
             boolean tmpIsIsomorph = false;
             try {
                 tmpIsIsomorph = tmpUnivIsomorphTester.isIsomorph(tmpSugar, aLinearSugar);
@@ -774,6 +848,7 @@ public class SugarRemovalUtility {
         }
     }
 
+    //TODO: note, detection of linear acidic sugars is turned off
     /**
      * Internally clears all the linear sugar structures an input molecule is scanned for by the methods for sugar
      * detection and removal.
@@ -787,6 +862,7 @@ public class SugarRemovalUtility {
             this.linearSugars = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
             this.linearSugarPatterns = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
         }
+        this.setDetectLinearAcidicSugars(false);
     }
 
     /**
@@ -940,6 +1016,13 @@ public class SugarRemovalUtility {
 
     /**
      * TODO
+     */
+    public void setDetectLinearAcidicSugars(boolean aBoolean) {
+        this.detectLinearAcidicSugars = aBoolean;
+    }
+
+    /**
+     * TODO
      * Does not restore the circular and linear sugar patterns to default!
      */
     public void restoreDefaultSettings() {
@@ -954,6 +1037,7 @@ public class SugarRemovalUtility {
         this.setPropertyOfSugarContainingMolecules = SugarRemovalUtility.SET_PROPERTY_OF_SUGAR_CONTAINING_MOLECULES_DEFAULT;
         this.linearSugarCandidateMinSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT;
         this.linearSugarCandidateMaxSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT;
+        this.detectLinearAcidicSugars = SugarRemovalUtility.DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT;
     }
     //</editor-fold>
     //
@@ -2451,7 +2535,16 @@ public class SugarRemovalUtility {
             return new ArrayList<IAtomContainer>(0);
         }
         List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpNewMolecule.getAtomCount() / 2);
-        for (DfPattern tmpLinearSugarPattern : this.linearSugarPatterns) {
+        int tmpListSize = this.linearSugarPatterns.size();
+        if (this.detectLinearAcidicSugars) {
+            tmpListSize += this.linearAcidicSugarPatterns.size();
+        }
+        List<DfPattern> tmpListToIterate = new ArrayList<>(tmpListSize);
+        tmpListToIterate.addAll(0, this.linearSugarPatterns);
+        if (this.detectLinearAcidicSugars) {
+            tmpListToIterate.addAll(this.linearAcidicSugarPatterns);
+        }
+        for (DfPattern tmpLinearSugarPattern : tmpListToIterate) {
             if (Objects.isNull(tmpLinearSugarPattern)) {
                 continue;
             }

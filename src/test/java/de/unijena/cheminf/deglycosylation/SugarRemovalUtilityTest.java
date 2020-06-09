@@ -132,16 +132,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpLogFileHandler.setFormatter(new SimpleFormatter());
         Logger.getLogger("").addHandler(tmpLogFileHandler);
         Logger.getLogger("").setLevel(Level.WARNING);
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        //Done for reproducibility
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         System.out.println(tmpSugarRemovalUtil.isGlycosidicBondDetected());
         System.out.println(tmpSugarRemovalUtil.areOnlyTerminalSugarsRemoved());
         System.out.println(tmpSugarRemovalUtil.getStructuresToKeepMode());
@@ -150,6 +142,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSugarRemovalUtil.getAttachedOxygensToAtomsInRingRatioThreshold());
         System.out.println(tmpSugarRemovalUtil.areLinearSugarsInRingsRemoved());
         System.out.println(tmpSugarRemovalUtil.arePropertiesOfSugarContainingMoleculesSet());
+        System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMinSize());
+        System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMaxSize());
+        System.out.println(tmpSugarRemovalUtil.areLinearAcidicSugarsDetected());
         Document tmpCurrentDoc = null;
         String tmpID = "";
         String tmpSmilesCode = "";
@@ -251,17 +246,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpLogFileHandler.setFormatter(new SimpleFormatter());
         Logger.getLogger("").addHandler(tmpLogFileHandler);
         Logger.getLogger("").setLevel(Level.WARNING);
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        //explicitly setting default settings
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        //Done for reproducibility
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         Document tmpCurrentDoc = null;
         String tmpID = "";
         String tmpSmilesCode = "";
@@ -387,6 +373,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println("Collection " + tmpCollectionName + " in database " + tmpDatabaseName + " is loaded.");
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        // to also test their appearance
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         //Note: Here, additional molecules could be added to the list to also test them
         List<String> tmpLinearSugarsList = tmpSugarRemovalUtil.getLinearSugars();
         List<List<Object>> tmpLinearSugarPatterns = new ArrayList<>(tmpLinearSugarsList.size());
@@ -465,16 +453,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpLogFileHandler.setFormatter(new SimpleFormatter());
         Logger.getLogger("").addHandler(tmpLogFileHandler);
         Logger.getLogger("").setLevel(Level.WARNING);
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        //Done for reproducibility
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         System.out.println(tmpSugarRemovalUtil.isGlycosidicBondDetected());
         System.out.println(tmpSugarRemovalUtil.areOnlyTerminalSugarsRemoved());
         System.out.println(tmpSugarRemovalUtil.getStructuresToKeepMode());
@@ -483,6 +463,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSugarRemovalUtil.getAttachedOxygensToAtomsInRingRatioThreshold());
         System.out.println(tmpSugarRemovalUtil.areLinearSugarsInRingsRemoved());
         System.out.println(tmpSugarRemovalUtil.arePropertiesOfSugarContainingMoleculesSet());
+        System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMinSize());
+        System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMaxSize());
+        System.out.println(tmpSugarRemovalUtil.areLinearAcidicSugarsDetected());
         IteratingSDFReader tmpReader = new IteratingSDFReader(new FileInputStream(tmpZincSdfFile), DefaultChemObjectBuilder.getInstance(), true);
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         int tmpMoleculeCounter = 0;
@@ -554,17 +537,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "OC1C(OCCCCCCCCCCC)OC(OCCCCCCCCCCCCCCCCC)C(O)C1O");
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Canonical);
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(SugarRemovalUtility.StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setPropertyOfSugarContainingMolecules(true);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
         IAtomContainer tmpOriginalMolecule;
         for (String tmpKey : tmpSmilesBeforeAndAfterDeglycosylationMap.keySet()) {
             tmpOriginalMolecule = tmpSmiPar.parseSmiles(tmpKey);
@@ -589,16 +563,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(true); //default would be false
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1OC2=CC(=CC(OC3OC(CO)C(O)C(O)C3O)=C2C4=C1CCC4)C"); //CNP0000001 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -620,16 +586,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4"); //CNP0000012 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -656,16 +613,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O"); //CNP0000006 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -713,16 +661,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1OC2C(CCO)CCC3(C=C4C=CCC5C(C=CC(C45)C23)CCCC(C)(CC6=CC=C(N)[NH+]=C6)CC=7C=CC=C8C(=O)C9(OC19C(=O)C87)CC(=C(C)CC%10C%11=CC=[NH+]C=%12NC(NC)CC(C%12%11)CC%10)CO)NCC"); //CNP0000030 in COCONUTfebruary20
         Assert.assertFalse(tmpSugarRemovalUtil.hasLinearSugars(tmpOriginalMolecule));
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
@@ -757,16 +696,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         // this molecule was chosen because before there was a bug detected here, a linear sugar candidate was detected
         // and a CH3 group removed
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=CCC12OC(OC1=O)C3(C)C(C)CCC3(C)C2"); //CNP0000023 in COCONUTfebruary20
@@ -788,16 +718,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         // this molecule contains a macrocyle that is partly made up of sugars
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)C12OC(OC3=CC=4OCC5C6=C(OC5C4C(=C3)C7=CC=CC(O)=C7)C(OC)=C(OC)C=C6CNC)(CO)C(O)C(O)(NCC1NC)C2O"); //CNP0000082 in COCONUTfebruary20
         // since linear sugars in cycles should not be removed, this must be false
@@ -832,16 +753,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         // two structures connected by a circular sugar moiety
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)C1OC(OC=2C=CC=3C(=O)[C-](C=[O+]C3C2)C4=CC=C(O)C=C4)C(O)(CNCC(CC=5C=N[CH+]C5)C(C)C)C(O)C1O"); //CNP0000233 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
@@ -873,16 +785,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1OC(C2=COC=C2)CC3(C)C1CCC4(C)C3C5OC(=O)C4(O)C=C5"); //CNP0000304 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -901,16 +804,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1OC2CC3(OC4(O)C(CC5(OC45C(=O)OC)CCCCCCCCCCCCCCCC)C2(O3)C1)CCCCCCCCCCCCCCCC"); //CNP0000445 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -929,16 +823,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         //Interesting case because there is a macrocycle containing a sugar cycle that is not isolated
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO"); //CNP0000509 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
@@ -964,16 +849,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C([O-])CC(OC1OC(CO)C(O)C(O)C1O)(C)CC(=O)OCC=CC2=CC(OC)=C(OC3OC(CO)C(O)C(O)C3O)C(OC)=C2"); //CNP0000920 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -992,16 +869,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C([O-])CC(O)(C)CC(=O)OCC1=CC=C(OC2OC(CO)C(O)C(O)C2O)C=C1"); //CNP0001189 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1020,16 +889,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(COC(=O)C(CC(=O)O)C(OCC3C(=C)CCC4C(C)(C)CCCC34C)C(=O)OC)CCCC12C)C(=O)OC"); //CNP0001863 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1048,16 +909,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(O)(C)CC(=O)OC1COC(OC2C(O)C(OC(OC3C(O)C(O)C(OC4CC5CCC6C(CCC7(C)C6CC8OC9(OCC(C)CC9)C(C)C87)C5(C)CC4O)OC3CO)C2OC%10OC(CO)C(O)C(O)C%10O)CO)C(O)C1O"); //CNP0002871 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1124,16 +977,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)C1OC(O)C(O)C(O)C1O"); //CNP0002919 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1159,16 +1003,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(C)CCCC12C)C(=O)O"); //CNP0003329 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1188,16 +1024,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         // interesting is the peroxide bond here
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C=C(OC=2C1=CC3=C(OC(C)(C)C(OOCC(O)C(O)C(O)C(O)CO)C3)C2[N+]=4C=C5N=CC=C5C4CC)C"); //CNP0007654 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
@@ -1217,18 +1044,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
-        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C=C(OC2=CC(OC(=O)C3OC(O)C(O)C(O)C3O)=C(O)C(O)=C12)C=4C=CC(O)=CC4"); //CNP0032817 in COCONUTfebruary20
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C=C(OC2=CC(OC(=O)C3OC(O)C(O)C(O)C3O)=C(O)C(O)=C12)C=4C=CC(O)=CC4"); //CNP0032817 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1245,6 +1063,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //another examples for the same thing:
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C([O-])CC(O)(C)CC(=O)OCC1OC(C=2C(O)=CC(O)=C3C(=O)C=C(OC32)C=4C=CC(O)=C(O)C4)C(O)C(O)C1O"); //CNP0031401 in COCONUTfebruary20
         tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1270,16 +1089,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC"); //CNP0000913 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1296,16 +1107,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=CC1(C)C(OC2OC(C(=O)O)C(O)C(OC3OCC(O)C(O)C3O)C2OC4OC(CO)C(O)C(O)C4O)CCC5(C)C6CC=C7C8CC(C)(C)CCC8(C(=O)OC9OC(C)C(OC(=O)CC(O)CC(OC(=O)CC(O)CC(OC%10OC(CO)C(O)C%10O)C(C)CC)C(C)CC)C(O)C9OC%11OC(C)C(OC%12OCC(O)C(O)C%12O)C(O)C%11O)C(O)CC7(C)C6(C)CCC15"); //CNP0000306 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1323,16 +1126,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(OCC)CCC1=CC=2C=COC2C=3OCCNCC4(SSCC5(OC(OC31)C(O)C(O)C5O)CO)CCCC4"); //CNP0001379 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1354,16 +1148,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("CCC(CC1CCCC2(O1)CC3C(C(O2)CC4(C(CC(O4)(C)C)C=CCCCCCC(C(C(C(C(C(C(C=CC(=O)O3)(C)O)O)C)O)OC5CCC(C(O5)C)N(C)C)O)(C)O)O)C)O"); //Ossamycin
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1395,19 +1180,10 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
-        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C"); //CNP0000225 in COCOCNUTfebruary20
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(false);
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C"); //CNP0000225 in COCOCNUTfebruary20
         List<IAtomContainer> tmpRemovedSugars = tmpSugarRemovalUtil.removeAndReturnLinearSugars(tmpOriginalMolecule, true);
         for (IAtomContainer tmpSugar : tmpRemovedSugars) {
             System.out.println(tmpSmiGen.create(tmpSugar));
@@ -1424,19 +1200,11 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         // a molecule containing 2 circular sugars and 2 linear sugars (sugar acids), in both cases 1 terminal and 1 non-terminal
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(C)(O)CC(=O)OCc1ccc(cc1)OC1C(CO)OC(OC(C(=O)OCc2ccc(OC3OC(CO)CC(O)C3O)cc2)C(O)(CC(C)C)C(=O)OC2CCc3cc4cc(O)c(C)c(O)c4c(O)c3C2=O)C(O)C1O");
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1482,6 +1250,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     @Test
     public void classPropertiesTest() throws Exception {
         SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true); //default would be false
         tmpSugarRemovalUtil.addLinearSugar("CO");
         List<String> tmpLinearSugarsList = tmpSugarRemovalUtil.getLinearSugars();
         for (String tmpSmiles : tmpLinearSugarsList) {
@@ -1504,6 +1273,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSugarRemovalUtil.arePropertiesOfSugarContainingMoleculesSet());
         System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMinSize());
         System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMaxSize());
+        System.out.println(tmpSugarRemovalUtil.areLinearAcidicSugarsDetected());
     }
 
     //<editor-fold desc="Tests for protected routines">
@@ -1644,19 +1414,10 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
-        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
-        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
-        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
-        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
-        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
         //Interesting case because there is a macrocycle containing a sugar cycle that is not isolated
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO"); //CNP0000509 in COCONUTfebruary20
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
         List<IAtomContainer> tmpCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpOriginalMolecule);
         for (int i = 0; i < tmpCandidates.size(); i++) {
             IAtomContainer tmpCandidate = tmpCandidates.get(i);
@@ -1670,4 +1431,26 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         }
 
     }
+
+    //<editor-fold desc="Protected methods">
+    /**
+     * TODO
+     * @return
+     */
+    protected SugarRemovalUtility getSugarRemovalUtilityV0100DefaultSettings() {
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
+        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
+        tmpSugarRemovalUtil.setStructuresToKeepMode(StructuresToKeepMode.HEAVY_ATOM_COUNT);
+        tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
+        tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
+        tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
+        tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
+        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(false);
+        tmpSugarRemovalUtil.setPropertyOfSugarContainingMolecules(true);
+        return tmpSugarRemovalUtil;
+    }
+    //</editor-fold>
 }
