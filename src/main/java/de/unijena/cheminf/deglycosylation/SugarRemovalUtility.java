@@ -1111,7 +1111,7 @@ public class SugarRemovalUtility {
      * @return true, if the given molecule contains sugar moieties
      * @throws NullPointerException if the given atom container is 'null'
      */
-    public boolean hasSugars(IAtomContainer aMolecule) throws NullPointerException {
+    public boolean hasCircularAndOrLinearSugars(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
             return false;
@@ -1143,6 +1143,33 @@ public class SugarRemovalUtility {
         }
         List<IAtomContainer> tmpCircularSugarCandidates = this.getCircularSugarCandidates(aMolecule);
         int tmpSize = tmpCircularSugarCandidates.size();
+        return tmpSize;
+    }
+
+    /**
+     * TODO
+     */
+    public int getNumberOfLinearSugars(IAtomContainer aMolecule) throws NullPointerException {
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        if (aMolecule.isEmpty()) {
+            return 0;
+        }
+        List<IAtomContainer> tmpLinearSugarCandidates = this.getLinearSugarCandidates(aMolecule);
+        int tmpSize = tmpLinearSugarCandidates.size();
+        return tmpSize;
+    }
+
+    /**
+     * TODO
+     */
+    public int getNumberOfCircularAndLinearSugars(IAtomContainer aMolecule) throws NullPointerException {
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        if (aMolecule.isEmpty()) {
+            return 0;
+        }
+        List<IAtomContainer> tmpCircularSugarCandidates = this.getCircularSugarCandidates(aMolecule);
+        List<IAtomContainer> tmpLinearSugarCandidates = this.getLinearSugarCandidates(aMolecule);
+        int tmpSize = tmpCircularSugarCandidates.size() + tmpLinearSugarCandidates.size();
         return tmpSize;
     }
 
@@ -1562,6 +1589,13 @@ public class SugarRemovalUtility {
         //The molecule at index 0 may be empty and may be unconnected, based on the settings
         return tmpResultList;
     }
+
+    /*
+    NOTE: The getCircularAndLinearSugarCandidates() method one would expect at this point, is not here because
+    the atom containers in the list (= combination of circular and linear candidates) can overlap (= multiple
+    candidates share the same atoms or bonds). This can lead to unsafe operations if one e.g. tries to remove all
+    these sugar moieties in one go. Therefore, this method is not offered.
+    */
 
     //TODO: Add note concerning the exemption for molecules that are single-cycle sugars
     /**

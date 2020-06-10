@@ -252,11 +252,11 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         String tmpID = "";
         String tmpSmilesCode = "";
         IAtomContainer tmpMolecule = null;
-        int tmpMoleculeCounter = 0; //total number of molecules
+        int tmpMoleculeCounter = 0;
         int tmpExceptionsCounter = 0;
-        int tmpSugarContainingMoleculesCounter = 0; //total number of molecules with sugars
+        int tmpSugarContainingMoleculesCounter = 0;
         List<String> tmpSugarContainingMoleculesCNPs = new ArrayList<>(50000);
-        int tmpContainsCircularSugarsCounter = 0; //number of molecules with rings (all rings)
+        int tmpContainsCircularSugarsCounter = 0;
         List<String> tmpContainsCircularSugarsCNPs = new ArrayList(50000);
         int tmpHasTerminalRingsCounter = 0;
         List<String> tmpHasTerminalRingsCNPS = new ArrayList(50000);
@@ -294,6 +294,21 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         List<String> tmpBasicallyACircularSugarCNPS = new ArrayList(2000);
         int tmpBasicallyALinearSugarCounter = 0;
         List<String> tmpBasicallyALinearSugarCNPS = new ArrayList(2000);
+        int tmpBasicallyASingleSugarUnitCounter = 0;
+        List<String> tmpBasicallyASingleSugarUnitCNPs = new ArrayList(1000);
+        int tmpBasicallyASingleCircularSugarCounter = 0;
+        List<String> tmpBasicallyASingleCircularSugarCNPs = new ArrayList(1000);
+        int tmpBasicallyASingleLinearSugarCounter = 0;
+        List<String> tmpBasicallyASingleLinearSugarCNPs = new ArrayList(1000);
+        int tmpCircularSugarsCounter = 0;
+        int tmpCircularSugarsWithGlycosidicBondCounter = 0; //the rest have no glycosidic bond
+        int tmpTerminalCircularSugarsWithGlycosidicBondCounter = 0; //the rest are non-terminal
+        //TODO!!!
+        HashMap<Integer, Integer> tmpSizesOfCircularSugarsMap = new HashMap(10, 0.9f);
+        HashMap<Integer, Integer> tmpSizesOfLinearSugarsMap = new HashMap(10, 0.9f);
+        HashMap<Integer, Integer> tmpHowManyMoleculesHaveHowManySugarsMap = new HashMap(10, 0.9f);
+        HashMap<Integer, Integer> tmpHowManyMoleculesHaveHowManyCircularSugarsMap = new HashMap(10, 0.9f);
+        HashMap<Integer, Integer> tmpHowManyMoleculesHaveHowManyLinearSugarsMap = new HashMap(10, 0.9f);
         while (tmpCursor.hasNext()) {
             try {
                 tmpCurrentDoc = tmpCursor.next();
@@ -302,9 +317,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 tmpSmilesCode = tmpCurrentDoc.getString("clean_smiles");
                 tmpMolecule = tmpSmiPar.parseSmiles(tmpSmilesCode);
                 tmpMolecule.setTitle(tmpID);
-                //TODO: Check for all the cases above!
                 //using default settings (of version 0.1.0.0) where nothing else is specified
-                boolean tmpHasAnyTypeOfSugar = tmpSugarRemovalUtil.hasSugars(tmpMolecule);
+                boolean tmpHasAnyTypeOfSugar = tmpSugarRemovalUtil.hasCircularAndOrLinearSugars(tmpMolecule);
                 // note: per default, circular sugars having too few exocyclic oxygen atoms attached are not counted!
                 boolean tmpHasAnyCircularSugar = tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY);
                 // note: per default, linear sugars in rings, those too small or too big, and acidic linear sugars are not counted!
@@ -312,6 +326,13 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 if (tmpHasAnyTypeOfSugar) {
                     tmpSugarContainingMoleculesCounter++;
                     tmpSugarContainingMoleculesCNPs.add(tmpID);
+                    int tmpNumberOfCircularAndLinearSugarMoieties = tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpMolecule);
+                    Integer tmpCurrentListValue = tmpHowManyMoleculesHaveHowManySugarsMap.get(tmpNumberOfCircularAndLinearSugarMoieties);
+                    if (Objects.isNull(tmpCurrentListValue)) {
+                        tmpHowManyMoleculesHaveHowManySugarsMap.put(tmpNumberOfCircularAndLinearSugarMoieties, 1);
+                    } else {
+                        tmpHowManyMoleculesHaveHowManySugarsMap.put(tmpNumberOfCircularAndLinearSugarMoieties, tmpCurrentListValue + 1);
+                    }
                     if (tmpHasAnyCircularSugar) {
                         tmpContainsCircularSugarsCounter++;
                         tmpContainsCircularSugarsCNPs.add(tmpID);
@@ -321,30 +342,37 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         }
                         //terminal and non-terminal, having a glycosidic bond or not (see default settings)
                         List<IAtomContainer> tmpCircularSugarCandidatesList = tmpSugarRemovalUtil.getCircularSugarCandidates(tmpMolecule);
-                        int tmpTerminalCounter = 0;
-                        int tmpNonTerminalCounter = 0;
-                        int tmpGlycosidicBondCounter = 0;
-                        int tmpGlycosidicBondAndTerminalCounter = 0;
-                        int tmpGlycosidicBondAndNonTerminalCounter = 0;
-                        for (IAtomContainer tmpCircularSugarCandidate : tmpCircularSugarCandidatesList) {
-                            //TODO: this here tests whether the sugar is immediately (!) terminal, problem?
-                            // otherwise, we have to test whether the candidates get removed (so nr of candidates before vs after removal)
-                            boolean tmpIsTerminal = this.isTerminal(tmpCircularSugarCandidate, tmpMolecule, tmpCircularSugarCandidatesList);
-                            if (tmpIsTerminal) {
-                                tmpTerminalCounter++;
-                            } else {
-                                tmpNonTerminalCounter++;
-                            }
-                            boolean tmpHasGlycosidicBond = this.hasGlycosidicBond(tmpCircularSugarCandidate, tmpMolecule);
-                            if (tmpHasGlycosidicBond) {
-                                tmpGlycosidicBondCounter++;
-                                if (tmpIsTerminal) {
-                                    tmpGlycosidicBondAndTerminalCounter++;
-                                } else {
-                                    tmpGlycosidicBondAndNonTerminalCounter++;
-                                }
-                            }
+                        int tmpAllCircularMoietiesCounter;
+                        int tmpTerminalCounter;
+                        int tmpNonTerminalCounter;
+                        int tmpGlycosidicBondCounter;
+                        int tmpGlycosidicBondAndTerminalCounter;
+                        int tmpGlycosidicBondAndNonTerminalCounter;
+                        tmpAllCircularMoietiesCounter = tmpCircularSugarCandidatesList.size();
+                        Integer tmpCurrentValue = tmpHowManyMoleculesHaveHowManyCircularSugarsMap.get(tmpAllCircularMoietiesCounter);
+                        if (Objects.isNull(tmpCurrentValue)) {
+                            tmpHowManyMoleculesHaveHowManyCircularSugarsMap.put(tmpAllCircularMoietiesCounter, 1);
+                        } else {
+                            tmpHowManyMoleculesHaveHowManyCircularSugarsMap.put(tmpAllCircularMoietiesCounter, tmpCurrentValue + 1);
                         }
+                        //the first is the overall counter, the second one is specific for this molecule
+                        tmpCircularSugarsCounter += tmpAllCircularMoietiesCounter;
+                        //note: circular moieties that become terminal after removal of a linear moiety are not counted here!
+                        List<IAtomContainer> tmpRemovedTerminalCircularMoieties = tmpSugarRemovalUtil.removeAndReturnCircularSugars(tmpMolecule, true);
+                        // -1 for the deglycosylated core at the beginning of the list
+                        tmpTerminalCounter = tmpRemovedTerminalCircularMoieties.size() - 1 ;
+                        tmpNonTerminalCounter = tmpAllCircularMoietiesCounter - tmpTerminalCounter;
+                        Assert.assertTrue(tmpNonTerminalCounter >= 0);
+                        // leaving default! Now, only circular sugars having glycosidic bonds are in the candidates and removed moieties
+                        tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
+                        List<IAtomContainer> tmpCircularSugarCandidatesWithGlycosidicBondsList = tmpSugarRemovalUtil.getCircularSugarCandidates(tmpMolecule);
+                        tmpGlycosidicBondCounter = tmpCircularSugarCandidatesWithGlycosidicBondsList.size();
+                        List<IAtomContainer> tmpRemovedTerminalCircularMoietiesWithGlycosidicBond = tmpSugarRemovalUtil.removeAndReturnCircularSugars(tmpMolecule, true);
+                        tmpGlycosidicBondAndTerminalCounter = tmpRemovedTerminalCircularMoietiesWithGlycosidicBond.size() - 1;
+                        tmpGlycosidicBondAndNonTerminalCounter = tmpGlycosidicBondCounter - tmpGlycosidicBondAndTerminalCounter;
+                        Assert.assertTrue(tmpGlycosidicBondAndNonTerminalCounter >= 0);
+                        // back to default!
+                        tmpSugarRemovalUtil.setDetectGlycosidicBond(false);
                         if (tmpTerminalCounter > 0) {
                             tmpHasTerminalRingsCounter++;
                             tmpHasTerminalRingsCNPS.add(tmpID);
@@ -364,9 +392,13 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         if (tmpGlycosidicBondCounter > 0) {
                             tmpHasGlycosidicBondCounter++;
                             tmpHasGlycosidicBondCNPS.add(tmpID);
+                            //the first is the overall counter, the second one is specific for this molecule
+                            tmpCircularSugarsWithGlycosidicBondCounter += tmpGlycosidicBondCounter;
                             if (tmpGlycosidicBondAndTerminalCounter > 0) {
                                 tmpHasGlycosidicBondOnTerminalSugarCounter++;
                                 tmpHasGlycosidicBondOnTerminalSugarCNPS.add(tmpID);
+                                //the first is the overall counter, the second one is specific for this molecule
+                                tmpTerminalCircularSugarsWithGlycosidicBondCounter += tmpGlycosidicBondAndTerminalCounter;
                             }
                             if (tmpGlycosidicBondAndNonTerminalCounter > 0) {
                                 tmpHasGlycosidicBondOnNonTerminalSugarCounter++;
@@ -383,18 +415,22 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         }
                         //terminal and non-terminal
                         List<IAtomContainer> tmpLinearSugarCandidatesList = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpMolecule);
-                        int tmpTerminalCounter = 0;
-                        int tmpNonTerminalCounter = 0;
-                        for (IAtomContainer tmpLinearSugarCandidate : tmpLinearSugarCandidatesList) {
-                            //TODO: this here tests whether the sugar is immediately (!) terminal, problem?
-                            // otherwise, we have to test whether the candidates get removed (so nr of candidates before vs after removal)
-                            boolean tmpIsTerminal = this.isTerminal(tmpLinearSugarCandidate, tmpMolecule, tmpLinearSugarCandidatesList);
-                            if (tmpIsTerminal) {
-                                tmpTerminalCounter++;
-                            } else {
-                                tmpNonTerminalCounter++;
-                            }
+                        int tmpAllLinearMoietiesCounter;
+                        int tmpTerminalCounter;
+                        int tmpNonTerminalCounter;
+                        tmpAllLinearMoietiesCounter = tmpLinearSugarCandidatesList.size();
+                        Integer tmpCurrentValue = tmpHowManyMoleculesHaveHowManyLinearSugarsMap.get(tmpAllLinearMoietiesCounter);
+                        if (Objects.isNull(tmpCurrentValue)) {
+                            tmpHowManyMoleculesHaveHowManyLinearSugarsMap.put(tmpAllLinearMoietiesCounter, 1);
+                        } else {
+                            tmpHowManyMoleculesHaveHowManyLinearSugarsMap.put(tmpAllLinearMoietiesCounter, tmpCurrentValue + 1);
                         }
+                        //note:linear moieties that become terminal after removal of a circular moiety are not counted here!
+                        List<IAtomContainer> tmpRemovedTerminalLinearMoieties = tmpSugarRemovalUtil.removeAndReturnLinearSugars(tmpMolecule, true);
+                        // -1 for the deglycosylated core at the beginning of the list
+                        tmpTerminalCounter = tmpRemovedTerminalLinearMoieties.size() - 1 ;
+                        tmpNonTerminalCounter = tmpAllLinearMoietiesCounter - tmpTerminalCounter;
+                        Assert.assertTrue(tmpNonTerminalCounter >= 0);
                         if (tmpTerminalCounter > 0) {
                             tmpHasTerminalLinearSugarsCounter++;
                             tmpHasTerminalLinearSugarsCNPS.add(tmpID);
@@ -416,6 +452,36 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         tmpHasCircularAndLinearSugarsCounter++;
                         tmpHasCircularAndLinearSugarsCNPs.add(tmpID);
                     }
+                    IAtomContainer tmpDeglycosylatedClone = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpMolecule, true);
+                    if (tmpDeglycosylatedClone.isEmpty()) {
+                        tmpBasicallyASugarCounter++;
+                        tmpBasicallyASugarCNPS.add(tmpID);
+                        int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpMolecule);
+                        if (tmpNumberOfMoieties == 1) {
+                            tmpBasicallyASingleSugarUnitCounter++;
+                            tmpBasicallyASingleSugarUnitCNPs.add(tmpID);
+                        }
+                    }
+                    IAtomContainer tmpCircularDeglycosylatedClone = tmpSugarRemovalUtil.removeCircularSugars(tmpMolecule, true);
+                    if (tmpCircularDeglycosylatedClone.isEmpty()) {
+                        tmpBasicallyACircularSugarCounter++;
+                        tmpBasicallyACircularSugarCNPS.add(tmpID);
+                        int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfCircularSugars(tmpMolecule);
+                        if (tmpNumberOfMoieties == 1) {
+                            tmpBasicallyASingleCircularSugarCounter++;
+                            tmpBasicallyASingleCircularSugarCNPs.add(tmpID);
+                        }
+                    }
+                    IAtomContainer tmpLinearDeglycosylatedClone = tmpSugarRemovalUtil.removeLinearSugars(tmpMolecule, true);
+                    if (tmpLinearDeglycosylatedClone.isEmpty()) {
+                        tmpBasicallyALinearSugarCounter++;
+                        tmpBasicallyALinearSugarCNPS.add(tmpID);
+                        int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfLinearSugars(tmpMolecule);
+                        if (tmpNumberOfMoieties == 1) {
+                            tmpBasicallyASingleLinearSugarCounter++;
+                            tmpBasicallyASingleLinearSugarCNPs.add(tmpID);
+                        }
+                    }
                 }
             } catch (Exception anException) {
                 tmpLogger.log(Level.SEVERE, anException.toString() + " ID: " + tmpID, anException);
@@ -423,21 +489,57 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 continue;
             }
         }
-        //TODO: Outputs in numbers and percentages!
-        //TODO: Output all the counters and lists
+        //TODO: Outputs in numbers and percentages
+        //TODO: Code generic output of one list
         System.out.println("Done.");
         System.out.println("Molecules counter: " + tmpMoleculeCounter);
         System.out.println("Exceptions counter: " + tmpExceptionsCounter);
-        //using default settings (of version 0.1.0.0)! Circular sugars having too few exocyclic oxygen atoms attached are not counted!
-        // Linear sugars in rings, those too small or too big, and acidic linear sugars are not counted!
-        System.out.println("Sugar-containing molecules counter: " + tmpSugarContainingMoleculesCounter);
-        System.out.println("Circular-sugar-containing molecules counter: " + tmpContainsCircularSugarsCounter);
+        System.out.println("Sugar containing molecules counter: " + tmpSugarContainingMoleculesCounter);
+        System.out.println("");
+        System.out.println("Circular sugar containing molecules counter: " + tmpContainsCircularSugarsCounter);
         System.out.println("Only circular sugar containing molecules counter: " + tmpHasOnlyCircularSugarsCounter);
-        
-        System.out.println("Linear-sugar-containing molecules counter: " + tmpContainsLinearSugarsCounter);
+        System.out.println("Terminal circular sugars containing molecules counter: " + tmpHasTerminalRingsCounter);
+        System.out.println("Only terminal circular sugar containing molecules counter: " + tmpHasOnlyTerminalRingsCounter);
+        System.out.println("Non-terminal circular sugar containing molecules counter: " + tmpHasNonTerminalRingsCounter);
+        System.out.println("Only non-terminal circular sugar containing molecules counter: " + tmpHasOnlyNonTerminalRingsCounter);
+        System.out.println("Circular sugar with glycosidic bond containing molecules counter: " + tmpHasGlycosidicBondCounter);
+        System.out.println("Terminal circular sugar with glycosidic bond containing molecules counter: " + tmpHasGlycosidicBondOnTerminalSugarCounter);
+        System.out.println("Non-terminal circular sugar with glycosidic bond containing molecules counter: " + tmpHasGlycosidicBondOnNonTerminalSugarCounter);
+        System.out.println("");
+        System.out.println("Detected circular sugar moieties counter: " + tmpCircularSugarsCounter);
+        System.out.println("Detected circular sugar moieties that have a glycosidic bond counter: " + tmpCircularSugarsWithGlycosidicBondCounter);
+        System.out.println("Detected circular sugar moieties that have a glycosidic bond and are terminal counter: " + tmpTerminalCircularSugarsWithGlycosidicBondCounter);
+        System.out.println("");
+        System.out.println("Linear sugar containing molecules counter: " + tmpContainsLinearSugarsCounter);
         System.out.println("Only linear sugar containing molecules counter: " + tmpHasOnlyLinearSugarsCounter);
+        System.out.println("Terminal linear sugars containing molecules counter: " + tmpHasTerminalLinearSugarsCounter);
+        System.out.println("Only terminal linear sugar containing molecules counter: " + tmpHasOnlyTerminalLinearSugarsCounter);
+        System.out.println("Non-terminal linear sugar containing molecules counter: " + tmpHasNonTerminalLinearSugarsCounter);
+        System.out.println("Only non-terminal linear sugar containing molecules counter: " + tmpHasOnlyNonTerminalLinearSugarsCounter);
+        System.out.println("");
         System.out.println("Molecules containing both circular and linear sugars counter: " + tmpHasCircularAndLinearSugarsCounter);
-        //System.out.println("Basically a sugar counter: " + tmpBasicallyASugarCounter);
+        System.out.println("");
+        System.out.println("Basically a sugar counter: " + tmpBasicallyASugarCounter);
+        System.out.println("Basically a single sugar unit counter: " + tmpBasicallyASingleSugarUnitCounter);
+        System.out.println("Basically a circular sugar counter: " + tmpBasicallyACircularSugarCounter);
+        System.out.println("Basically a single circular sugar counter: " + tmpBasicallyASingleCircularSugarCounter);
+        System.out.println("Basically a linear sugar counter: " + tmpBasicallyALinearSugarCounter);
+        System.out.println("Basically a single linear sugar counter: " + tmpBasicallyASingleLinearSugarCounter);
+        System.out.println("");
+        System.out.println("How many molecules have how many sugars: ");
+        for (int i : tmpHowManyMoleculesHaveHowManySugarsMap.keySet()) {
+            System.out.println(i + ": " + tmpHowManyMoleculesHaveHowManySugarsMap.get(i));
+        }
+        System.out.println("");
+        System.out.println("How many molecules have how many circular sugars: ");
+        for (int i : tmpHowManyMoleculesHaveHowManyCircularSugarsMap.keySet()) {
+            System.out.println(i + ": " + tmpHowManyMoleculesHaveHowManyCircularSugarsMap.get(i));
+        }
+        System.out.println("");
+        System.out.println("How many molecules have how many linear sugars: ");
+        for (int i : tmpHowManyMoleculesHaveHowManyLinearSugarsMap.keySet()) {
+            System.out.println(i + ": " + tmpHowManyMoleculesHaveHowManyLinearSugarsMap.get(i));
+        }
         tmpCursor.close();
     }
 
@@ -640,7 +742,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         for (String tmpKey : tmpSmilesBeforeAndAfterDeglycosylationMap.keySet()) {
             tmpOriginalMolecule = tmpSmiPar.parseSmiles(tmpKey);
             Assert.assertTrue(tmpSugarRemovalUtil.hasCircularSugars(tmpOriginalMolecule));
-            Assert.assertTrue(tmpSugarRemovalUtil.hasSugars(tmpOriginalMolecule));
+            Assert.assertTrue(tmpSugarRemovalUtil.hasCircularAndOrLinearSugars(tmpOriginalMolecule));
             tmpOriginalMolecule = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, false);
             String tmpSmilesAfterDeglycosylation = tmpSmiGen.create(tmpOriginalMolecule);
             System.out.println(tmpSmilesAfterDeglycosylation);
