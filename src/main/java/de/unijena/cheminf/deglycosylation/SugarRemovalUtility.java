@@ -1134,6 +1134,39 @@ public class SugarRemovalUtility {
     }
 
     /**
+     * TODO
+     */
+    public boolean isQualifiedForExemptionConcerningGlycosidicBond(IAtomContainer aMolecule) throws NullPointerException {
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        if (aMolecule.isEmpty()) {
+            return false;
+        }
+        this.setIndices(aMolecule);
+        List<IAtomContainer> tmpPotentialSugarRings = this.getPotentialSugarCycles(aMolecule);
+        if (tmpPotentialSugarRings.size() != 1) {
+            return false;
+        }
+        IAtomContainer tmpPotentialSugarRing = tmpPotentialSugarRings.get(0);
+        boolean tmpHasGlycosidicBond = this.hasGlycosidicBond(tmpPotentialSugarRing, aMolecule);
+        boolean tmpMoleculeIsOnlyOneSugarRing = false;
+        if (!tmpHasGlycosidicBond) {
+            //special exemption for molecules that only consist of a sugar ring and nothing else:
+            // they should also be seen as candidate even though they do not have a glycosidic bond
+            // (because there is nothing to bind to)
+            try {
+                // this method basically checks whether the molecule is empty after removal of the one sugar ring
+                tmpMoleculeIsOnlyOneSugarRing = this.isMoleculeEmptyAfterRemovalOfThisRing(tmpPotentialSugarRing, aMolecule);
+            } catch (CloneNotSupportedException | IllegalArgumentException | NullPointerException anException) {
+                SugarRemovalUtility.LOGGER.log(Level.SEVERE, anException.toString(), anException);
+                return false;
+            }
+        } else {
+            return false;
+        }
+        return tmpMoleculeIsOnlyOneSugarRing;
+    }
+
+    /**
      * TODO (the idea was to use it as a descriptor like in the macrocycle paper)
      */
     public int getNumberOfCircularSugars(IAtomContainer aMolecule) throws NullPointerException {
@@ -1620,9 +1653,6 @@ public class SugarRemovalUtility {
         if (!tmpIndicesAreSet) {
             this.setIndices(aMolecule);
         }
-        int[][] tmpAdjList = GraphUtil.toAdjList(aMolecule);
-        //efficient computation/partitioning of the ring systems
-        RingSearch tmpRingSearch = new RingSearch(aMolecule, tmpAdjList);
         List<IAtomContainer> tmpPotentialSugarRings = this.getPotentialSugarCycles(aMolecule);
         if (tmpPotentialSugarRings.isEmpty()) {
             return new ArrayList<IAtomContainer>(0);
@@ -1632,9 +1662,11 @@ public class SugarRemovalUtility {
             if (Objects.isNull(tmpPotentialSugarRing) || tmpPotentialSugarRing.isEmpty()) {
                 continue;
             }
-            /*note: another requirement of a suspected sugar ring is that it contains only single bonds.
+            /*
+             * note: another requirement of a suspected sugar ring is that it contains only single bonds.
              * This is not tested here because all the structures in the reference rings do meet this criterion.
-             * But a structure that does not meet this criterion could be added to the references by the user.*/
+             * But a structure that does not meet this criterion could be added to the references by the user.
+             */
             //do not remove rings without an attached glycosidic bond if this option is set
             if (this.detectGlycosidicBond) {
                 boolean tmpHasGlycosidicBond = this.hasGlycosidicBond(tmpPotentialSugarRing, aMolecule);
@@ -1642,10 +1674,12 @@ public class SugarRemovalUtility {
                     //special exemption for molecules that only consist of a sugar ring and nothing else:
                     // they should also be seen as candidate even though they do not have a glycosidic bond
                     // (because there is nothing to bind to)
-                    if (tmpRingSearch.numRings() == 1) {
+                    //Note: There is also a public method testing this! Keep this in mind! It is not used here to not
+                    // do the ring search etc. again.
+                    if (tmpPotentialSugarRings.size() == 1) {
                         boolean tmpMoleculeIsOnlyOneSugarRing = false;
                         try {
-                            tmpMoleculeIsOnlyOneSugarRing = this.checkCircularSugarGlycosidicBondExemption(tmpPotentialSugarRing, aMolecule);
+                            tmpMoleculeIsOnlyOneSugarRing = this.isMoleculeEmptyAfterRemovalOfThisRing(tmpPotentialSugarRing, aMolecule);
                         } catch (CloneNotSupportedException | IllegalArgumentException | NullPointerException anException) {
                             SugarRemovalUtility.LOGGER.log(Level.SEVERE, anException.toString(), anException);
                             //there is sth wrong here, do not add this ring to the candidates
@@ -2447,7 +2481,7 @@ public class SugarRemovalUtility {
      * TODO
      * Note: Number of rings = 1 and sugar ring has no glycosidic bond are not checked again!
      */
-    protected boolean checkCircularSugarGlycosidicBondExemption(IAtomContainer aRing, IAtomContainer aMolecule)
+    protected boolean isMoleculeEmptyAfterRemovalOfThisRing(IAtomContainer aRing, IAtomContainer aMolecule)
             throws NullPointerException, IllegalArgumentException, CloneNotSupportedException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aRing, "Given ring is 'null'.");
@@ -2467,7 +2501,7 @@ public class SugarRemovalUtility {
             this.setIndices(aMolecule);
         }
         //</editor-fold>
-        boolean tmpQualifiesForExemption = false;
+        boolean tmpMoleculeIsEmptyAfterRemoval = false;
         IAtomContainer tmpMoleculeClone = aMolecule.clone();
         IAtomContainer tmpSubstructureClone = aRing.clone();
         HashMap<Integer, IAtom> tmpIndexToAtomMap = new HashMap<>(tmpMoleculeClone.getAtomCount() + 1, 1.0f);
@@ -2478,12 +2512,12 @@ public class SugarRemovalUtility {
             tmpMoleculeClone.removeAtom(tmpIndexToAtomMap.get(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY)));
         }
         if (tmpMoleculeClone.isEmpty()) {
-            tmpQualifiesForExemption = true;
+            tmpMoleculeIsEmptyAfterRemoval = true;
         } else {
             this.clearTooSmallStructures(tmpMoleculeClone);
-            tmpQualifiesForExemption = tmpMoleculeClone.isEmpty();
+            tmpMoleculeIsEmptyAfterRemoval = tmpMoleculeClone.isEmpty();
         }
-        return tmpQualifiesForExemption;
+        return tmpMoleculeIsEmptyAfterRemoval;
     }
 
     /**
