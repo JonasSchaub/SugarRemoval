@@ -26,6 +26,9 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
+ * - filter out every atom in a linear sugar candidate that belongs to a circular sugar? To reduce the false-positives
+ * for the linear sugars in rings
+ * - add methods to configure the linear and circular sugar patterns (remove one specific)
  * - Linear sugar detection/removal:
  *      - discuss the two options for generation of non-overlapping matches
  *      - discuss the two options for treating candidates containing circular sugars

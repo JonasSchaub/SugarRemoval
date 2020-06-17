@@ -71,6 +71,9 @@ import java.awt.Color;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.*;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
@@ -199,7 +202,10 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     /**
-     *
+     * TODO:
+     * - split in multiple tests (?)
+     * - investigate the single unit sugars
+     * - get CNPs of certain examples for Maria (see Google doc), check these CNPs with the online COCONUT!
      */
     @Ignore
     @Test
@@ -249,6 +255,10 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         Logger.getLogger("").addHandler(tmpLogFileHandler);
         Logger.getLogger("").setLevel(Level.WARNING);
         //</editor-fold>
+
+        NumberFormat tmpRatioOutputFormat = NumberFormat.getInstance(Locale.US);
+        tmpRatioOutputFormat.setMaximumFractionDigits(1);
+        tmpRatioOutputFormat.setRoundingMode(RoundingMode.DOWN);
 
         //Done for reproducibility
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
@@ -677,7 +687,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         int tmpExocyclicOxygenAtomsCount = this.getAttachedOxygenAtomCount(tmpCandidate, tmpMoleculeClone);
                         double tmpAttachedOxygensToAtomsInRingRatio =
                                 ((double) tmpExocyclicOxygenAtomsCount / (double) tmpRingSize);
-                        String tmpRoundedRatio = String.format("%.1f", tmpAttachedOxygensToAtomsInRingRatio);
+                        //note: the ratios are not rounded, the remaining decimals are neglected, which is correct here
+                        // because the respective setting is a threshold
+                        String tmpRoundedRatio = tmpRatioOutputFormat.format(tmpAttachedOxygensToAtomsInRingRatio);
                         if (!tmpFrequenciesOfAttachedExocyclicOxygenAtomsRatiosMap.containsKey(tmpRoundedRatio)) {
                             tmpFrequenciesOfAttachedExocyclicOxygenAtomsRatiosMap.put(tmpRoundedRatio, 1);
                         } else {
@@ -1918,6 +1930,10 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpMol.addAtom(tmpAtom);
         tmpMol.addAtom(tmpAtom);
         System.out.println(tmpMol.getAtomCount());
+        NumberFormat df = NumberFormat.getInstance(Locale.US);
+        df.setMaximumFractionDigits(1);
+        df.setRoundingMode(RoundingMode.DOWN);
+        System.out.println(df.format(4.99));
     }
 
     @Test
