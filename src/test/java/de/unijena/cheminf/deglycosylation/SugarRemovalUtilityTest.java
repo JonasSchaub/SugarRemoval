@@ -163,25 +163,25 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 tmpSmilesCode = tmpCurrentDoc.getString("clean_smiles");
                 tmpMolecule = tmpSmiPar.parseSmiles(tmpSmilesCode);
                 tmpMolecule.setTitle(tmpID);
-                tmpMolecule = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpMolecule, true);
-                if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY) == true) {
-                    //tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
-                    //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
+                IAtomContainer tmpDeglycosylatedClone = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpMolecule, true);
+                if ((boolean)tmpDeglycosylatedClone.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY) == true) {
+                    //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
+                    //tmpDepictionGenerator.depict(tmpDeglycosylatedClone).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
                     tmpSugarContainingMoleculesCounter++;
-                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true) {
+                    if ((boolean)tmpDeglycosylatedClone.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true) {
                         tmpContainsCircularSugarsCounter++;
                     }
-                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
-                        //tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
-                        //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
+                    if ((boolean)tmpDeglycosylatedClone.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
+                        //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
+                        //tmpDepictionGenerator.depict(tmpDeglycosylatedClone).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
                         tmpContainsLinearSugarsCounter++;
                     }
-                    /*if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true
-                    && (boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
-                        //tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
-                        //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
+                    /*if ((boolean)tmpDeglycosylatedClone.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true
+                    && (boolean)tmpDeglycosylatedClone.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
+                        //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
+                        //tmpDepictionGenerator.depict(tmpDeglycosylatedClone).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
                     }*/
-                    if (tmpMolecule.isEmpty()) {
+                    if (tmpDeglycosylatedClone.isEmpty()) {
                         tmpBasicallyASugarCounter++;
                     }
                 }
@@ -203,9 +203,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
     /**
      * TODO:
-     * - split in multiple tests (?)
-     * - investigate the single unit sugars
-     * - get CNPs of certain examples for Maria (see Google doc), check these CNPs with the online COCONUT!
+     * - split in multiple tests (?) or introduce more editor folds?
+     * - get inchi keys of certain examples for Maria (see Google doc)
      */
     @Ignore
     @Test
@@ -259,6 +258,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         NumberFormat tmpRatioOutputFormat = NumberFormat.getInstance(Locale.US);
         tmpRatioOutputFormat.setMaximumFractionDigits(1);
         tmpRatioOutputFormat.setRoundingMode(RoundingMode.DOWN);
+
+        DepictionGenerator tmpDepictionGenerator = new DepictionGenerator();
+        //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
 
         //Done for reproducibility
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
@@ -631,6 +633,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         tmpBasicallyASugarCounter++;
                         tmpBasicallyASugarCNPs.add(tmpID);
 
+                        //TODO: replace this with counting the removed and returned moieties! And then check whether the numbers add up now
                         int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpMolecule.clone());
 
                         if (tmpNumberOfMoieties == 1) {
@@ -819,6 +822,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println("Non-terminal linear sugar containing molecules counter: " + tmpHasNonTerminalLinearSugarsCounter);
         System.out.println("Only non-terminal linear sugar containing molecules counter: " + tmpHasOnlyNonTerminalLinearSugarsCounter);
         System.out.println("Terminal and non-terminal linear sugar containing molecules counter: " + tmpHasTerminalAndNonTerminalLinearSugarsCounter);
+        //System.out.println(tmpHasTerminalAndNonTerminalLinearSugarsCNPs);
         System.out.println("Linear sugar moieties in rings containing molecules counter: " + tmpHasLinearSugarsInRingCounter);
         System.out.println();
         System.out.println("Detected linear sugar moieties counter: " + tmpLinearSugarMoietiesCounter);
@@ -921,9 +925,13 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println("Number of detected linear sugars in rings that are actually part of a circular sugar, not a " +
                 "macrocycle counter: " + tmpLinearSugarsDetectedInCircularSugarsCounter);
         System.out.println();
+
+        //tmpBasicallyASingleSugarUnitCNPs.removeAll(tmpBasicallyASingleCircularSugarCNPs);
+        //tmpBasicallyASingleSugarUnitCNPs.removeAll(tmpBasicallyASingleLinearSugarCNPs);
         //Example print out of CNP list elements:
         //System.out.println("These molecules are basically sugars:");
         //System.out.println(Arrays.toString(tmpBasicallyASingleSugarUnitCNPs.toArray()));
+        //System.out.println(tmpBasicallyASingleSugarUnitCNPs);
 
         tmpCursor.close();
 
@@ -1848,6 +1856,63 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSmilesCode);
         // only the terminal circular sugar moiety is removed
         Assert.assertEquals("O=C(O)CC(O)(C)CC(=O)OCC1=CC=C(OC2C(O)C(O)C(OC(C(=O)OCC3=CC=C(O)C=C3)C(O)(C(=O)OC4C(=O)C5=C(O)C6=C(O)C(=C(O)C=C6C=C5CC4)C)CC(C)C)OC2CO)C=C1", tmpSmilesCode);
+    }
+
+    /**
+     * TODO: have a detailed look at the five molecules that get detected as basically a single sugar unit but as
+     * either a single linear or circular sugar!
+     */
+    @Test
+    public void debuggingBasicallyASingleSugarUnitTest() throws Exception {
+        HashMap<String, String> tmpCNPtoSMILESmap = new HashMap<>(6, 0.9f);
+        tmpCNPtoSMILESmap.put("CNP0017323", "OC1(OCCC21OC3(O)CCOC3(O2)C)C");
+        tmpCNPtoSMILESmap.put("CNP0121254", "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O");
+        tmpCNPtoSMILESmap.put("CNP0185588", "OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N");
+        tmpCNPtoSMILESmap.put("CNP0309652", "OCC1OC2(OC3C(O)C(OC3(OC2)CO)CO)C(O)C1O");
+        tmpCNPtoSMILESmap.put("CNP0344838", "OCC1OC2(OCC3OC(OC2)(CO)C(O)C3O)C(O)C1O");
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Canonical);
+        for (String tmpCNP : tmpCNPtoSMILESmap.keySet()) {
+            IAtomContainer tmpMolecule = tmpSmiPar.parseSmiles(tmpCNPtoSMILESmap.get(tmpCNP));
+            System.out.println(tmpCNP);
+            System.out.println("Number of sugar moieties: " + tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpMolecule));
+            System.out.println("Number of circular sugar moieties: " + tmpSugarRemovalUtil.getNumberOfCircularSugars(tmpMolecule));
+            System.out.println("Number of linear moieties: " + tmpSugarRemovalUtil.getNumberOfLinearSugars(tmpMolecule));
+            //IAtomContainer tmpDeglycosylatedClone = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpMolecule, true);
+            List<IAtomContainer> tmpSugarMoietiesList = tmpSugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpMolecule, true);
+            IAtomContainer tmpDeglycosylatedClone = tmpSugarMoietiesList.get(0);
+            System.out.println(tmpSugarMoietiesList.size());
+            for (IAtomContainer tmpMoiety : tmpSugarMoietiesList) {
+                System.out.println(tmpSmiGen.create(tmpMoiety));
+            }
+            if (tmpDeglycosylatedClone.isEmpty()) {
+                System.out.println("Deglycosylated clone is empty");
+                int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpMolecule.clone());
+                if (tmpNumberOfMoieties == 1) {
+                    System.out.println("Number of sugar moieties is 1");
+                }
+            }
+            IAtomContainer tmpCircularDeglycosylatedClone = tmpSugarRemovalUtil.removeCircularSugars(tmpMolecule, true);
+            System.out.println(tmpSmiGen.create(tmpCircularDeglycosylatedClone));
+            if (tmpCircularDeglycosylatedClone.isEmpty()) {
+                System.out.println("Circular deglycosylated clone is empty");
+                int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfCircularSugars(tmpMolecule.clone());
+                if (tmpNumberOfMoieties == 1) {
+                    System.out.println("Number of circular sugar moieties is 1");
+                }
+            }
+            IAtomContainer tmpLinearDeglycosylatedClone = tmpSugarRemovalUtil.removeLinearSugars(tmpCircularDeglycosylatedClone, true);
+            System.out.println(tmpSmiGen.create(tmpLinearDeglycosylatedClone));
+            if (tmpLinearDeglycosylatedClone.isEmpty()) {
+                System.out.println("Linear deglycosylated clone is empty");
+                int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfLinearSugars(tmpMolecule);
+                if (tmpNumberOfMoieties == 1) {
+                    System.out.println("Number of linear sugar moieties is 1");
+                }
+            }
+            System.out.println();
+        }
     }
     //</editor-fold>
 

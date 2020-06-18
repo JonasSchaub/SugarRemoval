@@ -26,14 +26,17 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
- * - filter out every atom in a linear sugar candidate that belongs to a circular sugar? To reduce the false-positives
- * for the linear sugars in rings
+ * - filter out spiro rings in the circular sugar detection?
+ * - filter out every atom in a linear sugar candidate that belongs to a circular sugar (not reject the whole candidate)?
+ * To reduce the false-positives for the linear sugars in rings
+ * - filter out every atom in a linear sugar candidate that belongs to a cycle (not reject the whole candidate)?
+ * To reduce the false-negatives for linear sugars that are connected to rings
  * - add methods to configure the linear and circular sugar patterns (remove one specific)
+ *
  * - Linear sugar detection/removal:
  *      - discuss the two options for generation of non-overlapping matches
  *      - discuss the two options for treating candidates containing circular sugars
  *      - discuss the two options for treating linear sugars in larger rings (if they should not be removed)
- *      - try combination "combining overlapping candidates" + "only not remove the circular atoms if the option is set"
  *
  *      - think about where to also filter linear sugar patterns for min and max size
  *
@@ -1205,7 +1208,7 @@ public class SugarRemovalUtility {
         }
         List<IAtomContainer> tmpCircularSugarCandidates = this.getCircularSugarCandidates(aMolecule);
         List<IAtomContainer> tmpLinearSugarCandidates = this.getLinearSugarCandidates(aMolecule);
-        int tmpSize = tmpCircularSugarCandidates.size() + tmpLinearSugarCandidates.size();
+        int tmpSize = (tmpCircularSugarCandidates.size() + tmpLinearSugarCandidates.size());
         return tmpSize;
     }
 
@@ -1570,6 +1573,16 @@ public class SugarRemovalUtility {
             //note: this has to be done stepwise because linear and circular sugar candidates can overlap
             //throws NullPointerException if molecule is null
             List<IAtomContainer> tmpCircularSugarCandidates = this.getCircularSugarCandidates(tmpNewMolecule);
+            if (this.setPropertyOfSugarContainingMolecules) {
+                //note: this test for presence of linear sugars has to be done here because some might be detected as part
+                // circular sugars, but has to be redone later to not remove anything that is not there anymore. This is
+                // important to set the 'contains linear sugar' property correctly.
+                //throws NullPointerException if molecule is null
+                List<IAtomContainer> tmpLinearSugarCandidates = this.getLinearSugarCandidates(tmpNewMolecule);
+                if (!tmpLinearSugarCandidates.isEmpty() && !tmpContainsLinearSugars) {
+                    tmpContainsLinearSugars = true;
+                }
+            }
             boolean tmpCandidateListIsNotEmpty = !tmpCircularSugarCandidates.isEmpty();
             List<IAtomContainer> tmpRemovedCircularSugarMoieties = new ArrayList<>(0);
             if (tmpCandidateListIsNotEmpty) {
@@ -1603,8 +1616,6 @@ public class SugarRemovalUtility {
                 break;
             }
             if (this.removeOnlyTerminal) {
-                int tmpCircularSugarCandidatesSizeAfterRemoval = tmpCircularSugarCandidates.size();
-                int tmpLinearSugarCandidatesSizeAfterRemoval = tmpLinearSugarCandidates.size();
                 boolean tmpSomethingWasRemoved = ((!tmpRemovedCircularSugarMoieties.isEmpty())
                         || (!tmpRemovedLinearSugarMoieties.isEmpty()));
                 if (!tmpSomethingWasRemoved) {
@@ -1613,6 +1624,7 @@ public class SugarRemovalUtility {
                     break;
                 }
             } else {
+                //if all moieties are to be removed, not only the terminal ones, one iteration is enough
                 break;
             }
         }
