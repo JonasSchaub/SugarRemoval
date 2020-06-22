@@ -982,7 +982,7 @@ public class SugarRemovalUtility {
      *
      * @param aBoolean true, if the linear sugar structures that are part of a ring should be removed
      */
-    public void setRemoveLinearSugarsInRing(boolean aBoolean) {
+    public void setRemoveLinearSugarsInRings(boolean aBoolean) {
         this.removeLinearSugarsInRing = aBoolean;
     }
 
@@ -1770,20 +1770,28 @@ public class SugarRemovalUtility {
             //*Debugging*
             //this.printAllMolsAsSmiles(tmpSugarCandidates);
 
-            this.removeCandidatesContainingCircularSugars(tmpSugarCandidates, aMolecule);
-            //alternative: tmpSugarCandidates = this.removeCircularSugarsFromCandidates(tmpSugarCandidates);
+            //this.removeCandidatesContainingCircularSugars(tmpSugarCandidates, aMolecule);
+            //alternative: this.removeCircularSugarsFromCandidates(tmpSugarCandidates, aMolecule);
+            //alternative:
+            this.removeAtomsOfCircularSugarsFromCandidates(tmpSugarCandidates, aMolecule);
 
             //*Debugging*
             //this.printAllMolsAsSmiles(tmpSugarCandidates);
 
-            tmpSugarCandidates = this.removeTooSmallAndTooLargeCandidates(tmpSugarCandidates);
+        }
+        if (!this.removeLinearSugarsInRing && !tmpSugarCandidates.isEmpty()) {
+            //this.removeSugarCandidatesWithCyclicAtoms(tmpSugarCandidates, aMolecule);
+            //alternative:
+            this.removeCyclicAtomsFromSugarCandidates(tmpSugarCandidates, aMolecule);
 
             //*Debugging*
             //this.printAllMolsAsSmiles(tmpSugarCandidates);
         }
-        if (!this.removeLinearSugarsInRing && !tmpSugarCandidates.isEmpty()) {
-            this.removeSugarCandidatesWithCyclicAtoms(tmpSugarCandidates, aMolecule);
-            //alternative: tmpSugarCandidates = this.removeCyclicAtomsFromSugarCandidates(tmpSugarCandidates, tmpNewMolecule);
+        if (!tmpSugarCandidates.isEmpty()) {
+            tmpSugarCandidates = this.removeTooSmallAndTooLargeCandidates(tmpSugarCandidates);
+
+            //*Debugging*
+            //this.printAllMolsAsSmiles(tmpSugarCandidates);
         }
         return tmpSugarCandidates;
     }
@@ -2362,11 +2370,46 @@ public class SugarRemovalUtility {
             return new ArrayList<IAtomContainer>(0);
         }
         List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpIsolatedRings.size());
-        for(IAtomContainer tmpReferenceRing : this.ringSugars) {
-            for (IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
-                if (Objects.isNull(tmpIsolatedRing) || tmpIsolatedRing.isEmpty()) {
-                    continue;
+        //***Filtering spiro rings***
+        List<IAtomContainer> tmpRingFragments = tmpRingSearch.isolatedRingFragments();
+        tmpRingFragments.addAll(tmpRingSearch.fusedRingFragments());
+        HashMap<String, Boolean> tmpRingIdentifierToIsFusedOrSpiroMap = new HashMap(tmpRingFragments.size(), 1.0f);
+        HashMap<Integer, Set<String>> tmpAtomIDToRingIDMap = new HashMap(tmpRingFragments.size() * 6, 0.9f);
+        for (IAtomContainer tmpRing : tmpRingFragments) {
+            String tmpRingID = this.createSubstructureIdentifier(tmpRing);
+            tmpRingIdentifierToIsFusedOrSpiroMap.put(tmpRingID, false);
+            for (IAtom tmpAtom : tmpRing.atoms()) {
+                int tmpAtomID = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                if (!tmpAtomIDToRingIDMap.containsKey(tmpAtomID)) {
+                    HashSet<String> tmpRingIDSet = new HashSet<>(5, 0.9f);
+                    tmpRingIDSet.add(tmpRingID);
+                    tmpAtomIDToRingIDMap.put(tmpAtomID, tmpRingIDSet);
+                } else {
+                    tmpRingIdentifierToIsFusedOrSpiroMap.put(tmpRingID, true);
+                    Set<String> tmpRingIDSet = tmpAtomIDToRingIDMap.get(tmpAtomID);
+                    if (!tmpRingIDSet.contains(tmpRingID)) {
+                        tmpRingIDSet.add(tmpRingID);
+                    }
                 }
+            }
+        }
+        //***Filtering spiro rings***|
+        for (IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
+            if (Objects.isNull(tmpIsolatedRing) || tmpIsolatedRing.isEmpty()) {
+                continue;
+            }
+            //***Filtering spiro rings***
+            String tmpRingID = this.createSubstructureIdentifier(tmpIsolatedRing);
+            if (tmpRingIdentifierToIsFusedOrSpiroMap.get(tmpRingID)) {
+                continue;
+            }
+            //***Filtering spiro rings***|
+            boolean tmpAreAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(tmpIsolatedRing, aMolecule);
+            if (!tmpAreAllExocyclicBondsSingle) {
+                //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
+                continue;
+            }
+            for (IAtomContainer tmpReferenceRing : this.ringSugars) {
                 boolean tmpIsIsomorph = false;
                 UniversalIsomorphismTester tmpUnivIsoTester = new UniversalIsomorphismTester();
                 try {
@@ -2379,11 +2422,8 @@ public class SugarRemovalUtility {
                     /*note: another requirement of a suspected sugar ring is that it contains only single bonds.
                      * This is not tested here because all the structures in the reference rings do meet this criterion.
                      * But a structure that does not meet this criterion could be added to the references by the user.*/
-                    //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
-                    boolean tmpAreAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(tmpIsolatedRing, aMolecule);
-                    if (tmpAreAllExocyclicBondsSingle) {
-                        tmpSugarCandidates.add(tmpIsolatedRing);
-                    }
+                    tmpSugarCandidates.add(tmpIsolatedRing);
+                    break;
                 }
             }
         }
@@ -2852,6 +2892,78 @@ public class SugarRemovalUtility {
                         break;
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * TODO
+     * @param aCandidateList
+     * @param aParentMolecule
+     * @throws NullPointerException
+     */
+    protected void removeAtomsOfCircularSugarsFromCandidates(List<IAtomContainer> aCandidateList,
+                                                            IAtomContainer aParentMolecule)
+            throws NullPointerException {
+        //<editor-fold desc="Checks">
+        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
+        if (aCandidateList.isEmpty()) {
+            return;
+        }
+        Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
+        /*boolean tmpAreIndicesSet = this.checkUniqueIndicesOfAtoms(aSubstructure);
+        if (!tmpAreIndicesSet) {
+            throw new IllegalArgumentException("This method requires that every atom has a unique index.");
+        }*/
+        //</editor-fold>
+        // generating set of atom ids of atoms that are part of the circular sugars in the molecule
+        List<IAtomContainer> tmpPotentialSugarRingsParent = this.getPotentialSugarCycles(aParentMolecule);
+        // nothing to process
+        if (tmpPotentialSugarRingsParent.isEmpty()) {
+            return;
+        }
+        HashSet<Integer> tmpCircularSugarAtomIDSet = new HashSet<>(tmpPotentialSugarRingsParent.size() * 7, 0.9f);
+        for (IAtomContainer tmpCircularSugarCandidate : tmpPotentialSugarRingsParent) {
+            for (IAtom tmpAtom : tmpCircularSugarCandidate.atoms()) {
+                int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                if (!tmpCircularSugarAtomIDSet.contains(tmpAtomIndex)) {
+                    tmpCircularSugarAtomIDSet.add(tmpAtomIndex);
+                }
+            }
+        }
+        // iterating over candidates
+        for (int i = 0; i < aCandidateList.size(); i++) {
+            IAtomContainer tmpCandidate = aCandidateList.get(i);
+            if (Objects.isNull(tmpCandidate)) {
+                aCandidateList.remove(i);
+                //The removal shifts the remaining indices!
+                i = i - 1;
+                continue;
+            }
+            for (IAtom tmpCandidateAtom : tmpCandidate.atoms()) {
+                int tmpAtomIndex = tmpCandidateAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                if (tmpCircularSugarAtomIDSet.contains(tmpAtomIndex)) {
+                    if (tmpCandidate.contains(tmpCandidateAtom)) {
+                        tmpCandidate.removeAtom(tmpCandidateAtom);
+                    }
+                }
+            }
+            //remove the candidate if it is empty after removal of cycles
+            if (tmpCandidate.isEmpty()) {
+                aCandidateList.remove(i);
+                i = i - 1;
+                continue;
+            }
+            //if the candidate got unconnected by the removal of cycles, split the parts in separate candidates
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
+            if (!tmpIsConnected) {
+                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
+                for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+                    aCandidateList.add(tmpComponent);
+                }
+                aCandidateList.remove(i);
+                i = i - 1;
+                continue;
             }
         }
     }

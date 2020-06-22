@@ -72,7 +72,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.RoundingMode;
-import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.*;
 import java.util.logging.FileHandler;
@@ -202,9 +201,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     /**
-     * TODO:
-     * - split in multiple tests (?) or introduce more editor folds?
-     * - get inchi keys of certain examples for Maria (see Google doc)
+     * TODO
      */
     @Ignore
     @Test
@@ -270,6 +267,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         String tmpSmilesCode = "";
         IAtomContainer tmpMolecule = null;
 
+        //<editor-fold desc="Counter and map definitions">
         int tmpMoleculesCounter = 0;
         int tmpExceptionsCounter = 0;
         int tmpHasAnyTypeOfSugarsCounter = 0;
@@ -360,13 +358,15 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         int tmpUnexpectedRingSizeCounter = 0;
 
         int tmpLinearSugarsDetectedInCircularSugarsCounter = 0;
+        //</editor-fold>
 
+        //<editor-fold desc="Iteration of molecules">
         while (tmpCursor.hasNext()) {
             try {
 
                 tmpCurrentDoc = tmpCursor.next();
                 tmpMoleculesCounter++;
-                tmpID = tmpCurrentDoc.getString("coconut_id");
+                tmpID = tmpCurrentDoc.getString("inchikey"); //coconut_id
                 tmpSmilesCode = tmpCurrentDoc.getString("clean_smiles");
                 tmpMolecule = tmpSmiPar.parseSmiles(tmpSmilesCode);
                 tmpMolecule.setTitle(tmpID);
@@ -393,6 +393,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
                     if (tmpHasAnyCircularSugar) {
 
+                        //<editor-fold desc="Analysis of molecules having circular sugars">
                         tmpHasCircularSugarsCounter++;
                         tmpHasCircularSugarsCNPs.add(tmpID);
 
@@ -522,9 +523,11 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                             }
 
                         }
+                        //</editor-fold>
 
                     }
 
+                    //<editor-fold desc="Analysis of molecules having linear sugars">
                     if (tmpHasAnyLinearSugar) {
 
                         tmpHasLinearSugarsCounter++;
@@ -619,22 +622,26 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         }
 
                     }
+                    //</editor-fold>
 
                     if (tmpHasAnyCircularSugar && tmpHasAnyLinearSugar) {
                         tmpHasCircularAndLinearSugarsCounter++;
                         tmpHasCircularAndLinearSugarsCNPs.add(tmpID);
                     }
 
+                    //<editor-fold desc="Analysis of molecules that are basically sugars">
                     //removes only terminal moieties but that is correct here
-                    IAtomContainer tmpDeglycosylatedClone = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpMolecule, true);
+                    List<IAtomContainer> tmpDeglycosylatedCloneAndRemovedSugarMoietiesList =
+                            tmpSugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpMolecule, true);
+                    IAtomContainer tmpDeglycosylatedClone = tmpDeglycosylatedCloneAndRemovedSugarMoietiesList.get(0);
 
                     if (tmpDeglycosylatedClone.isEmpty()) {
 
                         tmpBasicallyASugarCounter++;
                         tmpBasicallyASugarCNPs.add(tmpID);
 
-                        //TODO: replace this with counting the removed and returned moieties! And then check whether the numbers add up now
-                        int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpMolecule.clone());
+                        //note: it is important to count the actually removed moieties here, not the detected ones!
+                        int tmpNumberOfMoieties = tmpDeglycosylatedCloneAndRemovedSugarMoietiesList.size() - 1;
 
                         if (tmpNumberOfMoieties == 1) {
                             tmpBasicallyASingleSugarUnitCounter++;
@@ -674,12 +681,14 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         }
 
                     }
+                    //</editor-fold>
 
                 } else {
                     tmpHasNoSugarsCounter++;
                     //tmpHasNoSugarsCNPs.add(tmpID);
                 }
 
+                //<editor-fold desc="Analysis of all possible sugar rings and their exocyclic oxygen counts">
                 //leaving default settings!
                 tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(false);
                 IAtomContainer tmpMoleculeClone = tmpMolecule.clone();
@@ -732,14 +741,19 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 }
                 //back to default settings!
                 tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
+                //</editor-fold>
 
+                //<editor-fold desc="Analysis of linear sugars in rings">
                 //leaving default settings!
-                tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+                tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
                 IAtomContainer tmpNewClone = tmpMolecule.clone();
                 List<IAtomContainer> tmpLinearCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpNewClone);
                 int tmpListSizeWithCandidatesInCycles = tmpLinearCandidates.size();
                 if (tmpListSizeWithCandidatesInCycles > 0) {
-                    this.removeSugarCandidatesWithCyclicAtoms(tmpLinearCandidates, tmpNewClone);
+                    //this.removeSugarCandidatesWithCyclicAtoms(tmpLinearCandidates, tmpNewClone);
+                    tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(false);
+                    tmpLinearCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpNewClone);
+                    tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
                     int tmpListSizeWithoutCandidatesInCycles = tmpLinearCandidates.size();
                     int tmpNumberOfLinearSugarsInCycles = tmpListSizeWithCandidatesInCycles - tmpListSizeWithoutCandidatesInCycles;
                     if (tmpNumberOfLinearSugarsInCycles > 0) {
@@ -752,7 +766,10 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                     tmpSugarRemovalUtil.removeCircularSugars(tmpNewClone, false);
                     tmpLinearCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpNewClone);
                     tmpListSizeWithCandidatesInCycles = tmpLinearCandidates.size();
-                    this.removeSugarCandidatesWithCyclicAtoms(tmpLinearCandidates, tmpNewClone);
+                    //this.removeSugarCandidatesWithCyclicAtoms(tmpLinearCandidates, tmpNewClone);
+                    tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(false);
+                    tmpLinearCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpNewClone);
+                    tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
                     tmpListSizeWithoutCandidatesInCycles = tmpLinearCandidates.size();
                     int tmpNumberOfLinearSugarsInCyclesWithoutCircularSugars = tmpListSizeWithCandidatesInCycles - tmpListSizeWithoutCandidatesInCycles;
                     int tmpLinearSugarsThatWereDetectedInCircularSugars = tmpNumberOfLinearSugarsInCycles - tmpNumberOfLinearSugarsInCyclesWithoutCircularSugars;
@@ -761,7 +778,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                     tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(true);
                 }
                 //back to default settings!
-                tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
+                tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(false);
+                //</editor-fold>
 
             } catch (Exception anException) {
                 tmpLogger.log(Level.SEVERE, anException.toString() + " ID: " + tmpID, anException);
@@ -769,7 +787,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
             }
 
         } //end of while()
+        //</editor-fold>
 
+        //<editor-fold desc="Printout">
         System.out.println();
         System.out.println("Done.");
         System.out.println("Exceptions counter: " + tmpExceptionsCounter);
@@ -822,7 +842,6 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println("Non-terminal linear sugar containing molecules counter: " + tmpHasNonTerminalLinearSugarsCounter);
         System.out.println("Only non-terminal linear sugar containing molecules counter: " + tmpHasOnlyNonTerminalLinearSugarsCounter);
         System.out.println("Terminal and non-terminal linear sugar containing molecules counter: " + tmpHasTerminalAndNonTerminalLinearSugarsCounter);
-        //System.out.println(tmpHasTerminalAndNonTerminalLinearSugarsCNPs);
         System.out.println("Linear sugar moieties in rings containing molecules counter: " + tmpHasLinearSugarsInRingCounter);
         System.out.println();
         System.out.println("Detected linear sugar moieties counter: " + tmpLinearSugarMoietiesCounter);
@@ -833,8 +852,6 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println("Molecules containing both circular and linear sugars counter: " + tmpHasCircularAndLinearSugarsCounter);
         System.out.println();
         System.out.println("Basically a sugar counter: " + tmpBasicallyASugarCounter);
-        //TODO: tmpBasicallyASingleCircularSugarCounter and tmpBasicallyASingleLinearSugarCounter should add up to
-        // tmpBasicallyASingleSugarUnitCounter, right? They do not seem to do that!
         System.out.println("Basically a single sugar unit counter: " + tmpBasicallyASingleSugarUnitCounter);
         System.out.println("Basically a circular sugar counter: " + tmpBasicallyACircularSugarCounter);
         System.out.println("Basically a single circular sugar counter: " + tmpBasicallyASingleCircularSugarCounter);
@@ -922,19 +939,19 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println();
         System.out.println("Number of circular sugar moieties that had an unexpected ring size (should be zero!): " + tmpUnexpectedRingSizeCounter);
         System.out.println();
-        System.out.println("Number of detected linear sugars in rings that are actually part of a circular sugar, not a " +
-                "macrocycle counter: " + tmpLinearSugarsDetectedInCircularSugarsCounter);
+        System.out.println("Number of detected linear sugars in rings that got lost through the removal of circular " +
+                "sugars counter: " + tmpLinearSugarsDetectedInCircularSugarsCounter);
         System.out.println();
 
-        //tmpBasicallyASingleSugarUnitCNPs.removeAll(tmpBasicallyASingleCircularSugarCNPs);
-        //tmpBasicallyASingleSugarUnitCNPs.removeAll(tmpBasicallyASingleLinearSugarCNPs);
         //Example print out of CNP list elements:
         //System.out.println("These molecules are basically sugars:");
         //System.out.println(Arrays.toString(tmpBasicallyASingleSugarUnitCNPs.toArray()));
-        //System.out.println(tmpBasicallyASingleSugarUnitCNPs);
+        //System.out.println(tmpBasicallyASingleSugarUnitCNPs); //shorter alternative
+        //</editor-fold>
 
         tmpCursor.close();
 
+        //<editor-fold desc="Tests for consistency">
         Assert.assertEquals(tmpMoleculesCounter, tmpHasNoSugarsCounter + tmpHasAnyTypeOfSugarsCounter);
         Assert.assertEquals(tmpHasAnyTypeOfSugarsCounter, tmpHasOnlyCircularSugarsCounter
                 + tmpHasOnlyLinearSugarsCounter
@@ -957,6 +974,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         Assert.assertEquals(tmpCircularSugarMoietiesCounter, tmpTotalOfCircularSugars);
         Assert.assertEquals(tmpLinearSugarMoietiesCounter, tmpTotalOfLinearSugars1);
         Assert.assertEquals(tmpLinearSugarMoietiesCounter, tmpTotalOfLinearSugars2);
+        Assert.assertEquals(tmpBasicallyASingleSugarUnitCounter,
+                tmpBasicallyASingleCircularSugarCounter + tmpBasicallyASingleLinearSugarCounter);
+        //</editor-fold>
     }
 
     /**
@@ -1285,7 +1305,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //There is a structure at the center of the molecule that matches some of the linear sugar patterns (or did before)
         // but it should not be detected as a linear sugar and not be removed.
         Assert.assertEquals("O=C1OC2C(CCO)CCC3(C=C4C=CCC5C(C=CC(C45)C23)CCCC(C)(CC6=CC=C(N)[NH+]=C6)CC=7C=CC=C8C(=O)C9(OC19C(=O)C87)CC(=C(C)CC%10C%11=CC=[NH+]C=%12NC(NC)CC(C%12%11)CC%10)CO)NCC", tmpSmilesCode);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1343,7 +1363,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSmilesCode);
         //Nothing should be removed here because the linear sugar in the macrocycle is not detected and it would not be terminal
         Assert.assertEquals("O=C(O)C12OC(OC3=CC=4OCC5C6=C(OC5C4C(=C3)C7=CC=CC(O)=C7)C(OC)=C(OC)C=C6CNC)(CO)C(O)C(O)(NCC1NC)C2O", tmpSmilesCode);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
         Assert.assertTrue(tmpSugarRemovalUtil.hasLinearSugars(tmpOriginalMolecule));
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
@@ -1377,7 +1397,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //Nothing should be removed here because the circular sugar is not terminal
         Assert.assertEquals("O=C(O)C1OC(OC=2C=CC=3C(=O)[C-](C=[O+]C3C2)C4=CC=C(O)C=C4)C(O)(CNCC(CC=5C=N[CH+]C5)C(C)C)C(O)C1O", tmpSmilesCode);
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(false);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1446,7 +1466,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSmilesCode);
         //Nothing should be removed here although there is a match for the linear sugar patterns in the said non-isolated sugar cycle in the macrocycle
         Assert.assertEquals("O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO", tmpSmilesCode);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1748,7 +1768,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSmilesCode);
         //the sugar ring within the macrocycle can be matched by the linear sugar patterns but should not be removed
         Assert.assertEquals("O=C(OCC)CCC1=CC=2C=COC2C=3OCCNCC4(SSCC5(OC(OC31)C(O)C(O)C5O)CO)CCCC4", tmpSmilesCode);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1776,7 +1796,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSmilesCode);
         //Again, nothing is removed because the linear sugar is non-terminal AND contained in a macrocycle
         Assert.assertEquals("O=C1OC2CC3(OC(CCC3)CC(O)CC)OC(CC4(O)OC(C)(C)CC4C=CCCCCCC(O)(C)C(O)C(OC5OC(C)C(N(C)C)CC5)C(O)C(C)C(O)C(O)(C=C1)C)C2C", tmpSmilesCode);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1796,7 +1816,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(false);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C"); //CNP0000225 in COCOCNUTfebruary20
         List<IAtomContainer> tmpRemovedSugars = tmpSugarRemovalUtil.removeAndReturnLinearSugars(tmpOriginalMolecule, true);
@@ -1859,7 +1879,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     /**
-     * TODO: have a detailed look at the five molecules that get detected as basically a single sugar unit but as
+     * have a detailed look at the five molecules that get detected as basically a single sugar unit but as
      * either a single linear or circular sugar!
      */
     @Test
@@ -2091,7 +2111,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(true);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
         //Interesting case because there is a macrocycle containing a sugar cycle that is not isolated
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO"); //CNP0000509 in COCONUTfebruary20
         List<IAtomContainer> tmpCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpOriginalMolecule);
@@ -2121,7 +2141,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpSugarRemovalUtil.setStructuresToKeepThreshold(5);
         tmpSugarRemovalUtil.setIncludeNrOfAttachedOxygens(true);
         tmpSugarRemovalUtil.setAttachedOxygensToAtomsInRingRatioThreshold(0.5);
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRing(false);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(false);
         tmpSugarRemovalUtil.setLinearSugarCandidateMinSize(4);
         tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
         tmpSugarRemovalUtil.setDetectLinearAcidicSugars(false);
