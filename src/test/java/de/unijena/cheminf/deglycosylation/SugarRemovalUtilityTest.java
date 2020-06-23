@@ -547,6 +547,10 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
                         tmpNumberOfLinearSugarMoieties = tmpLinearSugarCandidatesList.size();
 
+                        if (tmpNumberOfLinearSugarMoieties > 1) {
+                            tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
+                        }
+
                         //the first is the overall counter, the second one is specific for this molecule
                         tmpLinearSugarMoietiesCounter += tmpNumberOfLinearSugarMoieties;
 
@@ -2111,21 +2115,26 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
-        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(false);
         //Interesting case because there is a macrocycle containing a sugar cycle that is not isolated
-        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO"); //CNP0000509 in COCONUTfebruary20
+        //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO"); //CNP0000509 in COCONUTfebruary20
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)C1=CC(O)C(O)C(OC(=O)C2C(=CC=3C=C(O)C(OC4OC(CO)C(O)C(O)C4O)=CC3C2C5=CC=C(O)C(O)=C5)C(=O)OCC(O)C(O)C(O)C(O)C(O)CO)C1"); //CNP0256712 in COCONUTmay
+        //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O"); //CNP0140380 in COCONUTmay
+        tmpDepictionGenerator.withSize(2000, 2000)
+                .withFillToFit()
+                .depict(tmpOriginalMolecule)
+                .writeTo(tmpOutputFolderPath + File.separator + "Test_original_molecule.png");
         List<IAtomContainer> tmpCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpOriginalMolecule);
+        List<IAtomContainer> tmpToHighlight = new ArrayList<>(tmpCandidates.size());
         for (int i = 0; i < tmpCandidates.size(); i++) {
             IAtomContainer tmpCandidate = tmpCandidates.get(i);
-            List<IAtomContainer> tmpToHighlight = new ArrayList<>(1);
             tmpToHighlight.add(tmpCandidate);
-            tmpDepictionGenerator.withHighlight(tmpToHighlight, Color.BLUE)
-                    .withSize(2000, 2000)
-                    .withFillToFit()
-                    .depict(tmpOriginalMolecule)
-                    .writeTo(tmpOutputFolderPath + File.separator + "Test" + i + ".png");
         }
-
+        tmpDepictionGenerator.withHighlight(tmpToHighlight, Color.BLUE)
+                .withSize(2000, 2000)
+                .withFillToFit()
+                .depict(tmpOriginalMolecule)
+                .writeTo(tmpOutputFolderPath + File.separator + "Test" + ".png");
     }
 
     //<editor-fold desc="Protected methods">

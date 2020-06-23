@@ -2404,11 +2404,6 @@ public class SugarRemovalUtility {
                 continue;
             }
             //***Filtering spiro rings***|
-            boolean tmpAreAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(tmpIsolatedRing, aMolecule);
-            if (!tmpAreAllExocyclicBondsSingle) {
-                //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
-                continue;
-            }
             for (IAtomContainer tmpReferenceRing : this.ringSugars) {
                 boolean tmpIsIsomorph = false;
                 UniversalIsomorphismTester tmpUnivIsoTester = new UniversalIsomorphismTester();
@@ -2422,9 +2417,14 @@ public class SugarRemovalUtility {
                     /*note: another requirement of a suspected sugar ring is that it contains only single bonds.
                      * This is not tested here because all the structures in the reference rings do meet this criterion.
                      * But a structure that does not meet this criterion could be added to the references by the user.*/
+                    boolean tmpAreAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(tmpIsolatedRing, aMolecule);
+                    if (!tmpAreAllExocyclicBondsSingle) {
+                        //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
+                        break;
+                    }
                     tmpSugarCandidates.add(tmpIsolatedRing);
                     break;
-                }
+                } //else {continue;}
             }
         }
         return tmpSugarCandidates;
@@ -3006,6 +3006,17 @@ public class SugarRemovalUtility {
                 aCandidateList.remove(i);
                 //The removal shifts the remaining indices!
                 i = i - 1;
+            }
+            //if the candidate got unconnected by the removal of cycles, split the parts in separate candidates
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
+            if (!tmpIsConnected) {
+                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
+                for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+                    aCandidateList.add(tmpComponent);
+                }
+                aCandidateList.remove(i);
+                i = i - 1;
+                continue;
             }
         }
     }
