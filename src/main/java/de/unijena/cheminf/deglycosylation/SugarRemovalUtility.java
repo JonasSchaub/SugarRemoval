@@ -26,16 +26,17 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
- * - filter out spiro rings in the circular sugar detection?
  * - filter out every atom in a linear sugar candidate that belongs to a circular sugar (not reject the whole candidate)?
- * To reduce the false-positives for the linear sugars in rings
+ * To reduce the false-positives for the linear sugars in rings - done
  * - filter out every atom in a linear sugar candidate that belongs to a cycle (not reject the whole candidate)?
- * To reduce the false-negatives for linear sugars that are connected to rings
+ * To reduce the false-negatives for linear sugars that are connected to rings - done
+ *
+ * - refactor names of options
  * - add methods to configure the linear and circular sugar patterns (remove one specific)
  *
  * - Linear sugar detection/removal:
  *      - discuss the two options for generation of non-overlapping matches
- *      - discuss the two options for treating candidates containing circular sugars
+ *      - discuss the three options for treating candidates containing circular sugars
  *      - discuss the two options for treating linear sugars in larger rings (if they should not be removed)
  *
  *      - think about where to also filter linear sugar patterns for min and max size
@@ -50,7 +51,7 @@ package de.unijena.cheminf.deglycosylation;
  *   for the next matching and so on?
  * - maintain connection info for reconstruction?
  * - replace isomorphism testing with hash codes or the ids for substructures (for better performance)?
- * - include all connected oxygen atoms in the circular sugars?
+ * - include all connected oxygen atoms in the circular sugars? Or at least all hydroxy groups
  */
 
 import org.openscience.cdk.AtomContainer;
@@ -171,6 +172,11 @@ public class SugarRemovalUtility {
     public static final String INDEX_PROPERTY_KEY = "SUGAR_REMOVAL_UTILITY_INDEX";
 
     /**
+     * TODO
+     */
+    public static final String IS_SPIRO_ATOM_PROPERTY_KEY = "IS_SPIRO_ATOM";
+
+    /**
      * Linear sugar structures represented as SMILES codes. An input molecule is scanned for these substructures for
      * the detection of linear sugars.
      */
@@ -287,6 +293,11 @@ public class SugarRemovalUtility {
      * TODO
      */
     public static final boolean DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT = false;
+
+    /**
+     * TODO
+     */
+    public static final boolean DETECT_SPIRO_RINGS_DEFAULT = false;
     //</editor-fold>
 
     /**
@@ -400,6 +411,11 @@ public class SugarRemovalUtility {
      * TODO
      */
     private boolean detectLinearAcidicSugars;
+
+    /**
+     * TODO
+     */
+    private boolean detectSpiroRings;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
@@ -472,6 +488,7 @@ public class SugarRemovalUtility {
         this.linearSugarCandidateMinSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT;
         this.linearSugarCandidateMaxSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT;
         this.detectLinearAcidicSugars = SugarRemovalUtility.DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT;
+        this.detectSpiroRings = SugarRemovalUtility.DETECT_SPIRO_RINGS_DEFAULT;
     }
     //</editor-fold>
     //
@@ -651,6 +668,13 @@ public class SugarRemovalUtility {
      */
     public boolean areLinearAcidicSugarsDetected() {
         return this.detectLinearAcidicSugars;
+    }
+
+    /**
+     * TODO
+     */
+    public boolean areSpiroRingsDetected() {
+        return this.detectSpiroRings;
     }
     //</editor-fold>
     //
@@ -1029,6 +1053,13 @@ public class SugarRemovalUtility {
 
     /**
      * TODO
+     */
+    public void setDetectSpiroRings(boolean aBoolean) {
+        this.detectSpiroRings = aBoolean;
+    }
+
+    /**
+     * TODO
      * Does not restore the circular and linear sugar patterns to default!
      */
     public void restoreDefaultSettings() {
@@ -1044,6 +1075,7 @@ public class SugarRemovalUtility {
         this.linearSugarCandidateMinSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT;
         this.linearSugarCandidateMaxSize = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT;
         this.detectLinearAcidicSugars = SugarRemovalUtility.DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT;
+        this.detectSpiroRings = SugarRemovalUtility.DETECT_SPIRO_RINGS_DEFAULT;
     }
     //</editor-fold>
     //
@@ -2037,6 +2069,14 @@ public class SugarRemovalUtility {
                     if (tmpIsTerminal) {
                         for (IAtom tmpAtom : tmpCandidate.atoms()) {
                             if (aMolecule.contains(tmpAtom)) {
+                                if (this.detectSpiroRings) {
+                                    Boolean tmpAtomIsSpiroAtom = tmpAtom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY);
+                                    if (!Objects.isNull(tmpAtomIsSpiroAtom)) {
+                                        if (tmpAtomIsSpiroAtom) {
+                                            continue;
+                                        }
+                                    }
+                                }
                                 aMolecule.removeAtom(tmpAtom);
                             }
                         }
@@ -2067,6 +2107,14 @@ public class SugarRemovalUtility {
             for (IAtomContainer tmpSugarCandidate : tmpSugarCandidates) {
                 for (IAtom tmpAtom : tmpSugarCandidate.atoms()) {
                     if (aMolecule.contains(tmpAtom)) {
+                        if (this.detectSpiroRings) {
+                            Boolean tmpAtomIsSpiroAtom = tmpAtom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY);
+                            if (!Objects.isNull(tmpAtomIsSpiroAtom)) {
+                                if (tmpAtomIsSpiroAtom) {
+                                    continue;
+                                }
+                            }
+                        }
                         aMolecule.removeAtom(tmpAtom);
                     }
                 }
@@ -2369,41 +2417,53 @@ public class SugarRemovalUtility {
         if (tmpIsolatedRings.isEmpty()) {
             return new ArrayList<IAtomContainer>(0);
         }
-        List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpIsolatedRings.size());
-        //***Filtering spiro rings***
+        //*Iterating through all atoms in rings to identify spiro rings*
         List<IAtomContainer> tmpRingFragments = tmpRingSearch.isolatedRingFragments();
         tmpRingFragments.addAll(tmpRingSearch.fusedRingFragments());
+        //Mapping identifiers of all the rings in the molecule to whether they are fused or spiro (true) or isolated and non-spiro (false)
         HashMap<String, Boolean> tmpRingIdentifierToIsFusedOrSpiroMap = new HashMap(tmpRingFragments.size(), 1.0f);
+        //Mapping atom identifiers to identifiers of the rings they are part of
         HashMap<Integer, Set<String>> tmpAtomIDToRingIDMap = new HashMap(tmpRingFragments.size() * 6, 0.9f);
         for (IAtomContainer tmpRing : tmpRingFragments) {
             String tmpRingID = this.createSubstructureIdentifier(tmpRing);
             tmpRingIdentifierToIsFusedOrSpiroMap.put(tmpRingID, false);
             for (IAtom tmpAtom : tmpRing.atoms()) {
                 int tmpAtomID = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                //atom is not present in the map yet, so it is not shared by another ring that was already visited
                 if (!tmpAtomIDToRingIDMap.containsKey(tmpAtomID)) {
+                    //the atom (id) is added to the map with a set that for now only contains the id of the current ring
                     HashSet<String> tmpRingIDSet = new HashSet<>(5, 0.9f);
                     tmpRingIDSet.add(tmpRingID);
                     tmpAtomIDToRingIDMap.put(tmpAtomID, tmpRingIDSet);
+                //atom was already visited, so it is part of at least one other ring
                 } else {
+                    //current ring is marked as fused or spiro
                     tmpRingIdentifierToIsFusedOrSpiroMap.put(tmpRingID, true);
+                    //set of all identifiers of all rings already visited this atom is part of
                     Set<String> tmpRingIDSet = tmpAtomIDToRingIDMap.get(tmpAtomID);
+                    //they are marked as fused or spiro since they share at least the current atom with another ring
+                    for (String tmpAlreadyVisitedRingID : tmpRingIDSet) {
+                        tmpRingIdentifierToIsFusedOrSpiroMap.put(tmpAlreadyVisitedRingID, true);
+                    }
+                    //id of the current ring is added to the list
                     if (!tmpRingIDSet.contains(tmpRingID)) {
                         tmpRingIDSet.add(tmpRingID);
                     }
                 }
             }
         }
-        //***Filtering spiro rings***|
+        List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpIsolatedRings.size());
         for (IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
             if (Objects.isNull(tmpIsolatedRing) || tmpIsolatedRing.isEmpty()) {
                 continue;
             }
-            //***Filtering spiro rings***
-            String tmpRingID = this.createSubstructureIdentifier(tmpIsolatedRing);
-            if (tmpRingIdentifierToIsFusedOrSpiroMap.get(tmpRingID)) {
-                continue;
+            if (!this.detectSpiroRings) {
+                //Filtering spiro rings if they should not be detected as sugars
+                String tmpRingID = this.createSubstructureIdentifier(tmpIsolatedRing);
+                if (tmpRingIdentifierToIsFusedOrSpiroMap.get(tmpRingID)) {
+                    continue;
+                }
             }
-            //***Filtering spiro rings***|
             for (IAtomContainer tmpReferenceRing : this.ringSugars) {
                 boolean tmpIsIsomorph = false;
                 UniversalIsomorphismTester tmpUnivIsoTester = new UniversalIsomorphismTester();
@@ -2421,6 +2481,25 @@ public class SugarRemovalUtility {
                     if (!tmpAreAllExocyclicBondsSingle) {
                         //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
                         break;
+                    }
+                    if (this.detectSpiroRings) {
+                        //identification of spiro atoms (the cycle is isolated, so it can share at max one atom with another cycle
+                        // and this atom is therefore a spiro bridge); this is done only now to not disturb the removal of linear sugars
+                        // that are part of cycles; the info is only needed if spiro ring are detected as sugars and not filtered
+                        // according to the settings
+                        for (IAtom tmpAtom : tmpIsolatedRing.atoms()) {
+                            int tmpAtomID = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                            //note: the id HAS TO be in the map
+                            Set<String> tmpRingIDSet = tmpAtomIDToRingIDMap.get(tmpAtomID);
+                            int tmpSize = tmpRingIDSet.size();
+                            //atom is part of multiple rings, so keep it at removal of the sugar to protect the adjacent ring!
+                            //note: If the adjacent ring is also a sugar and also removed, this one atom will most likely get cleared away
+                            //note: the removal method has to test for the presence of the property anyway, so adding it with
+                            // value 'false' to the other atoms in the ring is redundant
+                            if (tmpSize > 1) {
+                                tmpAtom.setProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY, true);
+                            }
+                        }
                     }
                     tmpSugarCandidates.add(tmpIsolatedRing);
                     break;

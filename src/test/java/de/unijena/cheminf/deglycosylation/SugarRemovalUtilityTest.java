@@ -366,8 +366,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
                 tmpCurrentDoc = tmpCursor.next();
                 tmpMoleculesCounter++;
-                tmpID = tmpCurrentDoc.getString("inchikey"); //coconut_id
-                tmpSmilesCode = tmpCurrentDoc.getString("clean_smiles");
+                tmpID = tmpCurrentDoc.getString("inchikey"); //coconut_id or inchikey
+                tmpSmilesCode = tmpCurrentDoc.getString("smiles"); //smiles or clean_smiles
                 tmpMolecule = tmpSmiPar.parseSmiles(tmpSmilesCode);
                 tmpMolecule.setTitle(tmpID);
 
@@ -547,10 +547,6 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
                         tmpNumberOfLinearSugarMoieties = tmpLinearSugarCandidatesList.size();
 
-                        if (tmpNumberOfLinearSugarMoieties > 1) {
-                            tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
-                        }
-
                         //the first is the overall counter, the second one is specific for this molecule
                         tmpLinearSugarMoietiesCounter += tmpNumberOfLinearSugarMoieties;
 
@@ -645,6 +641,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         tmpBasicallyASugarCNPs.add(tmpID);
 
                         //note: it is important to count the actually removed moieties here, not the detected ones!
+                        // Because there are multiple rounds of detection in the removal if only terminal moieties are removed
                         int tmpNumberOfMoieties = tmpDeglycosylatedCloneAndRemovedSugarMoietiesList.size() - 1;
 
                         if (tmpNumberOfMoieties == 1) {
@@ -661,6 +658,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         tmpBasicallyACircularSugarCounter++;
                         tmpBasicallyACircularSugarCNPs.add(tmpID);
 
+                        //note: here, it is ok to only count the detected moieties because there is only one round of detection in the removal
                         int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfCircularSugars(tmpMolecule.clone());
 
                         if (tmpNumberOfMoieties == 1) {
@@ -677,6 +675,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         tmpBasicallyALinearSugarCounter++;
                         tmpBasicallyALinearSugarCNPs.add(tmpID);
 
+                        //note: here, it is ok to only count the detected moieties because there is only one round of detection in the removal
                         int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfLinearSugars(tmpMolecule);
 
                         if (tmpNumberOfMoieties == 1) {
@@ -1822,18 +1821,20 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugars(false);
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C"); //CNP0000225 in COCOCNUTfebruary20
-        List<IAtomContainer> tmpRemovedSugars = tmpSugarRemovalUtil.removeAndReturnLinearSugars(tmpOriginalMolecule, true);
-        for (IAtomContainer tmpSugar : tmpRemovedSugars) {
-            System.out.println(tmpSmiGen.create(tmpSugar));
-        }
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Nothing should be removed because this molecule has only circular sugars (was a problem before)
+        Assert.assertEquals("O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C", tmpSmilesCode);
     }
 
     /**
      *
      */
     @Test
-    public void mariasExampleTest() throws Exception {
+    public void specificTest24() throws Exception {
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
@@ -1843,7 +1844,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
         tmpSugarRemovalUtil.setDetectLinearAcidicSugars(true);
         // a molecule containing 2 circular sugars and 2 linear sugars (sugar acids), in both cases 1 terminal and 1 non-terminal
-        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(C)(O)CC(=O)OCc1ccc(cc1)OC1C(CO)OC(OC(C(=O)OCc2ccc(OC3OC(CO)CC(O)C3O)cc2)C(O)(CC(C)C)C(=O)OC2CCc3cc4cc(O)c(C)c(O)c4c(O)c3C2=O)C(O)C1O");
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(C)(O)CC(=O)OCc1ccc(cc1)OC1C(CO)OC(OC(C(=O)OCc2ccc(OC3OC(CO)CC(O)C3O)cc2)C(O)(CC(C)C)C(=O)OC2CCc3cc4cc(O)c(C)c(O)c4c(O)c3C2=O)C(O)C1O"); //imaginary molecule created for demonstration purposes
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1883,60 +1884,116 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     /**
-     * have a detailed look at the five molecules that get detected as basically a single sugar unit but as
-     * either a single linear or circular sugar!
+     * TODO
      */
     @Test
-    public void debuggingBasicallyASingleSugarUnitTest() throws Exception {
-        HashMap<String, String> tmpCNPtoSMILESmap = new HashMap<>(6, 0.9f);
-        tmpCNPtoSMILESmap.put("CNP0017323", "OC1(OCCC21OC3(O)CCOC3(O2)C)C");
-        tmpCNPtoSMILESmap.put("CNP0121254", "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O");
-        tmpCNPtoSMILESmap.put("CNP0185588", "OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N");
-        tmpCNPtoSMILESmap.put("CNP0309652", "OCC1OC2(OC3C(O)C(OC3(OC2)CO)CO)C(O)C1O");
-        tmpCNPtoSMILESmap.put("CNP0344838", "OCC1OC2(OCC3OC(OC2)(CO)C(O)C3O)C(O)C1O");
-        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+    public void specificTest25() throws Exception {
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Canonical);
-        for (String tmpCNP : tmpCNPtoSMILESmap.keySet()) {
-            IAtomContainer tmpMolecule = tmpSmiPar.parseSmiles(tmpCNPtoSMILESmap.get(tmpCNP));
-            System.out.println(tmpCNP);
-            System.out.println("Number of sugar moieties: " + tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpMolecule));
-            System.out.println("Number of circular sugar moieties: " + tmpSugarRemovalUtil.getNumberOfCircularSugars(tmpMolecule));
-            System.out.println("Number of linear moieties: " + tmpSugarRemovalUtil.getNumberOfLinearSugars(tmpMolecule));
-            //IAtomContainer tmpDeglycosylatedClone = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpMolecule, true);
-            List<IAtomContainer> tmpSugarMoietiesList = tmpSugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpMolecule, true);
-            IAtomContainer tmpDeglycosylatedClone = tmpSugarMoietiesList.get(0);
-            System.out.println(tmpSugarMoietiesList.size());
-            for (IAtomContainer tmpMoiety : tmpSugarMoietiesList) {
-                System.out.println(tmpSmiGen.create(tmpMoiety));
-            }
-            if (tmpDeglycosylatedClone.isEmpty()) {
-                System.out.println("Deglycosylated clone is empty");
-                int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpMolecule.clone());
-                if (tmpNumberOfMoieties == 1) {
-                    System.out.println("Number of sugar moieties is 1");
-                }
-            }
-            IAtomContainer tmpCircularDeglycosylatedClone = tmpSugarRemovalUtil.removeCircularSugars(tmpMolecule, true);
-            System.out.println(tmpSmiGen.create(tmpCircularDeglycosylatedClone));
-            if (tmpCircularDeglycosylatedClone.isEmpty()) {
-                System.out.println("Circular deglycosylated clone is empty");
-                int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfCircularSugars(tmpMolecule.clone());
-                if (tmpNumberOfMoieties == 1) {
-                    System.out.println("Number of circular sugar moieties is 1");
-                }
-            }
-            IAtomContainer tmpLinearDeglycosylatedClone = tmpSugarRemovalUtil.removeLinearSugars(tmpCircularDeglycosylatedClone, true);
-            System.out.println(tmpSmiGen.create(tmpLinearDeglycosylatedClone));
-            if (tmpLinearDeglycosylatedClone.isEmpty()) {
-                System.out.println("Linear deglycosylated clone is empty");
-                int tmpNumberOfMoieties = tmpSugarRemovalUtil.getNumberOfLinearSugars(tmpMolecule);
-                if (tmpNumberOfMoieties == 1) {
-                    System.out.println("Number of linear sugar moieties is 1");
-                }
-            }
-            System.out.println();
-        }
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("OC1(OCCC21OC3(O)CCOC3(O2)C)C"); //CNP0017323 in COCONUTmay
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Nothing should be removed because the sugar is a spiro ring (before, these were not filtered)
+        Assert.assertEquals("OC1(OCCC21OC3(O)CCOC3(O2)C)C", tmpSmilesCode);
+        tmpSugarRemovalUtil.setDetectSpiroRings(true);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Now that the spiro rings are detected, the sugar ring is removed; BUT the adjacent ring is left intact!
+        Assert.assertEquals("OC12OCOC2(OCC1)C", tmpSmilesCode);
+        //back to default for the other tests
+        tmpSugarRemovalUtil.setDetectSpiroRings(false);
+
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("OCC1OC2(OC3C(O)C(OC3(OC2)CO)CO)C(O)C1O"); //CNP0309652 in COCONUTmay
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Nothing should be removed because the sugar is a spiro ring (before, these were not filtered)
+        Assert.assertEquals("OCC1OC2(OC3C(O)C(OC3(OC2)CO)CO)C(O)C1O", tmpSmilesCode);
+        tmpSugarRemovalUtil.setDetectSpiroRings(true);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Now that the spiro rings are detected, the sugar ring is removed; BUT the adjacent ring is left intact!
+        Assert.assertEquals("OCC1OC2(OCCOC2C1O)CO", tmpSmilesCode);
+        //back to default for the other tests
+        tmpSugarRemovalUtil.setDetectSpiroRings(false);
+
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("OCC1OC2(OCC3OC(OC2)(CO)C(O)C3O)C(O)C1O"); //CNP0344838 in COCONUTmay
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Nothing should be removed because the sugar is a spiro ring (before, these were not filtered)
+        Assert.assertEquals("OCC1OC2(OCC3OC(OC2)(CO)C(O)C3O)C(O)C1O", tmpSmilesCode);
+        tmpSugarRemovalUtil.setDetectSpiroRings(true);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Now that the spiro rings are detected, the sugar ring is removed; BUT the adjacent ring is left intact!
+        Assert.assertEquals("OCC12OCCOCC(O1)C(O)C2O", tmpSmilesCode);
+        //back to default for the other tests (if some are added later...)
+        tmpSugarRemovalUtil.setDetectSpiroRings(false);
+    }
+
+    /**
+     * TODO
+     */
+    @Test
+    public void specificTest26() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+
+        //A molecule consisting entirely of one circular and one linear sugar
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O"); //CNP0121254 in COCONUTmay
+        Assert.assertEquals(2, tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpOriginalMolecule));
+        Assert.assertEquals(1, tmpSugarRemovalUtil.getNumberOfCircularSugars(tmpOriginalMolecule));
+        Assert.assertEquals(1, tmpSugarRemovalUtil.getNumberOfLinearSugars(tmpOriginalMolecule));
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Completely removed
+        Assert.assertEquals("", tmpSmilesCode);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Only the linear sugar remains
+        Assert.assertEquals("OCC(O)C(O)C(O)CO", tmpSmilesCode);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Only the circular sugar remains
+        Assert.assertEquals("OCC1OCC(O)C(O)C1O", tmpSmilesCode);
+
+        //A molecule consisting entirely of one circular and one linear sugar
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N"); //CNP0185588 in COCONUTmay
+        Assert.assertEquals(2, tmpSugarRemovalUtil.getNumberOfCircularAndLinearSugars(tmpOriginalMolecule));
+        Assert.assertEquals(1, tmpSugarRemovalUtil.getNumberOfCircularSugars(tmpOriginalMolecule));
+        Assert.assertEquals(1, tmpSugarRemovalUtil.getNumberOfLinearSugars(tmpOriginalMolecule));
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Completely removed
+        Assert.assertEquals("", tmpSmilesCode);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Only the linear sugar remains
+        Assert.assertEquals("OCC(O)C(O)C(O)C(O)CO", tmpSmilesCode);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Only the circular sugar remains
+        Assert.assertEquals("OC1OCC(N)C(O)C1O", tmpSmilesCode);
     }
     //</editor-fold>
 
@@ -1970,6 +2027,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMinSize());
         System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMaxSize());
         System.out.println(tmpSugarRemovalUtil.areLinearAcidicSugarsDetected());
+        System.out.println(tmpSugarRemovalUtil.areSpiroRingsDetected());
     }
 
     //<editor-fold desc="Tests for protected routines">
@@ -2155,6 +2213,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(7);
         tmpSugarRemovalUtil.setDetectLinearAcidicSugars(false);
         tmpSugarRemovalUtil.setPropertyOfSugarContainingMolecules(true);
+        tmpSugarRemovalUtil.setDetectSpiroRings(false);
         return tmpSugarRemovalUtil;
     }
     //</editor-fold>
