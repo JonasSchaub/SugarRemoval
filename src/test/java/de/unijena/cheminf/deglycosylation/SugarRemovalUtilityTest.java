@@ -1063,7 +1063,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     /**
-     *
+     * TODO: Check whether the sugars or sugar-containing molecules in ZINC are in COCONUT
      */
     @Ignore
     @Test
@@ -1190,7 +1190,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     /**
-     *
+     * Also, testing whether explicit hydrogens cause problems in the algorithm. They do not seem to do but the resulting
+     * molecule will of course also have them
      *
      * @throws Exception
      */
@@ -1203,13 +1204,13 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         String tmpSmilesCode;
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         tmpSugarRemovalUtil.setDetectGlycosidicBond(true);
-        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1OC2=CC(=CC(OC3OC(CO)C(O)C(O)C3O)=C2C4=C1CCC4)C"); //CNP0000001 in COCONUTfebruary20
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("[H]OC1([H])C([H])(OC2=C3C(OC(=O)C4=C3C([H])([H])C([H])([H])C4([H])[H])=C([H])C(=C2[H])C([H])([H])[H])OC([H])(C([H])(O[H])C1([H])O[H])C([H])([H])O[H]"); //CNP0223287 in COCONUTmay
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
         //A simple example, the sugar has a glycosidic bond and is not terminal and therefore removed; The resulting
         // disconnected CH3OH is too small to keep and gets cleared away
-        Assert.assertEquals("O=C1OC=2C=C(C=C(O)C2C3=C1CCC3)C", tmpSmilesCode);
+        Assert.assertEquals("[H]C1=C(O)C2=C(OC(=O)C3=C2C([H])([H])C([H])([H])C3([H])[H])C([H])=C1C([H])([H])[H]", tmpSmilesCode);
     }
 
     /**
@@ -1552,56 +1553,56 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(O)(C)CC(=O)OC1COC(OC2C(O)C(OC(OC3C(O)C(O)C(OC4CC5CCC6C(CCC7(C)C6CC8OC9(OCC(C)CC9)C(C)C87)C5(C)CC4O)OC3CO)C2OC%10OC(CO)C(O)C(O)C%10O)CO)C(O)C1O"); //CNP0002871 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
-        //System.out.println(tmpSmilesCode);
+        System.out.println();
+        System.out.println(tmpSmilesCode);
         //All sugars get removed although some circular sugars only become terminal after the removal of the linear ones
         // (that was a problem before)
         Assert.assertEquals("OC1CC2CCC3C(CCC4(C)C3CC5OC6(OCC(C)CC6)C(C)C54)C2(C)CC1O", tmpSmilesCode);
-        System.out.println();
-        // for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
+        //for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
         this.printAllMolsAsSmiles(tmpSugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpOriginalMolecule, true));
 
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(O)(C)CC(=O)OCC1OC(OCC2OC(OC(=O)C34CCC(C)(C)CC4C5=CCC6C7(C)CCC(O)C(C(=O)OC8OC(CO)C(O)C(O)C8O)(C)C7CCC6(C)C5(C)CC3)C(O)C(OC9OC(CO)C(O)C(O)C9O)C2O)C(OC%10OC(CO)C(O)C(O)C%10O)C(O)C1O"); //CNP0005247 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
-        //System.out.println(tmpSmilesCode);
+        System.out.println();
+        System.out.println(tmpSmilesCode);
         //All sugars get removed although some circular sugars only become terminal after the removal of the linear ones
         // (that was a problem before)
         Assert.assertEquals("O=C(O)C1(C)C(O)CCC2(C)C1CCC3(C)C2CC=C4C5CC(C)(C)CCC5(C(=O)O)CCC43C", tmpSmilesCode);
-        System.out.println();
-        // for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
+        //for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
         this.printAllMolsAsSmiles(tmpSugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpOriginalMolecule, true));
 
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C([O-])CC(O)(C)CC(=O)OC1C(O)C(OC2C3=C(O)C(=CC=C3OC2C(=C)CO)C(=O)C)OC(CO)C1O"); //CNP0032326 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
-        //System.out.println(tmpSmilesCode);
+        System.out.println();
+        System.out.println(tmpSmilesCode);
         //All sugars get removed although some circular sugars only become terminal after the removal of the linear ones
         // (that was a problem before)
         Assert.assertEquals("O=C(C1=CC=C2OC(C(=C)CO)C(O)C2=C1O)C", tmpSmilesCode);
-        System.out.println();
-        // for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
+        //for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
         this.printAllMolsAsSmiles(tmpSugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpOriginalMolecule, true));
 
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C([O-])CC(O)(C)CC(=O)OCC1OC(C=2C(O)=CC(O)=C3C(=O)C=C(OC32)C=4C=CC(O)=C(O)C4)C(O)C(O)C1O"); //CNP0031401 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
-        //System.out.println(tmpSmilesCode);
+        System.out.println();
+        System.out.println(tmpSmilesCode);
         //All sugars get removed although some circular sugars only become terminal after the removal of the linear ones
         // (that was a problem before)
         Assert.assertEquals("O=C1C=C(OC=2C=C(O)C=C(O)C12)C=3C=CC(O)=C(O)C3", tmpSmilesCode);
-        System.out.println();
-        // for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
+        //for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
         this.printAllMolsAsSmiles(tmpSugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpOriginalMolecule, true));
 
         tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(O)(C)CC(=O)OCC1(O)COC(OC2C(O)C(OC(C)C2OC3OCC(O)C(OC4OCC(O)C(O)C4O)C3O)OC5C(OC(=O)C67CCC(C)(C)CC7C8=CCC9C%10(C)CC(O)C(OC%11OC(CO)C(O)C(O)C%11O)C(C(=O)O)(C)C%10CCC9(C)C8(CO)CC6)OC(C)C(OC(=O)C=CC%12=CC(OC)=C(OC)C(OC)=C%12)C5OC%13OC(C)C(O)C(O)C%13O)C1O"); //CNP0028122 in COCONUTfebruary20
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
-        //System.out.println(tmpSmilesCode);
+        System.out.println();
+        System.out.println(tmpSmilesCode);
         //All sugars get removed although some circular sugars only become terminal after the removal of the linear ones
         // (that was a problem before), only one non-terminal sugar remains
         Assert.assertEquals("O=C(OC1C(O)C(O)C(OC(=O)C23CCC(C)(C)CC3C4=CCC5C6(C)CC(O)C(O)C(C(=O)O)(C)C6CCC5(C)C4(CO)CC2)OC1C)C=CC7=CC(OC)=C(OC)C(OC)=C7", tmpSmilesCode);
-        System.out.println();
-        // for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
+        //for illustrative purposes, prints the deglycosylated molecule and all the removed sugar moieties as SMILES strings
         this.printAllMolsAsSmiles(tmpSugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpOriginalMolecule, true));
     }
 

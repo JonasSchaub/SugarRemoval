@@ -26,12 +26,7 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
- * - filter out every atom in a linear sugar candidate that belongs to a circular sugar (not reject the whole candidate)?
- * To reduce the false-positives for the linear sugars in rings - done
- * - filter out every atom in a linear sugar candidate that belongs to a cycle (not reject the whole candidate)?
- * To reduce the false-negatives for linear sugars that are connected to rings - done
- *
- * - refactor names of options
+ * - refactor names of options (e.g. detectCircularSugarsOnlyWithOGlycosidicBond)
  * - add methods to configure the linear and circular sugar patterns (remove one specific)
  *
  * - Linear sugar detection/removal:
@@ -2069,12 +2064,10 @@ public class SugarRemovalUtility {
                     if (tmpIsTerminal) {
                         for (IAtom tmpAtom : tmpCandidate.atoms()) {
                             if (aMolecule.contains(tmpAtom)) {
-                                if (this.detectSpiroRings) {
-                                    Boolean tmpAtomIsSpiroAtom = tmpAtom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY);
-                                    if (!Objects.isNull(tmpAtomIsSpiroAtom)) {
-                                        if (tmpAtomIsSpiroAtom) {
-                                            continue;
-                                        }
+                                Boolean tmpAtomIsSpiroAtom = tmpAtom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY);
+                                if (!Objects.isNull(tmpAtomIsSpiroAtom)) {
+                                    if (tmpAtomIsSpiroAtom) {
+                                        continue;
                                     }
                                 }
                                 aMolecule.removeAtom(tmpAtom);
@@ -2107,12 +2100,10 @@ public class SugarRemovalUtility {
             for (IAtomContainer tmpSugarCandidate : tmpSugarCandidates) {
                 for (IAtom tmpAtom : tmpSugarCandidate.atoms()) {
                     if (aMolecule.contains(tmpAtom)) {
-                        if (this.detectSpiroRings) {
-                            Boolean tmpAtomIsSpiroAtom = tmpAtom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY);
-                            if (!Objects.isNull(tmpAtomIsSpiroAtom)) {
-                                if (tmpAtomIsSpiroAtom) {
-                                    continue;
-                                }
+                        Boolean tmpAtomIsSpiroAtom = tmpAtom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY);
+                        if (!Objects.isNull(tmpAtomIsSpiroAtom)) {
+                            if (tmpAtomIsSpiroAtom) {
+                                continue;
                             }
                         }
                         aMolecule.removeAtom(tmpAtom);
@@ -2482,23 +2473,21 @@ public class SugarRemovalUtility {
                         //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
                         break;
                     }
-                    if (this.detectSpiroRings) {
-                        //identification of spiro atoms (the cycle is isolated, so it can share at max one atom with another cycle
-                        // and this atom is therefore a spiro bridge); this is done only now to not disturb the removal of linear sugars
-                        // that are part of cycles; the info is only needed if spiro ring are detected as sugars and not filtered
-                        // according to the settings
-                        for (IAtom tmpAtom : tmpIsolatedRing.atoms()) {
-                            int tmpAtomID = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                            //note: the id HAS TO be in the map
-                            Set<String> tmpRingIDSet = tmpAtomIDToRingIDMap.get(tmpAtomID);
-                            int tmpSize = tmpRingIDSet.size();
-                            //atom is part of multiple rings, so keep it at removal of the sugar to protect the adjacent ring!
-                            //note: If the adjacent ring is also a sugar and also removed, this one atom will most likely get cleared away
-                            //note: the removal method has to test for the presence of the property anyway, so adding it with
-                            // value 'false' to the other atoms in the ring is redundant
-                            if (tmpSize > 1) {
-                                tmpAtom.setProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY, true);
-                            }
+                    //identification of spiro atoms (the cycle is isolated, so it can share at max one atom with another cycle
+                    // and this atom is therefore a spiro bridge); this is done only now to not disturb the removal of linear sugars
+                    // that are part of cycles; the info is only needed if spiro ring are detected as sugars and not filtered
+                    // according to the settings (but always noted here anyway, should the setting change between detection and removal
+                    for (IAtom tmpAtom : tmpIsolatedRing.atoms()) {
+                        int tmpAtomID = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                        //note: the id HAS TO be in the map
+                        Set<String> tmpRingIDSet = tmpAtomIDToRingIDMap.get(tmpAtomID);
+                        int tmpSize = tmpRingIDSet.size();
+                        //atom is part of multiple rings, so keep it at removal of the sugar to protect the adjacent ring!
+                        //note: If the adjacent ring is also a sugar and also removed, this one atom will most likely get cleared away
+                        //note: the removal method has to test for the presence of the property anyway, so adding it with
+                        // value 'false' to the other atoms in the ring is redundant
+                        if (tmpSize > 1) {
+                            tmpAtom.setProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY, true);
                         }
                     }
                     tmpSugarCandidates.add(tmpIsolatedRing);
