@@ -2344,7 +2344,7 @@ public class SugarRemovalUtility {
         Collections.sort(tmpIndicesList);
         String tmpSubstructureIdentifier = "";
         for (int tmpAtomIndex : tmpIndicesList) {
-            tmpSubstructureIdentifier += Integer.toString(tmpAtomIndex);
+            tmpSubstructureIdentifier += (Integer.toString(tmpAtomIndex).concat(":"));
         }
         return tmpSubstructureIdentifier;
     }

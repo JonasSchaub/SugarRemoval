@@ -1996,6 +1996,36 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //Only the circular sugar remains
         Assert.assertEquals("OC1OCC(N)C(O)C1O", tmpSmilesCode);
     }
+
+    /**
+     * TODO tidy up!
+     */
+    @Test
+    public void specificTest27() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        tmpSugarRemovalUtil.setRemoveLinearSugarsInRings(true);
+        tmpSugarRemovalUtil.setLinearSugarCandidateMaxSize(36);
+
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("C(C1C2C(C(C(O1)OC3C(OC(C(C3O)O)OC4C(OC(C(C4O)O)OC5C(OC(C(C5O)O)OC6C(OC(C(C6O)O)OC7C(OC(O2)C(C7O)O)CO)CO)CO)CO)CO)O)O)O"); //alpha-cyclodextrin
+        RingSearch tmpRingSearch = new RingSearch(tmpOriginalMolecule);
+        System.out.println(tmpRingSearch.isolatedRingFragments().size());
+        List<IAtomContainer> tmpCandidateList = tmpSugarRemovalUtil.splitEtherEsterAndPeroxideBonds(tmpSugarRemovalUtil.combineOverlappingCandidates(tmpSugarRemovalUtil.linearSugarCandidatesByPatternMatching(tmpOriginalMolecule)));
+        tmpSugarRemovalUtil.removeAtomsOfCircularSugarsFromCandidates(tmpCandidateList, tmpOriginalMolecule);
+        for (IAtomContainer tmpCandidate : tmpCandidateList) {
+            System.out.println(tmpSmiGen.create(tmpCandidate));
+        }
+        System.out.println(tmpSugarRemovalUtil.hasCircularAndOrLinearSugars(tmpOriginalMolecule));
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //
+        Assert.assertEquals("", tmpSmilesCode);
+    }
     //</editor-fold>
 
     /**
