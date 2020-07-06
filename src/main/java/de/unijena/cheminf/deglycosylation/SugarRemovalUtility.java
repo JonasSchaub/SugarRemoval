@@ -952,8 +952,8 @@ public class SugarRemovalUtility {
      */
     public void setStructureToKeepModeThresholdSetting(int aThreshold) throws IllegalArgumentException {
         //<editor-fold desc="Checks">
-        if ((this.structureToKeepModeSetting == StructureToKeepModeOption.ALL)) {
-            throw new IllegalArgumentException("The mode is currently set to keep all structures, so a threshold " +
+        if ((this.structureToKeepModeSetting == StructureToKeepModeOption.ALL) && aThreshold != 0) {
+            throw new IllegalArgumentException("The mode is currently set to keep all structures, so a nonzero threshold " +
                     "makes no sense.");
         }
         if (aThreshold < 0) {
@@ -994,12 +994,12 @@ public class SugarRemovalUtility {
         //false for NaN and infinity arguments
         boolean tmpIsFinite = Double.isFinite(aDouble);
         boolean tmpIsNegative = (aDouble < 0);
-        if(!tmpIsFinite || tmpIsNegative) {
+        if (!tmpIsFinite || tmpIsNegative) {
             throw new IllegalArgumentException("Given double is NaN, infinite or negative.");
         }
-        if (!this.detectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting) {
+        if (!this.detectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting && aDouble != 0) {
             throw new IllegalArgumentException("The number of attached oxygen atoms is currently not included in the " +
-                    "decision making process, so a ratio threshold makes no sense.");
+                    "decision making process, so a nonzero ratio threshold makes no sense.");
         }
         //</editor-fold>
         this.exocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting = aDouble;
