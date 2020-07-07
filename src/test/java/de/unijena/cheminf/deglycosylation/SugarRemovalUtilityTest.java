@@ -50,12 +50,19 @@ import org.openscience.cdk.Atom;
 import org.openscience.cdk.AtomContainer;
 import org.openscience.cdk.Bond;
 import org.openscience.cdk.DefaultChemObjectBuilder;
+import org.openscience.cdk.cdkbook.SMILESFormatMatcher;
 import org.openscience.cdk.depict.DepictionGenerator;
 import org.openscience.cdk.graph.ConnectivityChecker;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IBond;
+import org.openscience.cdk.io.FormatFactory;
+import org.openscience.cdk.io.MDLV2000Reader;
+import org.openscience.cdk.io.MDLV2000Writer;
+import org.openscience.cdk.io.formats.IChemFormat;
+import org.openscience.cdk.io.formats.IChemFormatMatcher;
+import org.openscience.cdk.io.formats.SMILESFormat;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
@@ -70,6 +77,7 @@ import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import java.awt.Color;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -2115,6 +2123,15 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     @Test
+    public void readingFilesTest() throws Exception {
+        FormatFactory tmpCDKFormatFactory = new FormatFactory();
+        tmpCDKFormatFactory.registerFormat((IChemFormatMatcher) SMILESFormatMatcher.getInstance());
+        for (IChemFormat tmpFormat : tmpCDKFormatFactory.getFormats()) {
+            System.out.println(tmpFormat.getFormatName() + " " + tmpFormat.getReaderClassName());
+        }
+    }
+
+    @Test
     public void smartsTest() throws Exception {
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
@@ -2226,6 +2243,19 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 .writeTo(tmpOutputFolderPath + File.separator + "Test" + ".png");
     }
 
+    /**
+     * TODO
+     */
+    @Test
+    public void testApplication() throws Exception {
+        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
+        File tmpMolFile = new File(tmpClassLoader.getResource("CNP0083088.mol").getFile());
+        SugarRemovalServiceApplication tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpMolFile, 1);
+        System.out.println(tmpMolFile.getAbsolutePath());
+        System.out.println(tmpMolFile.canRead());
+        System.out.println(tmpMolFile.exists());
+        tmpSugarRemovalApp.execute();
+    }
     //<editor-fold desc="Protected methods">
     /**
      * TODO
