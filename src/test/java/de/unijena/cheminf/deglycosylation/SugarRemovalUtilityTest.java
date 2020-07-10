@@ -1077,8 +1077,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     @Test
     public void zincInspectionTest() throws Exception {
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
-        File tmpZincSdfFile = new File(tmpClassLoader.getResource("zinc-all-for-sale.sdf").getFile());
-        System.out.println(tmpZincSdfFile.getAbsolutePath());
+        File tmpZincSDFile = new File(tmpClassLoader.getResource("zinc-all-for-sale.sdf").getFile());
+        System.out.println(tmpZincSDFile.getAbsolutePath());
         Logger tmpLogger = Logger.getLogger(SugarRemovalUtilityTest.class.getName());
         String tmpOutputFolderPath = (new File("SugarRemovalUtilityTest_Output")).getAbsolutePath() + File.separator
                 + "zinc_inspection_test" + File.separator;
@@ -1087,7 +1087,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
             tmpOutputFolderFile.mkdirs();
         }
         System.out.println("Output directory: " + tmpOutputFolderPath);
-        DepictionGenerator tmpDepictionGenerator = new DepictionGenerator();
+        //DepictionGenerator tmpDepictionGenerator = new DepictionGenerator();
         FileHandler tmpLogFileHandler = null;
         try {
             tmpLogFileHandler = new FileHandler(tmpOutputFolderPath + "Log.txt");
@@ -1112,7 +1112,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMinSizeSetting());
         System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMaxSizeSetting());
         System.out.println(tmpSugarRemovalUtil.areLinearAcidicSugarsDetected());
-        IteratingSDFReader tmpReader = new IteratingSDFReader(new FileInputStream(tmpZincSdfFile), DefaultChemObjectBuilder.getInstance(), true);
+        IteratingSDFReader tmpReader = new IteratingSDFReader(new FileInputStream(tmpZincSDFile), DefaultChemObjectBuilder.getInstance(), true);
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         int tmpMoleculeCounter = 0;
         int tmpExceptionsCounter = 0;
@@ -1126,12 +1126,11 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
             try {
                 tmpMolecule = tmpReader.next();
                 tmpID = tmpMolecule.getProperty("zinc_id");
-                String tmpSmilesCode = tmpMolecule.getProperty("smiles");
                 tmpMoleculeCounter++;
                 tmpMolecule = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpMolecule, true);
                 if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY) == true) {
-                    /*tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
-                    /*tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
+                    //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
+                    //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
                     tmpSugarContainingMoleculesCounter++;
                     if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true) {
                         tmpContainsCircularSugarsCounter++;
@@ -1141,11 +1140,11 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                         //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
                         tmpContainsLinearSugarsCounter++;
                     }
-                    /*if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true
+                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true
                     && (boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
                         //tmpDepictionGenerator.depict(tmpSmiPar.parseSmiles(tmpSmilesCode)).writeTo(tmpOutputFolderPath + File.separator + tmpID + ".png");
                         //tmpDepictionGenerator.depict(tmpMolecule).writeTo(tmpOutputFolderPath + File.separator + tmpID + "_1.png");
-                    }*/
+                    }
                     if (tmpMolecule.isEmpty()) {
                         tmpBasicallyASugarCounter++;
                     }
@@ -1164,6 +1163,111 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println("Circular-sugar-containing molecules counter: " + tmpContainsCircularSugarsCounter);
         System.out.println("Basically a sugar counter: " + tmpBasicallyASugarCounter);
         tmpReader.close();
+    }
+
+    /**
+     * TODO: Add pseudo sugars or do separate test
+     */
+    @Ignore
+    @Test
+    public void reviewGlycosylatedNPsBacteriaDataTest() throws Exception {
+        ClassLoader tmpClassLoader = this.getClass().getClassLoader();
+        File tmpSDFile = new File(tmpClassLoader.getResource("review_glycosylated_NPs_bacteria_data.sdf").getFile());
+        System.out.println(tmpSDFile.getAbsolutePath());
+        Logger tmpLogger = Logger.getLogger(SugarRemovalUtilityTest.class.getName());
+        String tmpOutputFolderPath = (new File("SugarRemovalUtilityTest_Output")).getAbsolutePath() + File.separator
+                + "review_glycosylated_NPs_bacteria_data_test" + File.separator;
+        File tmpOutputFolderFile = new File(tmpOutputFolderPath);
+        if (!tmpOutputFolderFile.exists()) {
+            tmpOutputFolderFile.mkdirs();
+        }
+        System.out.println("Output directory: " + tmpOutputFolderPath);
+        FileHandler tmpLogFileHandler = null;
+        try {
+            tmpLogFileHandler = new FileHandler(tmpOutputFolderPath + "Log.txt");
+        } catch (IOException anIOException) {
+            tmpLogger.log(Level.SEVERE, anIOException.toString(), anIOException);
+            System.out.println("An exception occurred while setting up the log file. Logging will be done in default configuration.");
+        }
+        tmpLogFileHandler.setLevel(Level.ALL);
+        tmpLogFileHandler.setFormatter(new SimpleFormatter());
+        Logger.getLogger("").addHandler(tmpLogFileHandler);
+        Logger.getLogger("").setLevel(Level.WARNING);
+        //Done for reproducibility
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+        System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
+        System.out.println(tmpSugarRemovalUtil.areOnlyTerminalSugarsRemoved());
+        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeSetting());
+        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeThresholdSetting());
+        System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
+        System.out.println(tmpSugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
+        System.out.println(tmpSugarRemovalUtil.areLinearSugarsInRingsDetected());
+        System.out.println(tmpSugarRemovalUtil.arePropertiesAddedToSugarContainingMolecules());
+        System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMinSizeSetting());
+        System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMaxSizeSetting());
+        System.out.println(tmpSugarRemovalUtil.areLinearAcidicSugarsDetected());
+        IteratingSDFReader tmpReader = new IteratingSDFReader(new FileInputStream(tmpSDFile), DefaultChemObjectBuilder.getInstance(), true);
+        //SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Canonical);
+        int tmpMoleculesCounter = 0;
+        int tmpExceptionsCounter = 0;
+        int tmpSugarContainingMoleculesCounter = 0;
+        int tmpNoSugarContainingMoleculesCounter = 0;
+        List<String> tmpNoSugarContainingMoleculesIDsList = new ArrayList<>(150);
+        int tmpContainsLinearSugarsCounter = 0;
+        int tmpContainsCircularSugarsCounter = 0;
+        int tmpBasicallyASugarCounter = 0;
+        int tmpNotBasicallyASugarCounter = 0;
+        List<String> tmpNotBasicallyASugarIDsList = new ArrayList<>(100);
+        IAtomContainer tmpMolecule = null;
+        String tmpID = null;
+        while (tmpReader.hasNext()) {
+            try {
+                tmpMolecule = tmpReader.next();
+                tmpID = tmpMolecule.getProperty("Name");
+                if (Objects.isNull(tmpID)) {
+                    System.err.println("Detected missing name!");
+                    System.err.println(tmpSmiGen.create(tmpMolecule));
+                }
+                tmpMoleculesCounter++;
+                tmpMolecule = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpMolecule, true);
+                if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY) == true) {
+                    tmpSugarContainingMoleculesCounter++;
+                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY) == true) {
+                        tmpContainsCircularSugarsCounter++;
+                    }
+                    if ((boolean)tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY) == true) {
+                        tmpContainsLinearSugarsCounter++;
+                    }
+                    if (tmpMolecule.isEmpty()) {
+                        tmpBasicallyASugarCounter++;
+                    } else {
+                        tmpNotBasicallyASugarCounter++;
+                        tmpNotBasicallyASugarIDsList.add(tmpID);
+                    }
+                } else {
+                    tmpNoSugarContainingMoleculesCounter++;
+                    tmpNoSugarContainingMoleculesIDsList.add(tmpID);
+                }
+            } catch (Exception anException) {
+                tmpLogger.log(Level.SEVERE, anException.toString() + " ID: " + tmpID, anException);
+                tmpExceptionsCounter++;
+                continue;
+            }
+        }
+        System.out.println("Done.");
+        System.out.println("Molecules counter: " + tmpMoleculesCounter);
+        System.out.println("Exceptions counter: " + tmpExceptionsCounter);
+        System.out.println("Sugar-containing molecules counter: " + tmpSugarContainingMoleculesCounter);
+        System.out.println("Linear-sugar-containing molecules counter: " + tmpContainsLinearSugarsCounter);
+        System.out.println("Circular-sugar-containing molecules counter: " + tmpContainsCircularSugarsCounter);
+        System.out.println("Basically a sugar counter: " + tmpBasicallyASugarCounter);
+        System.out.println(tmpNotBasicallyASugarCounter + " molecules where detected as sugar-containing but where not completely removed:");
+        System.out.println(tmpNotBasicallyASugarIDsList);
+        System.out.println(tmpNoSugarContainingMoleculesCounter + " molecules were detected as NOT sugar containing:");
+        System.out.println(tmpNoSugarContainingMoleculesIDsList);
+        tmpReader.close();
+        Assert.assertEquals(344, tmpMoleculesCounter);
     }
     //</editor-fold>
     //
@@ -2033,6 +2137,26 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSmilesCode);
         //
         Assert.assertEquals("", tmpSmilesCode);
+    }
+
+    /**
+     * TODO
+     */
+    @Test
+    public void specificTest28() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
+
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O(*)C1OC(CN)CCC1N");
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Nothing should be removed because the sugar is a spiro ring (before, these were not filtered)
+        //Assert.assertEquals("OC1(OCCC21OC3(O)CCOC3(O2)C)C", tmpSmilesCode);
     }
     //</editor-fold>
 
