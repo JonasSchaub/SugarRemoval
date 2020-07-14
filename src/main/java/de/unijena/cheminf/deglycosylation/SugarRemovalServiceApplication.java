@@ -27,17 +27,22 @@ package de.unijena.cheminf.deglycosylation;
 import org.openscience.cdk.AtomContainer;
 import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.DefaultChemObjectBuilder;
+import org.openscience.cdk.cdkbook.SMILESFormatMatcher;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.ConnectivityChecker;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.io.*;
 import org.openscience.cdk.io.formats.IChemFormat;
+import org.openscience.cdk.io.formats.IChemFormatMatcher;
+import org.openscience.cdk.io.iterator.DefaultIteratingChemObjectReader;
+import org.openscience.cdk.io.iterator.IIteratingChemObjectReader;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.io.iterator.IteratingSMILESReader;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 
 import java.io.*;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
@@ -77,7 +82,8 @@ public class SugarRemovalServiceApplication {
      * TODO
      */
     public SugarRemovalServiceApplication(File aFile, int aTypeOfMoietiesToRemove) throws IllegalArgumentException {
-        this(aFile,
+        this(
+                aFile,
                 aTypeOfMoietiesToRemove,
                 SugarRemovalUtility.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_DEFAULT,
                 SugarRemovalUtility.REMOVE_ONLY_TERMINAL_SUGARS_DEFAULT,
@@ -89,7 +95,8 @@ public class SugarRemovalServiceApplication {
                 SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT,
                 SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT,
                 SugarRemovalUtility.DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT,
-                SugarRemovalUtility.DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_DEFAULT);
+                SugarRemovalUtility.DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_DEFAULT
+        );
     }
 
     /**
@@ -148,7 +155,7 @@ public class SugarRemovalServiceApplication {
                     "threshold should be 0.");
         }
         this.sugarRemovalUtil.setStructureToKeepModeThresholdSetting(aStructureToKeepModeThresholdSetting);
-        this.sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(aDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting);
+        this.sugarRemovalUtil.setDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting(aDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting);
         boolean tmpIsFinite = Double.isFinite(anExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting);
         boolean tmpIsNegative = (anExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting < 0);
         if (!tmpIsFinite || tmpIsNegative) {
@@ -191,34 +198,33 @@ public class SugarRemovalServiceApplication {
     }
 
     /**
-     * TODO
+     * TODO doc, set up log file and log id or number of molecule
      */
     public void execute() throws IOException, SecurityException, IllegalArgumentException {
+        System.out.println("Trying to load file at " + this.inputFile.getAbsolutePath());
         FileInputStream tmpFileInputStream = new FileInputStream(this.inputFile);
         InputStreamReader tmpInputStreamReader = new InputStreamReader(tmpFileInputStream);
         BufferedReader tmpBuffReader = new BufferedReader(tmpInputStreamReader);
+        FileReader tmpFileReader = new FileReader(this.inputFile);
         FormatFactory tmpCDKFormatFactory = new FormatFactory();
+        tmpCDKFormatFactory.registerFormat((IChemFormatMatcher) SMILESFormatMatcher.getInstance());
         IChemFormat tmpFormat = tmpCDKFormatFactory.guessFormat(tmpBuffReader);
+        if (Objects.isNull(tmpFormat)) {
+            throw new IllegalArgumentException("Given file format cannot be determined.");
+        }
         String tmpFormatClassName = tmpFormat.getFormatName();
-        boolean tmpReaderIsIterating = false;
-        IChemObjectReader tmpReader = null;
+        IIteratingChemObjectReader<IAtomContainer> tmpReader = null;
         switch (tmpFormatClassName) {
             case "MDL Structure-data file":
-                tmpReaderIsIterating = true;
-                tmpReader = new IteratingSDFReader(new FileReader(this.inputFile), DefaultChemObjectBuilder.getInstance(), true);
-                break;
-            case "SMILES":
-                tmpReaderIsIterating = true;
-                tmpReader = new IteratingSMILESReader(new FileReader(this.inputFile), DefaultChemObjectBuilder.getInstance());
-                break;
             case "MDL Molfile":
             case "MDL Molfile V2000":
-                tmpReaderIsIterating = false;
-                tmpReader = new MDLV2000Reader(new FileReader(this.inputFile), IChemObjectReader.Mode.RELAXED);
-                break;
             case "MDL Mol/SDF V3000":
-                tmpReaderIsIterating = false;
-                tmpReader = new MDLV3000Reader(new FileReader(this.inputFile), IChemObjectReader.Mode.RELAXED);
+                tmpReader = new IteratingSDFReader(tmpFileReader, DefaultChemObjectBuilder.getInstance(), true);
+                System.out.println("Found MDL molfile / structure data file.");
+                break;
+            case "SMILES":
+                tmpReader = new IteratingSMILESReader(tmpFileReader, DefaultChemObjectBuilder.getInstance());
+                System.out.println("Found SMILES file.");
                 break;
             default:
                 throw new IllegalArgumentException("Given file type " + tmpFormatClassName + " cannot be used");
@@ -228,118 +234,201 @@ public class SugarRemovalServiceApplication {
         File tmpOutputFile = new File(tmpOutputFilePath);
         FileWriter tmpOutputFileWriter = new FileWriter(tmpOutputFile);
         PrintWriter tmpOutputFilePrintWriter = new PrintWriter(tmpOutputFileWriter, true);
-        String tmpOutputFileHeader = "ID" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
+        String tmpOutputFileHeader = "Nr" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
+                + "ID" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
                 + "originalMoleculeSMILES" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
                 + "deglycosylatedMoleculeSMILES" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
                 + "hadOrHasSugars" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
                 + "SugarMoietySMILES";
         tmpOutputFilePrintWriter.println(tmpOutputFileHeader);
         tmpOutputFilePrintWriter.flush();
+        System.out.println("Results will be written to: " + tmpOutputFile.getAbsolutePath());
+        System.out.println("Given settings for Sugar Removal Utility:");
+        switch (this.typeOfMoietiesToRemove) {
+            case 1:
+                System.out.println("Type of moieties to remove: circular sugars (1)");
+                break;
+            case 2:
+                System.out.println("Type of moieties to remove: linear sugars (2)");
+                break;
+            case 3:
+                System.out.println("Type of moieties to remove: circular AND linear sugars (3)");
+                break;
+            default:
+                throw new IllegalArgumentException("Type of moieties to remove must be either 1 (circular sugar moieties), " +
+                        "2 (linear sugar moieties), or 3 (both).");
+        }
+        System.out.println("Detect circular sugars only with O-glycosidic bond: " + this.sugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
+        System.out.println("Remove only terminal sugar moieties: " + this.sugarRemovalUtil.areOnlyTerminalSugarsRemoved());
+        System.out.println("Structure to keep mode setting: " + this.sugarRemovalUtil.getStructureToKeepModeSetting().name()
+                + " (" + this.sugarRemovalUtil.getStructureToKeepModeSetting().ordinal() + ")");
+        System.out.println("Structure to keep mode threshold: " + this.sugarRemovalUtil.getStructureToKeepModeThresholdSetting());
+        System.out.println("Detect circular sugars only with enough exocyclic oxygen atoms: " + this.sugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
+        System.out.println("Exocyclic oxygen atoms to atoms in ring ratio threshold: " + this.sugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
+        System.out.println("Detect linear sugars in rings: " + this.sugarRemovalUtil.areLinearSugarsInRingsDetected());
+        System.out.println("Linear sugar candidate minimum size: " + this.sugarRemovalUtil.getLinearSugarCandidateMinSizeSetting() + " carbon atoms");
+        System.out.println("Linear sugar candidate maximum size: " + this.sugarRemovalUtil.getLinearSugarCandidateMaxSizeSetting() + " carbon atoms");
+        System.out.println("Detect linear acidic sugars: " + this.sugarRemovalUtil.areLinearAcidicSugarsDetected());
+        System.out.println("Detect spiro rings as circular sugars: " + this.sugarRemovalUtil.areSpiroRingsDetectedAsCircularSugars());
+        System.out.println("Entering iteration of molecules...");
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Unique);
-        IAtomContainer tmpMolecule = new AtomContainer();
+        int tmpMoleculeCounter = 1;
+        int tmpFatalExceptionCounter = 0;
+        int tmpMinorExceptionsCounter = 0;
+        int tmpSugarContainingMoleculesCounter = 0;
+        int tmpContainsLinearSugarsCounter = 0;
+        int tmpContainsCircularSugarsCounter = 0;
+        int tmpBasicallyASugarCounter = 0;
+        IAtomContainer tmpMolecule;
         String tmpID;
         String tmpOriginalMoleculeSMILES;
         boolean tmpHadSugars;
         String tmpDeglycosylatedMoleculeSMILES;
         List<IAtomContainer> tmpSugarMoieties;
-        if (!tmpReaderIsIterating) {
+        String tmpOutput = "";
+        while (tmpReader.hasNext()) {
             try {
-                if (tmpReader instanceof MDLV2000Reader) {
-                    tmpMolecule = ((MDLV2000Reader) tmpReader).read(new AtomContainer());
-                } else if (tmpReader instanceof MDLV3000Reader) {
-                    tmpMolecule = ((MDLV3000Reader) tmpReader).read(new AtomContainer());
-                } else {
-                    throw new IllegalArgumentException("Something went wrong at file type determination.");
-                }
-            } catch (CDKException aCDKException) {
-                SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCDKException.toString(), aCDKException);
-                tmpOutputFilePrintWriter.println("[Molecule could not be read]");
-                tmpOutputFilePrintWriter.flush();
-                return;
-            }
-            if (!Objects.isNull(tmpMolecule.getProperty(CDKConstants.TITLE))) {
-                tmpID = tmpMolecule.getProperty(CDKConstants.TITLE);
-            } else {
-                tmpID = "[No title available]";
-            }
-            try {
-                tmpOriginalMoleculeSMILES = tmpSmiGen.create(tmpMolecule);
-            } catch (CDKException aCDKException) {
-                SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCDKException.toString(), aCDKException);
-                tmpOriginalMoleculeSMILES = "[SMILES code could not be generated]";
-            }
-            if (this.sugarRemovalUtil.areOnlyTerminalSugarsRemoved()) {
-                boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpMolecule);
-                if (!tmpIsConnected) {
-                    tmpDeglycosylatedMoleculeSMILES = "[Deglycosylation not possible because structure is unconnected]";
-                    tmpOutputFilePrintWriter.println(tmpID + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                            + tmpOriginalMoleculeSMILES + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                            + tmpDeglycosylatedMoleculeSMILES);
-                    tmpOutputFilePrintWriter.flush();
-                    return;
-                }
-            }
-            try {
-                switch (this.typeOfMoietiesToRemove) {
-                    case 1:
-                        tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularSugars(tmpMolecule, false);
-                        break;
-                    case 2:
-                        tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnLinearSugars(tmpMolecule, false);
-                        break;
-                    case 3:
-                        tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpMolecule, false);
-                        break;
-                    default:
-                        throw new IllegalArgumentException("Type of moieties to remove must be either 1 (circular sugar moieties), " +
-                                "2 (linear sugar moieties), or 3 (both).");
-                }
-            } catch (CloneNotSupportedException aCloneNotSupportedException) {
-                SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCloneNotSupportedException.toString(), aCloneNotSupportedException);
-                tmpDeglycosylatedMoleculeSMILES = "[Deglycosylation not possible because structure could not be cloned]";
-                tmpOutputFilePrintWriter.println(tmpID + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                        + tmpOriginalMoleculeSMILES + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                        + tmpDeglycosylatedMoleculeSMILES);
-                tmpOutputFilePrintWriter.flush();
-                return;
-            }
-            tmpHadSugars = tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY);
-            IAtomContainer tmpDeglycosylatedCore = tmpSugarMoieties.remove(0);
-            if (tmpDeglycosylatedCore.isEmpty()) {
-                tmpDeglycosylatedMoleculeSMILES = "";
-            } else {
+                tmpOutput = tmpMoleculeCounter + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR;
                 try {
-                    tmpDeglycosylatedMoleculeSMILES = tmpSmiGen.create(tmpDeglycosylatedCore);
+                    tmpMolecule = tmpReader.next();
+                } catch (Exception anException) {
+                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, anException.toString(), anException);
+                    tmpMolecule = null;
+                }
+                if (Objects.isNull(tmpMolecule) || tmpMolecule.isEmpty()) {
+                    tmpOutput = tmpOutput.concat("[Molecule could not be read]");
+                    tmpOutputFilePrintWriter.println(tmpOutput);
+                    tmpOutputFilePrintWriter.flush();
+                    tmpFatalExceptionCounter++;
+                    continue;
+                }
+                if (!Objects.isNull(tmpMolecule.getProperty("Name"))) {
+                    tmpID = tmpMolecule.getProperty("Name");
+                } else if (!Objects.isNull(tmpMolecule.getProperty("name"))) {
+                    tmpID = tmpMolecule.getProperty("name");
+                } else if (!Objects.isNull(tmpMolecule.getProperty(CDKConstants.TITLE))) {
+                    tmpID = tmpMolecule.getProperty(CDKConstants.TITLE);
+                } else if (!Objects.isNull(tmpMolecule.getTitle())) {
+                    tmpID = tmpMolecule.getTitle();
+                } else if (!Objects.isNull(tmpMolecule.getID())) {
+                    tmpID = tmpMolecule.getID();
+                } else {
+                    tmpID = "[No title available]";
+                }
+                tmpOutput = tmpOutput.concat(tmpID + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR);
+                try {
+                    tmpOriginalMoleculeSMILES = tmpSmiGen.create(tmpMolecule);
                 } catch (CDKException aCDKException) {
                     SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCDKException.toString(), aCDKException);
-                    tmpDeglycosylatedMoleculeSMILES = "[SMILES code could not be generated]";
+                    tmpOriginalMoleculeSMILES = "[SMILES code could not be generated]";
+                    tmpMinorExceptionsCounter++;
                 }
-            }
-            String tmpOutput = tmpID + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                    + tmpOriginalMoleculeSMILES + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                    + tmpDeglycosylatedMoleculeSMILES + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                    + tmpHadSugars;
-            if (!tmpSugarMoieties.isEmpty()) {
-                for (IAtomContainer tmpMoiety : tmpSugarMoieties) {
-                    String tmpSMILEScode = null;
+                tmpOutput = tmpOutput.concat(tmpOriginalMoleculeSMILES + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR);
+                if (this.sugarRemovalUtil.areOnlyTerminalSugarsRemoved()) {
+                    boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpMolecule);
+                    if (!tmpIsConnected) {
+                        tmpDeglycosylatedMoleculeSMILES = "[Deglycosylation not possible because structure is unconnected]";
+                        tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES);
+                        tmpOutputFilePrintWriter.println(tmpOutput);
+                        tmpOutputFilePrintWriter.flush();
+                        tmpFatalExceptionCounter++;
+                        continue;
+                    }
+                }
+                try {
+                    switch (this.typeOfMoietiesToRemove) {
+                        case 1:
+                            tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularSugars(tmpMolecule, false);
+                            break;
+                        case 2:
+                            tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnLinearSugars(tmpMolecule, false);
+                            break;
+                        case 3:
+                            tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpMolecule, false);
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Type of moieties to remove must be either 1 (circular sugar moieties), " +
+                                    "2 (linear sugar moieties), or 3 (both).");
+                    }
+                } catch (CloneNotSupportedException aCloneNotSupportedException) {
+                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCloneNotSupportedException.toString(), aCloneNotSupportedException);
+                    tmpDeglycosylatedMoleculeSMILES = "[Deglycosylation not possible because structure could not be cloned]";
+                    tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES);
+                    tmpOutputFilePrintWriter.println(tmpOutput);
+                    tmpOutputFilePrintWriter.flush();
+                    tmpFatalExceptionCounter++;
+                    continue;
+                }
+                if (Objects.isNull(tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY))) {
+                    tmpHadSugars = false;
+                } else {
+                    tmpHadSugars = tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY);
+                }
+                if (tmpHadSugars) {
+                    tmpSugarContainingMoleculesCounter++;
+                }
+                if (!Objects.isNull(tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY))) {
+                    if (tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY)) {
+                        tmpContainsLinearSugarsCounter++;
+                    }
+                }
+                if (!Objects.isNull(tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY))) {
+                    if (tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY)) {
+                        tmpContainsCircularSugarsCounter++;
+                    }
+                }
+                IAtomContainer tmpDeglycosylatedCore = tmpSugarMoieties.remove(0);
+                if (tmpDeglycosylatedCore.isEmpty()) {
+                    tmpDeglycosylatedMoleculeSMILES = "[empty]";
+                    tmpBasicallyASugarCounter++;
+                } else {
                     try {
-                        tmpSMILEScode = tmpSmiGen.create(tmpMoiety);
+                        tmpDeglycosylatedMoleculeSMILES = tmpSmiGen.create(tmpDeglycosylatedCore);
                     } catch (CDKException aCDKException) {
                         SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCDKException.toString(), aCDKException);
-                        tmpSMILEScode = "[SMILES code could not be generated]";
+                        tmpDeglycosylatedMoleculeSMILES = "[SMILES code could not be generated]";
+                        tmpMinorExceptionsCounter++;
                     }
-                    tmpOutput = tmpOutput.concat(SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR + tmpSMILEScode);
                 }
+                tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
+                        + tmpHadSugars);
+                if (!tmpSugarMoieties.isEmpty()) {
+                    for (IAtomContainer tmpMoiety : tmpSugarMoieties) {
+                        String tmpSMILEScode = null;
+                        try {
+                            tmpSMILEScode = tmpSmiGen.create(tmpMoiety);
+                        } catch (CDKException aCDKException) {
+                            SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCDKException.toString(), aCDKException);
+                            tmpSMILEScode = "[SMILES code could not be generated]";
+                            tmpMinorExceptionsCounter++;
+                        }
+                        tmpOutput = tmpOutput.concat(SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR + tmpSMILEScode);
+                    }
+                }
+                tmpOutputFilePrintWriter.println(tmpOutput);
+                tmpOutputFilePrintWriter.flush();
+                tmpMoleculeCounter++;
+            } catch (Exception anException) {
+                SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, anException.toString(), anException);
+                tmpOutputFilePrintWriter.println(tmpOutput);
+                tmpOutputFilePrintWriter.flush();
+                tmpFatalExceptionCounter++;
+                continue;
             }
-            tmpOutputFilePrintWriter.println(tmpOutput);
-            tmpOutputFilePrintWriter.flush();
-        } else {
-            //TODO
         }
+        System.out.println("Finished analysis of molecules.");
+        System.out.println((tmpMoleculeCounter - 1) + " molecules were analysed.");
+        System.out.println(tmpFatalExceptionCounter + " fatal exceptions occurred (molecule could not be read, was disconnected or could not be cloned.");
+        System.out.println(tmpMinorExceptionsCounter + " minor exceptions occurred (SMILES codes could not be generated etc.).");
+        System.out.println(tmpSugarContainingMoleculesCounter + " molecules contained sugar moieties.");
+        System.out.println(tmpContainsCircularSugarsCounter + " molecules contained circular sugar moieties.");
+        System.out.println(tmpContainsLinearSugarsCounter + " molecules contained linear sugar moieties.");
+        System.out.println(tmpBasicallyASugarCounter + " molecules were basically sugars because they were completely removed.");
         tmpFileInputStream.close();
         tmpOutputFilePrintWriter.flush();
         tmpOutputFilePrintWriter.close();
         tmpOutputFileWriter.close();
+        tmpFileReader.close();
         tmpReader.close();
     }
 }

@@ -1166,7 +1166,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     /**
-     * TODO: Add pseudo sugars or do separate test
+     * TODO doc
      */
     @Ignore
     @Test
@@ -2370,14 +2370,20 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     /**
      * TODO
      */
+    @Ignore
     @Test
     public void testApplication() throws Exception {
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpMolFile = new File(tmpClassLoader.getResource("CNP0083088.mol").getFile());
-        SugarRemovalServiceApplication tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpMolFile, 1);
-        System.out.println(tmpMolFile.getAbsolutePath());
-        System.out.println(tmpMolFile.canRead());
-        System.out.println(tmpMolFile.exists());
+        SugarRemovalServiceApplication tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpMolFile, 3);
+        tmpSugarRemovalApp.execute();
+
+        File tmpSDFile = new File(tmpClassLoader.getResource("review_glycosylated_NPs_bacteria_data.sdf").getFile());
+        tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpSDFile, 3);
+        tmpSugarRemovalApp.execute();
+
+        File tmpSMILESFile = new File(tmpClassLoader.getResource("smiles_test_file.txt").getFile());
+        tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpSMILESFile, 3);
         tmpSugarRemovalApp.execute();
     }
     //<editor-fold desc="Protected methods">

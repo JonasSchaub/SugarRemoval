@@ -25,6 +25,7 @@
 package de.unijena.cheminf.deglycosylation;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Objects;
 
 /**
@@ -57,6 +58,7 @@ public class Main {
      */
     public static void main(String[] args) {
         try {
+            System.out.println("Sugar Removal Service Application starting. Evaluating command line arguments...");
             if (args.length != 2 && args.length != 13) {
                 System.err.println("Number of command line arguments must be either 2 or 13.");
                 System.exit(-1);
@@ -65,6 +67,7 @@ public class Main {
             String tmpPath = args[0];
             if (Objects.isNull(tmpPath) || tmpPath.isBlank()) {
                 System.err.println("Given path to SMILES, SD, or MOL file (argument at position 0) is empty or blank.");
+                System.exit(-1);
             }
             File tmpFile = new File(tmpPath);
             if (!tmpFile.exists() || !tmpFile.canRead() || !tmpFile.isFile()) {
@@ -180,6 +183,7 @@ public class Main {
                 }
                 boolean tmpDetectLinearAcidicSugarsSetting = Boolean.parseBoolean(args[11]);
                 boolean tmpDetectSpiroRingsAsCircularSugarsSetting = Boolean.parseBoolean(args[12]);
+                //throws IllegalArgumentException but that should not happen since all arguments have been thoroughly tested.
                 tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpFile,
                         tmpTypeOfMoietiesToRemove,
                         tmpDetectCircularSugarsOnlyWithOGlycosidicBondSetting,
@@ -193,12 +197,19 @@ public class Main {
                         tmpLinearSugarCandidateMaxSizeSetting,
                         tmpDetectLinearAcidicSugarsSetting,
                         tmpDetectSpiroRingsAsCircularSugarsSetting);
+                System.out.println("All command line arguments valid. Executing application...");
             } else {
                 //redundant...
                 System.err.println("Number of command line arguments must be either 2 or 13.");
                 System.exit(-1);
             }
-            tmpSugarRemovalApp.execute();
+            try {
+                tmpSugarRemovalApp.execute();
+            } catch (IOException | SecurityException | IllegalArgumentException anException) {
+                System.err.println("Problem at execution of application: " + anException.toString());
+                System.exit(-1);
+            }
+            System.out.println("Execution successful. Application will now exit.");
             System.exit(0);
         } catch (Exception anException) {
             System.err.println("An unexpected error occurred: ");
