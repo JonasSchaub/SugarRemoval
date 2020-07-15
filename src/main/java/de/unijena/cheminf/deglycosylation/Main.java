@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020 Maria Sorokina, Jonas Schaub, Christoph Steinbeck
+ * Copyright (c) 2020 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -64,7 +64,7 @@ public class Main {
                 System.exit(-1);
             }
             SugarRemovalServiceApplication tmpSugarRemovalApp = null;
-            String tmpPath = args[0];
+            String tmpPath = args[0].trim();
             if (Objects.isNull(tmpPath) || tmpPath.isBlank()) {
                 System.err.println("Given path to SMILES, SD, or MOL file (argument at position 0) is empty or blank.");
                 System.exit(-1);
@@ -77,7 +77,7 @@ public class Main {
             }
             int tmpTypeOfMoietiesToRemove = -1;
             try {
-                tmpTypeOfMoietiesToRemove = Integer.parseInt(args[1]);
+                tmpTypeOfMoietiesToRemove = Integer.parseInt(args[1].trim());
             } catch (NumberFormatException aNumberFormatException) {
                 System.err.println("Integer indicating which type of moieties is to remove (argument at position 1)" +
                         "cannot be parsed.");
@@ -94,11 +94,11 @@ public class Main {
                 //note: The boolean returned represents the value true if the string argument is not null and is equal,
                 // ignoring case, to the string "true". Otherwise, a false value is returned, including for a null argument.
                 // So, e.g. 'hugo' results in false and does not cause an exception
-                boolean tmpDetectCircularSugarsOnlyWithOGlycosidicBondSetting = Boolean.parseBoolean(args[2]);
-                boolean tmpRemoveOnlyTerminalSugarsSetting = Boolean.parseBoolean(args[3]);
+                boolean tmpDetectCircularSugarsOnlyWithOGlycosidicBondSetting = Boolean.parseBoolean(args[2].trim());
+                boolean tmpRemoveOnlyTerminalSugarsSetting = Boolean.parseBoolean(args[3].trim());
                 int tmpStructureToKeepModeSetting = -1;
                 try {
-                    tmpStructureToKeepModeSetting = Integer.parseInt(args[4]);
+                    tmpStructureToKeepModeSetting = Integer.parseInt(args[4].trim());
                 } catch (NumberFormatException aNumberFormatException) {
                     System.err.println("Integer indicating the structure to keep mode setting (argument at position 4)" +
                             "cannot be parsed.");
@@ -113,7 +113,7 @@ public class Main {
                 }
                 int tmpStructureToKeepModeThresholdSetting = -1;
                 try {
-                    tmpStructureToKeepModeThresholdSetting = Integer.parseInt(args[5]);
+                    tmpStructureToKeepModeThresholdSetting = Integer.parseInt(args[5].trim());
                 } catch (NumberFormatException aNumberFormatException) {
                     System.err.println("Integer indicating the structure to keep mode setting threshold (argument at position 5)" +
                             "cannot be parsed.");
@@ -135,10 +135,10 @@ public class Main {
                             "the associated threshold should be 0 (argument at position 5.");
                     System.exit(-1);
                 }
-                boolean tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting = Boolean.parseBoolean(args[6]);
+                boolean tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting = Boolean.parseBoolean(args[6].trim());
                 double tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting = -1;
                 try {
-                    tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting = Double.parseDouble(args[7]);
+                    tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting = Double.parseDouble(args[7].trim());
                 } catch (NumberFormatException | NullPointerException anException) {
                     System.err.println("Number indicating the exocyclic oxygen atoms to atoms in ring ratio threshold " +
                             "(argument at position 7) cannot be parsed.");
@@ -165,12 +165,12 @@ public class Main {
                             "'false' at position 6) if the associated threshold should be 0 (argument at position 7).");
                     System.exit(-1);
                 }
-                boolean tmpDetectLinearSugarsInRingsSetting = Boolean.parseBoolean(args[8]);
+                boolean tmpDetectLinearSugarsInRingsSetting = Boolean.parseBoolean(args[8].trim());
                 int tmpLinearSugarCandidateMinSizeSetting = -1;
                 int tmpLinearSugarCandidateMaxSizeSetting = -1;
                 try {
-                    tmpLinearSugarCandidateMinSizeSetting = Integer.parseInt(args[9]);
-                    tmpLinearSugarCandidateMaxSizeSetting = Integer.parseInt(args[10]);
+                    tmpLinearSugarCandidateMinSizeSetting = Integer.parseInt(args[9].trim());
+                    tmpLinearSugarCandidateMaxSizeSetting = Integer.parseInt(args[10].trim());
                 } catch (NumberFormatException aNumberFormatException) {
                     System.err.println("The linear sugar candidate minimum (argument at position 9) or maximum size " +
                             "(argument at position 10) cannot be parsed.");
@@ -181,8 +181,8 @@ public class Main {
                             "higher than 1 (arguments at positions 9 and 10).");
                     System.exit(-1);
                 }
-                boolean tmpDetectLinearAcidicSugarsSetting = Boolean.parseBoolean(args[11]);
-                boolean tmpDetectSpiroRingsAsCircularSugarsSetting = Boolean.parseBoolean(args[12]);
+                boolean tmpDetectLinearAcidicSugarsSetting = Boolean.parseBoolean(args[11].trim());
+                boolean tmpDetectSpiroRingsAsCircularSugarsSetting = Boolean.parseBoolean(args[12].trim());
                 //throws IllegalArgumentException but that should not happen since all arguments have been thoroughly tested.
                 tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpFile,
                         tmpTypeOfMoietiesToRemove,

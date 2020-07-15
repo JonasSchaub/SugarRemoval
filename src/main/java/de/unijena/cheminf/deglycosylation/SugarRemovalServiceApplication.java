@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020 Maria Sorokina, Jonas Schaub, Christoph Steinbeck
+ * Copyright (c) 2020 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,8 +45,7 @@ import java.io.*;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.logging.*;
 
 /**
  * TODO
@@ -198,7 +197,7 @@ public class SugarRemovalServiceApplication {
     }
 
     /**
-     * TODO doc, set up log file and log id or number of molecule
+     * TODO doc
      */
     public void execute() throws IOException, SecurityException, IllegalArgumentException {
         System.out.println("Trying to load file at " + this.inputFile.getAbsolutePath());
@@ -243,6 +242,22 @@ public class SugarRemovalServiceApplication {
         tmpOutputFilePrintWriter.println(tmpOutputFileHeader);
         tmpOutputFilePrintWriter.flush();
         System.out.println("Results will be written to: " + tmpOutputFile.getAbsolutePath());
+        FileHandler tmpLogFileHandler = null;
+        try {
+            tmpLogFileHandler = new FileHandler(tmpOutputRootDirectoryPath + "Log.txt");
+        } catch (IOException anIOException) {
+            SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, anIOException.toString(), anIOException);
+            System.out.println("An exception occurred while setting up the log file. Logging will be done in default configuration.");
+        }
+        tmpLogFileHandler.setLevel(Level.ALL);
+        tmpLogFileHandler.setFormatter(new SimpleFormatter());
+        Logger tmpRootLogger = Logger.getLogger("");
+        /*for (Handler tmpHandler : tmpRootLogger.getHandlers()) {
+            tmpRootLogger.removeHandler(tmpHandler);
+        }*/
+        tmpRootLogger.addHandler(tmpLogFileHandler);
+        tmpRootLogger.setLevel(Level.WARNING);
+        System.out.println("Logging will be done in file at: " + tmpOutputRootDirectoryPath + "Log.txt");
         System.out.println("Given settings for Sugar Removal Utility:");
         switch (this.typeOfMoietiesToRemove) {
             case 1:
@@ -292,7 +307,10 @@ public class SugarRemovalServiceApplication {
                 try {
                     tmpMolecule = tmpReader.next();
                 } catch (Exception anException) {
-                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, anException.toString(), anException);
+                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                            anException.toString() + " Molecule number: " + tmpMoleculeCounter,
+                            anException);
+                    tmpLogFileHandler.flush();
                     tmpMolecule = null;
                 }
                 if (Objects.isNull(tmpMolecule) || tmpMolecule.isEmpty()) {
@@ -319,7 +337,10 @@ public class SugarRemovalServiceApplication {
                 try {
                     tmpOriginalMoleculeSMILES = tmpSmiGen.create(tmpMolecule);
                 } catch (CDKException aCDKException) {
-                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCDKException.toString(), aCDKException);
+                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                            aCDKException.toString() + " Molecule id: " + tmpID,
+                            aCDKException);
+                    tmpLogFileHandler.flush();
                     tmpOriginalMoleculeSMILES = "[SMILES code could not be generated]";
                     tmpMinorExceptionsCounter++;
                 }
@@ -351,7 +372,10 @@ public class SugarRemovalServiceApplication {
                                     "2 (linear sugar moieties), or 3 (both).");
                     }
                 } catch (CloneNotSupportedException aCloneNotSupportedException) {
-                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCloneNotSupportedException.toString(), aCloneNotSupportedException);
+                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                            aCloneNotSupportedException.toString() + " Molecule id: " + tmpID,
+                            aCloneNotSupportedException);
+                    tmpLogFileHandler.flush();
                     tmpDeglycosylatedMoleculeSMILES = "[Deglycosylation not possible because structure could not be cloned]";
                     tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES);
                     tmpOutputFilePrintWriter.println(tmpOutput);
@@ -385,7 +409,10 @@ public class SugarRemovalServiceApplication {
                     try {
                         tmpDeglycosylatedMoleculeSMILES = tmpSmiGen.create(tmpDeglycosylatedCore);
                     } catch (CDKException aCDKException) {
-                        SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCDKException.toString(), aCDKException);
+                        SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                                aCDKException.toString() + " Molecule id: " + tmpID,
+                                aCDKException);
+                        tmpLogFileHandler.flush();
                         tmpDeglycosylatedMoleculeSMILES = "[SMILES code could not be generated]";
                         tmpMinorExceptionsCounter++;
                     }
@@ -398,7 +425,10 @@ public class SugarRemovalServiceApplication {
                         try {
                             tmpSMILEScode = tmpSmiGen.create(tmpMoiety);
                         } catch (CDKException aCDKException) {
-                            SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, aCDKException.toString(), aCDKException);
+                            SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                                    aCDKException.toString() + " Molecule id: " + tmpID,
+                                    aCDKException);
+                            tmpLogFileHandler.flush();
                             tmpSMILEScode = "[SMILES code could not be generated]";
                             tmpMinorExceptionsCounter++;
                         }
@@ -409,7 +439,10 @@ public class SugarRemovalServiceApplication {
                 tmpOutputFilePrintWriter.flush();
                 tmpMoleculeCounter++;
             } catch (Exception anException) {
-                SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, anException.toString(), anException);
+                SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                        anException.toString() + " Molecule number: " + tmpMoleculeCounter,
+                        anException);
+                tmpLogFileHandler.flush();
                 tmpOutputFilePrintWriter.println(tmpOutput);
                 tmpOutputFilePrintWriter.flush();
                 tmpFatalExceptionCounter++;
@@ -430,5 +463,7 @@ public class SugarRemovalServiceApplication {
         tmpOutputFileWriter.close();
         tmpFileReader.close();
         tmpReader.close();
+        tmpLogFileHandler.flush();
+        tmpLogFileHandler.close();
     }
 }
