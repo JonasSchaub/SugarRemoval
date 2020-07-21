@@ -27,14 +27,7 @@ package de.unijena.cheminf.deglycosylation;
 /**
  * TODO:
  * - add methods to configure the linear and circular sugar patterns (remove one specific)
- *
- * - Linear sugar detection/removal:
- *      - discuss the two options for generation of non-overlapping matches
- *      - discuss the three options for treating candidates containing circular sugars
- *      - discuss the two options for treating linear sugars in larger rings (if they should not be removed)
- *
- *      - think about where to also filter linear sugar patterns for min and max size
- *
+ * - think about where to also filter linear sugar patterns for min and max size
  * - after all the changes: Check the documentation again
  * - see to dos in the code (mainly concerning docs)
  *
@@ -1789,7 +1782,7 @@ public class SugarRemovalUtility {
             this.addUniqueIndicesToAtoms(aMolecule);
         }
         List<IAtomContainer> tmpSugarCandidates = this.detectLinearSugarCandidatesByPatternMatching(aMolecule);
-        //alternative: SMARTS or Ertl or matching the biggest patterns first and exclude the matched atoms
+        //alternative ideas: SMARTS or Ertl or matching the biggest patterns first and exclude the matched atoms
         if (!tmpSugarCandidates.isEmpty()) {
 
             //*Debugging*
@@ -1806,19 +1799,17 @@ public class SugarRemovalUtility {
             //*Debugging*
             //this.printAllMolsAsSmiles(tmpSugarCandidates);
 
-            //this.removeCandidatesContainingCircularSugars(tmpSugarCandidates, aMolecule);
-            //alternative: this.removeCircularSugarsFromCandidates(tmpSugarCandidates, aMolecule);
-            //alternative:
             this.removeAtomsOfCircularSugarsFromCandidates(tmpSugarCandidates, aMolecule);
+            //alternative: this.removeCandidatesContainingCircularSugars(tmpSugarCandidates, aMolecule);
+            //alternative: this.removeCircularSugarsFromCandidates(tmpSugarCandidates, aMolecule);
 
             //*Debugging*
             //this.printAllMolsAsSmiles(tmpSugarCandidates);
 
         }
         if (!this.detectLinearSugarsInRingsSetting && !tmpSugarCandidates.isEmpty()) {
-            //this.removeSugarCandidatesWithCyclicAtoms(tmpSugarCandidates, aMolecule);
-            //alternative:
             this.removeCyclicAtomsFromSugarCandidates(tmpSugarCandidates, aMolecule);
+            //alternative: this.removeSugarCandidatesWithCyclicAtoms(tmpSugarCandidates, aMolecule);
 
             //*Debugging*
             //this.printAllMolsAsSmiles(tmpSugarCandidates);

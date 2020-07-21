@@ -31,6 +31,7 @@ package de.unijena.cheminf.deglycosylation;
  * - include tests for static methods
  * - test the protected routines
  * - remove some of the 'experiments' in the end
+ * - relocate COCONUT and ZINC tests to new project
  */
 
 import com.mongodb.MongoClientSettings;
@@ -2345,11 +2346,19 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         IAtomContainer tmpMoleculeWithoutSugars;
         String tmpSmilesCode;
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
-        tmpSugarRemovalUtil.setDetectLinearSugarsInRingsSetting(false);
+        tmpSugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         //Interesting case because there is a macrocycle containing a sugar cycle that is not isolated
         //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO"); //CNP0000509 in COCONUTfebruary20
-        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)C1=CC(O)C(O)C(OC(=O)C2C(=CC=3C=C(O)C(OC4OC(CO)C(O)C(O)C4O)=CC3C2C5=CC=C(O)C(O)=C5)C(=O)OCC(O)C(O)C(O)C(O)C(O)CO)C1"); //CNP0256712 in COCONUTmay
+        //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)C1=CC(O)C(O)C(OC(=O)C2C(=CC=3C=C(O)C(OC4OC(CO)C(O)C(O)C4O)=CC3C2C5=CC=C(O)C(O)=C5)C(=O)OCC(O)C(O)C(O)C(O)C(O)CO)C1"); //CNP0256712 in COCONUTmay
         //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O"); //CNP0140380 in COCONUTmay
+        //tmpOriginalMolecule = tmpSmiPar.parseSmiles("CCC(CC1CCCC2(O1)CC3C(C(O2)CC4(C(CC(O4)(C)C)C=CCCCCCC(C(C(C(C(C(C(C=CC(=O)O3)(C)O)O)C)O)OC5CCC(C(O5)C)N(C)C)O)(C)O)O)C)O"); //Ossamycin
+        //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(COC(=O)C(CC(=O)O)C(OCC3C(=C)CCC4C(C)(C)CCCC34C)C(=O)OC)CCCC12C)C(=O)OC"); // molecule from specific test 13
+        //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1N=C2C(C(N1)=O)=NC3=C(C=C(C(C)=C3)C)N2CC(O)C(O)C(O)COC4OC(CO)C(O)C(O)C4O");
+        //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(/C=C/C1=CC=C(C=C1)O)OCC(C(C(C(COC2=C(C3=CC(O)=C(O)C(O)=C3)OC4=CC(O)=CC(OCC(C(C(C(CO)O)O)O)O)=C4C2)O)O)O)O");
+        //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(C12OC(CO)(C(C(NCC1NC)(C2O)O)O)OC3=CC4=C(C(C5=CC=CC(O)=C5)=C3)C6OC(C(OC)=C(C=C7CNC)OC)=C7C6CO4)O");
+        //tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C1OC(CC2(C1CCC3(C2C4OC(C3(C=C4)O)=O)C)C)C5=COC=C5");
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=C(O)C12OC(OC3=CC=4OCC5C6=C(OC5C4C(=C3)C7=CC=CC(O)=C7)C(OC)=C(OC)C=C6CNC)(CO)C(O)C(O)(NCC1NC)C2O");
         tmpDepictionGenerator.withSize(2000, 2000)
                 .withFillToFit()
                 .depict(tmpOriginalMolecule)
