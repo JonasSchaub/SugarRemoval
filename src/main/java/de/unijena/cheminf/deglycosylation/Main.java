@@ -24,6 +24,13 @@
 
 package de.unijena.cheminf.deglycosylation;
 
+/**
+ * TODO
+ * - add test of Java version at the beginning
+ * - parse duration into double
+ * - improve command line argument management
+ */
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
@@ -34,9 +41,6 @@ import java.util.Objects;
 public class Main {
     /**
      * TODO
-     * See Readers in COCONUT
-     * Output: Meditate about it (the detailed structure of the output file) CSV?
-     * Should include the SMILES of the original structure and the removed moieties
      *
      * arg 0: Path to SMILES file, SDF, or molfile [String]
      * arg 1: param to indicate whether circular, linear, or both types of sugars should be removed [int?]
@@ -105,7 +109,7 @@ public class Main {
                     System.exit(-1);
                 }
                 //the given int is taken as ordinal value of the indicated enum object; ordinals start at 0
-                if (tmpStructureToKeepModeSetting >= SugarRemovalUtility.StructureToKeepModeOption.values().length ||
+                if (tmpStructureToKeepModeSetting >= SugarRemovalUtility.PreservationModeOption.values().length ||
                         tmpStructureToKeepModeSetting < 0) {
                     System.err.println("Argument at position 4 indicating the structure to keep mode setting must be " +
                             "either 0 (keep all), 1 (judge by heavy atom count), or 2 (judge by molecular weight).");
@@ -203,13 +207,17 @@ public class Main {
                 System.err.println("Number of command line arguments must be either 2 or 13.");
                 System.exit(-1);
             }
+            long tmpStartTime = System.currentTimeMillis();
             try {
                 tmpSugarRemovalApp.execute();
             } catch (IOException | SecurityException | IllegalArgumentException anException) {
                 System.err.println("Problem at execution of application: " + anException.toString());
                 System.exit(-1);
             }
-            System.out.println("Execution successful. Application will now exit.");
+            long tmpEndTime = System.currentTimeMillis();
+            long tmpDurationInMinutes = (tmpEndTime - tmpStartTime) / 60000;
+            System.out.println("Execution successful. Analysis took " + tmpDurationInMinutes + " minutes.");
+            System.out.println("Application will now exit.");
             System.exit(0);
         } catch (Exception anException) {
             System.err.println("An unexpected error occurred: ");

@@ -55,20 +55,20 @@ Also, multiple command line arguments have to be given when executing the JAR fi
 	- Important note: If this setting is set to "true", the input molecules must all consist 
 	  of one connected structure, respectively. If they already contain multiple, disconnected 
 	  structures (e.g. counter-ions), the respective molecules are ignored.
-- Position 4: A number of ["0","1","2"] indicating which structure to keep mode to use. This 
+- Position 4: A number of ["0","1","2"] indicating which preservation mode to use. This 
   specifies under what circumstances to discard structures that get disconnected from the central 
   core in the sugar removal process.
-	- "0": Keep all disconnected structures (note: this might lead to no circular sugar 
+	- "0": Preserve all disconnected structures (note: this might lead to no circular sugar 
 	  moieties being detected, depending on the other settings)
 	- "1": Remove disconnected structures that do not have enough heavy atoms
 	- "2": Remove disconnected structures that do not have a sufficient molecular weight
 	- Default: "1" (judge disconnected structures by their heavy atom count)
-- Position 5: An integer number giving the threshold of the structure to keep mode
+- Position 5: An integer number giving the threshold of the preservation mode
 	- I.e. how many heavy atoms a disconnected structure needs to have at least to be not 
 	  removed or how heavy (in terms of its molecular weight) it needs to be
 	- Default: "5" (heavy atoms)
 	- The integer number must be positive
-	- If the previous argument at position 4 was passed the value "0" (keep all structures), 
+	- If the previous argument at position 4 was passed the value "0" (preserve all structures), 
 	  this argument must also be passed a zero value
 	- In the opposite case, this argument must be passed a non-zero value if the previous 
 	  argument at position 4 was given the value 1 or 2

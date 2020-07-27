@@ -24,7 +24,6 @@
 
 package de.unijena.cheminf.deglycosylation;
 
-import org.openscience.cdk.AtomContainer;
 import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.cdkbook.SMILESFormatMatcher;
@@ -34,7 +33,6 @@ import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.io.*;
 import org.openscience.cdk.io.formats.IChemFormat;
 import org.openscience.cdk.io.formats.IChemFormatMatcher;
-import org.openscience.cdk.io.iterator.DefaultIteratingChemObjectReader;
 import org.openscience.cdk.io.iterator.IIteratingChemObjectReader;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.io.iterator.IteratingSMILESReader;
@@ -42,7 +40,6 @@ import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 
 import java.io.*;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.*;
@@ -86,8 +83,8 @@ public class SugarRemovalServiceApplication {
                 aTypeOfMoietiesToRemove,
                 SugarRemovalUtility.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_DEFAULT,
                 SugarRemovalUtility.REMOVE_ONLY_TERMINAL_SUGARS_DEFAULT,
-                SugarRemovalUtility.STRUCTURE_TO_KEEP_MODE_DEFAULT.ordinal(),
-                SugarRemovalUtility.STRUCTURE_TO_KEEP_MODE_DEFAULT.getDefaultThreshold(),
+                SugarRemovalUtility.PRESERVATION_MODE_DEFAULT.ordinal(),
+                SugarRemovalUtility.PRESERVATION_MODE_DEFAULT.getDefaultThreshold(),
                 SugarRemovalUtility.DETECT_CIRCULAR_SUGARS_ONLY_WITH_ENOUGH_EXOCYCLIC_OXYGEN_ATOMS_DEFAULT,
                 SugarRemovalUtility.EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT,
                 SugarRemovalUtility.DETECT_LINEAR_SUGARS_IN_RINGS_DEFAULT,
@@ -129,8 +126,8 @@ public class SugarRemovalServiceApplication {
         this.sugarRemovalUtil = new SugarRemovalUtility();
         this.sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(aDetectCircularSugarsOnlyWithOGlycosidicBondSetting);
         this.sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(aRemoveOnlyTerminalSugarsSetting);
-        SugarRemovalUtility.StructureToKeepModeOption tmpStructureToKeepMode = null;
-        for (SugarRemovalUtility.StructureToKeepModeOption tmpEnumConstant : SugarRemovalUtility.StructureToKeepModeOption.values()) {
+        SugarRemovalUtility.PreservationModeOption tmpStructureToKeepMode = null;
+        for (SugarRemovalUtility.PreservationModeOption tmpEnumConstant : SugarRemovalUtility.PreservationModeOption.values()) {
             if (aStructureToKeepModeSetting == tmpEnumConstant.ordinal()) {
                 tmpStructureToKeepMode = tmpEnumConstant;
             }
@@ -139,21 +136,21 @@ public class SugarRemovalServiceApplication {
             throw new IllegalArgumentException("Given structure to keep mode setting does not correspond to an ordinal " +
                     "in the StructureToKeepModeOption enumeration.");
         }
-        this.sugarRemovalUtil.setStructureToKeepModeSetting(tmpStructureToKeepMode);
+        this.sugarRemovalUtil.setPreservationModeSetting(tmpStructureToKeepMode);
         if (aStructureToKeepModeThresholdSetting < 0) {
             throw new IllegalArgumentException("The structure to keep mode setting threshold " +
                     "cannot be negative.");
         }
         //case 1: Structure to keep mode setting is 'all' (ordinal 0). Then, a 0 threshold should be passed.
         // case 2: Structure to keep mode is not 'all' (ordinal nonzero). Then, a nonzero threshold should be passed.
-        if (tmpStructureToKeepMode == SugarRemovalUtility.StructureToKeepModeOption.ALL && aStructureToKeepModeThresholdSetting != 0) {
+        if (tmpStructureToKeepMode == SugarRemovalUtility.PreservationModeOption.ALL && aStructureToKeepModeThresholdSetting != 0) {
             throw new IllegalArgumentException("Structure to keep mode 'all' was selected. Therefore, passing a nonzero " +
                     "threshold makes no sense.");
-        } else if (tmpStructureToKeepMode != SugarRemovalUtility.StructureToKeepModeOption.ALL && aStructureToKeepModeThresholdSetting == 0) {
+        } else if (tmpStructureToKeepMode != SugarRemovalUtility.PreservationModeOption.ALL && aStructureToKeepModeThresholdSetting == 0) {
             throw new IllegalArgumentException("Please select structure to keep mode 'all' if the associated " +
                     "threshold should be 0.");
         }
-        this.sugarRemovalUtil.setStructureToKeepModeThresholdSetting(aStructureToKeepModeThresholdSetting);
+        this.sugarRemovalUtil.setPreservationModeThresholdSetting(aStructureToKeepModeThresholdSetting);
         this.sugarRemovalUtil.setDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting(aDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting);
         boolean tmpIsFinite = Double.isFinite(anExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting);
         boolean tmpIsNegative = (anExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting < 0);
@@ -275,9 +272,9 @@ public class SugarRemovalServiceApplication {
         }
         System.out.println("Detect circular sugars only with O-glycosidic bond: " + this.sugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
         System.out.println("Remove only terminal sugar moieties: " + this.sugarRemovalUtil.areOnlyTerminalSugarsRemoved());
-        System.out.println("Structure to keep mode setting: " + this.sugarRemovalUtil.getStructureToKeepModeSetting().name()
-                + " (" + this.sugarRemovalUtil.getStructureToKeepModeSetting().ordinal() + ")");
-        System.out.println("Structure to keep mode threshold: " + this.sugarRemovalUtil.getStructureToKeepModeThresholdSetting());
+        System.out.println("Structure to keep mode setting: " + this.sugarRemovalUtil.getPreservationModeSetting().name()
+                + " (" + this.sugarRemovalUtil.getPreservationModeSetting().ordinal() + ")");
+        System.out.println("Structure to keep mode threshold: " + this.sugarRemovalUtil.getPreservationModeThresholdSetting());
         System.out.println("Detect circular sugars only with enough exocyclic oxygen atoms: " + this.sugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
         System.out.println("Exocyclic oxygen atoms to atoms in ring ratio threshold: " + this.sugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
         System.out.println("Detect linear sugars in rings: " + this.sugarRemovalUtil.areLinearSugarsInRingsDetected());
@@ -332,6 +329,9 @@ public class SugarRemovalServiceApplication {
                     tmpID = tmpMolecule.getID();
                 } else {
                     tmpID = "[No title available]";
+                }
+                if (tmpID.isEmpty() || tmpID.isBlank()) {
+                    tmpID = "[No ID available]";
                 }
                 tmpOutput = tmpOutput.concat(tmpID + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR);
                 try {

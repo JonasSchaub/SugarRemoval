@@ -32,6 +32,7 @@ package de.unijena.cheminf.deglycosylation;
  * - test the protected routines
  * - remove some of the 'experiments' in the end
  * - relocate COCONUT and ZINC tests to new project
+ *      - remove MongoDB dependency after that
  */
 
 import com.mongodb.MongoClientSettings;
@@ -59,11 +60,8 @@ import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.io.FormatFactory;
-import org.openscience.cdk.io.MDLV2000Reader;
-import org.openscience.cdk.io.MDLV2000Writer;
 import org.openscience.cdk.io.formats.IChemFormat;
 import org.openscience.cdk.io.formats.IChemFormatMatcher;
-import org.openscience.cdk.io.formats.SMILESFormat;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
@@ -78,7 +76,6 @@ import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import java.awt.Color;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -144,8 +141,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
         System.out.println(tmpSugarRemovalUtil.areOnlyTerminalSugarsRemoved());
-        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeSetting());
-        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeThresholdSetting());
+        System.out.println(tmpSugarRemovalUtil.getPreservationModeSetting());
+        System.out.println(tmpSugarRemovalUtil.getPreservationModeThresholdSetting());
         System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
         System.out.println(tmpSugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
         System.out.println(tmpSugarRemovalUtil.areLinearSugarsInRingsDetected());
@@ -1104,8 +1101,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
         System.out.println(tmpSugarRemovalUtil.areOnlyTerminalSugarsRemoved());
-        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeSetting());
-        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeThresholdSetting());
+        System.out.println(tmpSugarRemovalUtil.getPreservationModeSetting());
+        System.out.println(tmpSugarRemovalUtil.getPreservationModeThresholdSetting());
         System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
         System.out.println(tmpSugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
         System.out.println(tmpSugarRemovalUtil.areLinearSugarsInRingsDetected());
@@ -1198,8 +1195,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV0100DefaultSettings();
         System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
         System.out.println(tmpSugarRemovalUtil.areOnlyTerminalSugarsRemoved());
-        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeSetting());
-        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeThresholdSetting());
+        System.out.println(tmpSugarRemovalUtil.getPreservationModeSetting());
+        System.out.println(tmpSugarRemovalUtil.getPreservationModeThresholdSetting());
         System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
         System.out.println(tmpSugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
         System.out.println(tmpSugarRemovalUtil.areLinearSugarsInRingsDetected());
@@ -1372,14 +1369,14 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSmilesCode);
         //Nothing is removed, the sugar is terminal because the two phosphate groups are big enough to keep
         Assert.assertEquals("O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O", tmpSmilesCode);
-        tmpSugarRemovalUtil.setStructureToKeepModeThresholdSetting(6);
+        tmpSugarRemovalUtil.setPreservationModeThresholdSetting(6);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
         //Now, one of the phosphate groups is removed because it has only 5 heavy atoms and therefore, the sugar is
         // no longer terminal and also removed
         Assert.assertEquals("O=P(O)(O)OC", tmpSmilesCode);
-        tmpSugarRemovalUtil.setStructureToKeepModeThresholdSetting(7);
+        tmpSugarRemovalUtil.setPreservationModeThresholdSetting(7);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -1387,7 +1384,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         Assert.assertEquals("", tmpSmilesCode);
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         //back to default
-        tmpSugarRemovalUtil.setStructureToKeepModeThresholdSetting(5);
+        tmpSugarRemovalUtil.setPreservationModeThresholdSetting(5);
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
@@ -2168,13 +2165,16 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     public void classPropertiesTest() throws Exception {
         SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true); //default would be false
-        tmpSugarRemovalUtil.addLinearSugarToStructureList("CO");
+        //to check whether the addition and removal of the patterns work
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(false);
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
+        Assert.assertTrue(tmpSugarRemovalUtil.addLinearSugarToStructureList("CO"));
         List<String> tmpLinearSugarsList = tmpSugarRemovalUtil.getLinearSugarStructuresList();
         for (String tmpSmiles : tmpLinearSugarsList) {
             System.out.println(tmpSmiles);
         }
         System.out.println("-------------------");
-        tmpSugarRemovalUtil.addCircularSugarToStructureList("O1CCCCCCC1");
+        Assert.assertTrue(tmpSugarRemovalUtil.addCircularSugarToStructureList("O1CCCCCCC1"));
         List<String> tmpCircularSugarsList = tmpSugarRemovalUtil.getCircularSugarStructuresList();
         for (String tmpSmiles : tmpCircularSugarsList) {
             System.out.println(tmpSmiles);
@@ -2182,8 +2182,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println("-------------------");
         System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
         System.out.println(tmpSugarRemovalUtil.areOnlyTerminalSugarsRemoved());
-        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeSetting());
-        System.out.println(tmpSugarRemovalUtil.getStructureToKeepModeThresholdSetting());
+        System.out.println(tmpSugarRemovalUtil.getPreservationModeSetting());
+        System.out.println(tmpSugarRemovalUtil.getPreservationModeThresholdSetting());
         System.out.println(tmpSugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
         System.out.println(tmpSugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
         System.out.println(tmpSugarRemovalUtil.areLinearSugarsInRingsDetected());
@@ -2404,8 +2404,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
         tmpSugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(false);
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(true);
-        tmpSugarRemovalUtil.setStructureToKeepModeSetting(StructureToKeepModeOption.HEAVY_ATOM_COUNT);
-        tmpSugarRemovalUtil.setStructureToKeepModeThresholdSetting(5);
+        tmpSugarRemovalUtil.setPreservationModeSetting(PreservationModeOption.HEAVY_ATOM_COUNT);
+        tmpSugarRemovalUtil.setPreservationModeThresholdSetting(5);
         tmpSugarRemovalUtil.setDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting(true);
         tmpSugarRemovalUtil.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(0.5);
         tmpSugarRemovalUtil.setDetectLinearSugarsInRingsSetting(false);

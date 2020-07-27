@@ -26,19 +26,17 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO:
- * - add methods to configure the linear and circular sugar patterns (remove one specific)
- * - think about where to also filter linear sugar patterns for min and max size
  * - after all the changes: Check the documentation again
  * - see to dos in the code (mainly concerning docs)
  *
  * Future perspectives / ideas:
  * - investigate use of Ertl algorithm for detection of initial candidates, maybe all C-O FG with a ratio of C to O?
- * - investigate use of SMARTS pattern for detection of initial candidates( maybe with explicit Hs to avoid matching cross-linked structures)
+ * - investigate use of SMARTS pattern for detection of initial candidates (maybe with explicit Hs to avoid matching cross-linked structures)
  * - Is it possible with DfPattern to get the first match of the biggest pattern and then exclude the matched atoms
  *   for the next matching and so on?
  * - maintain connection info for reconstruction?
  * - replace isomorphism testing with hash codes or the ids for substructures (for better performance)?
- * - include all connected oxygen atoms in the circular sugars? Or at least all hydroxy groups
+ * - include all connected oxygen atoms in the circular sugars? Or at least all hydroxy groups?
  */
 
 import org.openscience.cdk.AtomContainer;
@@ -77,56 +75,57 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
+ * TODO: Heavily update this description!
  * Utility class to remove sugar moieties from molecular structures, primarily natural products.
  *
  * @author Jonas Schaub, Maria Sorokina
- * @version 0.1.0.0
+ * @version 1.0.0.0
  */
 public class SugarRemovalUtility {
-    //<editor-fold desc="Enum StructureToKeepModeOption">
+    //<editor-fold desc="Enum PreservationModeOption">
     /**
      * Enum that contains options for how to judge whether a remaining (unconnected) substructure after sugar removal is
-     * worth keeping or should be discarded because it is too small/light etc.
+     * worth preserving or should be discarded because it is too small/light etc.
      * <br>The set option also plays a crucial role in judging whether a sugar moiety is terminal or not.
      * <br>Also, the set threshold for the molecular weight / heavy atom count etc. interrelates with this option.
      * <br>IMPORTANT Note: If an option is added here, it needs to have a treatment in the method isTooSmall(IAtomContainer).
      * Otherwise, an UnsupportedOperationException will be thrown!
      */
-    public static enum StructureToKeepModeOption {
+    public static enum PreservationModeOption {
         /**
-         * Specifies that all structures are worth keeping.
+         * Specifies that all structures are worthy of preservation.
          */
         ALL (0),
 
         /**
-         * Specifies that whether a structure is worth keeping will be judged by its heavy atom count. The default
-         * threshold to keep a structure is set to 5 heavy atoms.
+         * Specifies that whether a structure is worth preserving will be judged by its heavy atom count. The default
+         * threshold to preserve a structure is set to 5 heavy atoms.
          */
         HEAVY_ATOM_COUNT (5),
 
         /**
-         * Specifies that whether a structure is worth keeping will be judged by its molecular weight. The default
-         * threshold to keep a structure is set to 60 Da (= 5 carbon atoms).
+         * Specifies that whether a structure is worth preserving will be judged by its molecular weight. The default
+         * threshold to preserve a structure is set to 60 Da (= 5 carbon atoms).
          */
         MOLECULAR_WEIGHT (60);
 
         /**
-         * Default threshold to keep a structure for the respective option.
+         * Default threshold to preserve a structure for the respective option.
          */
         private final int defaultThreshold;
 
         /**
          * Constructor.
          *
-         * @param aDefaultValue the default threshold to keep a structure for the respective option; no parameter checks
+         * @param aDefaultValue the default threshold to preserve a structure for the respective option; no parameter checks
          *                      are implemented but it should of course be a positive number
          */
-        StructureToKeepModeOption(int aDefaultValue) {
+        PreservationModeOption(int aDefaultValue) {
             this.defaultThreshold = aDefaultValue;
         }
 
         /**
-         * Returns the default threshold to keep a structure for this option.
+         * Returns the default threshold to preserve a structure (inclusive) for this option.
          *
          * @return the default threshold
          */
@@ -238,11 +237,11 @@ public class SugarRemovalUtility {
 
     /**
      * Default setting for how to judge whether a remaining (unconnected) substructure after sugar removal is
-     * worth keeping or should be discarded because it is too small/light etc (default: judge by heavy atom count).
+     * worth preserving or should be discarded because it is too small/light etc (default: judge by heavy atom count).
      * The minimum value to reach for the respective characteristic to judge by is set in an additional option and all
-     * enum constants have their own default values. See the StructureToKeepMode enum.
+     * enum constants have their own default values. See the PreservationModeOption enum.
      */
-    public static final StructureToKeepModeOption STRUCTURE_TO_KEEP_MODE_DEFAULT = StructureToKeepModeOption.HEAVY_ATOM_COUNT;
+    public static final PreservationModeOption PRESERVATION_MODE_DEFAULT = PreservationModeOption.HEAVY_ATOM_COUNT;
 
     /**
      * Default setting for whether the number of attached, exocyclic, single-bonded oxygen atoms should be evaluated to
@@ -345,11 +344,6 @@ public class SugarRemovalUtility {
     private List<IAtomContainer> linearAcidicSugarStructuresList;
 
     /**
-     * TODO
-     */
-    private List<DfPattern> linearAcidicSugarPatternsList;
-
-    /**
      * Detect glycosidic bond setting.
      */
     private boolean detectCircularSugarsOnlyWithOGlycosidicBondSetting;
@@ -360,15 +354,15 @@ public class SugarRemovalUtility {
     private boolean removeOnlyTerminalSugarsSetting;
 
     /**
-     * Structure to keep mode setting (see enum at the top).
+     * Preservation mode setting (see enum at the top).
      */
-    private StructureToKeepModeOption structureToKeepModeSetting;
+    private PreservationModeOption preservationModeSetting;
 
     /**
-     * Threshold for the characteristic of an unconnected fragment set in the structure to keep mode to judge whether to
-     * keep it or discard it.
+     * Threshold for the characteristic of an unconnected fragment set in the preservation mode to judge whether to
+     * preserve it or discard it.
      */
-    private int structureToKeepModeThresholdSetting;
+    private int preservationModeThresholdSetting;
 
     /**
      * Include number/ratio of connected, exocyclic oxygen atoms setting.
@@ -417,74 +411,11 @@ public class SugarRemovalUtility {
      * and all settings are set to their default values (see public static constants or enquire via get/is methods).
      */
     public SugarRemovalUtility() {
-        this.linearSugarStructuresList = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
-        this.circularSugarStructuresList = new ArrayList<>(SugarRemovalUtility.CIRCULAR_SUGARS_SMILES.length);
-        this.linearAcidicSugarStructuresList = new ArrayList<>(SugarRemovalUtility.LINEAR_ACIDIC_SUGARS_SMILES.length);
-        this.linearSugarPatternsList = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
-        this.linearAcidicSugarPatternsList = new ArrayList<>(SugarRemovalUtility.LINEAR_ACIDIC_SUGARS_SMILES.length);
-        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        //adding linear sugars to list
-        for (String tmpSmiles : SugarRemovalUtility.LINEAR_SUGARS_SMILES) {
-            try {
-                this.linearSugarStructuresList.add(tmpSmilesParser.parseSmiles(tmpSmiles));
-            } catch (Exception anException) {
-                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
-            }
-        }
-        //sorting for size decreasing; the patterns parsed afterwards are not sorted that easily, so sorting is done now
-        Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
-        //note: this can throw various exceptions but they should not appear here
-        this.linearSugarStructuresList.sort(tmpComparator);
-        //adding linear acidic sugars to list
-        for (String tmpSmiles : SugarRemovalUtility.LINEAR_ACIDIC_SUGARS_SMILES) {
-            try {
-                this.linearAcidicSugarStructuresList.add(tmpSmilesParser.parseSmiles(tmpSmiles));
-            } catch (Exception anException) {
-                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
-            }
-        }
-        this.linearAcidicSugarStructuresList.sort(tmpComparator);
-        //adding ring sugars to list
-        for (String tmpSmiles : SugarRemovalUtility.CIRCULAR_SUGARS_SMILES) {
-            try {
-                this.circularSugarStructuresList.add(tmpSmilesParser.parseSmiles(tmpSmiles));
-            } catch (Exception anException) {
-                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
-            }
-        }
-        this.circularSugarStructuresList.sort(tmpComparator);
-        //parsing linear sugars into patterns
-        for (IAtomContainer tmpSugarAC : this.linearSugarStructuresList) {
-            try {
-                this.linearSugarPatternsList.add(DfPattern.findSubstructure(tmpSugarAC));
-            } catch (Exception anException) {
-                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
-            }
-        }
-        //parsing linear acidic sugars into patterns
-        for (IAtomContainer tmpSugarAC : this.linearAcidicSugarStructuresList) {
-            try {
-                this.linearAcidicSugarPatternsList.add(DfPattern.findSubstructure(tmpSugarAC));
-            } catch (Exception anException) {
-                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
-            }
-        }
-        this.detectCircularSugarsOnlyWithOGlycosidicBondSetting =
-                SugarRemovalUtility.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_DEFAULT;
-        this.removeOnlyTerminalSugarsSetting = SugarRemovalUtility.REMOVE_ONLY_TERMINAL_SUGARS_DEFAULT;
-        this.structureToKeepModeSetting = SugarRemovalUtility.STRUCTURE_TO_KEEP_MODE_DEFAULT;
-        this.structureToKeepModeThresholdSetting = this.structureToKeepModeSetting.getDefaultThreshold();
-        this.detectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting =
-                SugarRemovalUtility.DETECT_CIRCULAR_SUGARS_ONLY_WITH_ENOUGH_EXOCYCLIC_OXYGEN_ATOMS_DEFAULT;
-        this.exocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting =
-                SugarRemovalUtility.EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT;
-        this.detectLinearSugarsInRingsSetting = SugarRemovalUtility.DETECT_LINEAR_SUGARS_IN_RINGS_DEFAULT;
-        this.addPropertyToSugarContainingMoleculesSetting =
-                SugarRemovalUtility.ADD_PROPERTY_TO_SUGAR_CONTAINING_MOLECULES_DEFAULT;
-        this.linearSugarCandidateMinSizeSetting = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT;
-        this.linearSugarCandidateMaxSizeSetting = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT;
-        this.detectLinearAcidicSugarsSetting = SugarRemovalUtility.DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT;
-        this.detectSpiroRingsAsCircularSugarsSetting = SugarRemovalUtility.DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_DEFAULT;
+        /*method setDetectLinearAcidicSugarsSetting() called in restoreDefaultSettings() checks whether the setting has
+        changed, so an initial value must be provided; If the default is true, the initial value must be false in order
+        to add the linear acidic sugar patterns to the linear sugar patterns. If the default is false, nothing must be done.*/
+        this.detectLinearAcidicSugarsSetting = false;
+        this.restoreDefaultSettings();
     }
     //</editor-fold>
     //
@@ -500,16 +431,10 @@ public class SugarRemovalUtility {
      */
     public List<String> getLinearSugarStructuresList() {
         int tmpListSize = this.linearSugarStructuresList.size();
-        if (this.detectLinearAcidicSugarsSetting) {
-            tmpListSize += this.linearAcidicSugarStructuresList.size();
-        }
         List<String> tmpSmilesList = new ArrayList<>(tmpListSize);
         SmilesGenerator tmpSmilesGen = new SmilesGenerator(SmiFlavor.Unique);
         List<IAtomContainer> tmpListToIterate = new ArrayList<>(tmpListSize);
         tmpListToIterate.addAll(0, this.linearSugarStructuresList);
-        if (this.detectLinearAcidicSugarsSetting) {
-            tmpListToIterate.addAll(this.linearAcidicSugarStructuresList);
-        }
         for (IAtomContainer tmpLinearSugar : tmpListToIterate) {
             String tmpSmiles = null;
             try {
@@ -580,25 +505,25 @@ public class SugarRemovalUtility {
 
     /**
      * Returns the current setting on how to judge whether an unconnected substructure resulting from the sugar removal
-     * should be discarded or kept. This can e.g. be judged by its heavy atom count or its molecular weight or it can be
-     * set that all structures are to be kept. If too small / too light structures are discarded, an additional threshold
-     * is specified that the structures have to fulfill in order to be kept (i.e. to be judged 'big/heavy enough').
+     * should be discarded or preserved. This can e.g. be judged by its heavy atom count or its molecular weight or it can be
+     * set that all structures are to be preserved. If too small / too light structures are discarded, an additional threshold
+     * is specified that the structures have to fulfill in order to be preserved (i.e. to be judged 'big/heavy enough').
      *
-     * @return a StructuresToKeepMode enum object representing the current setting
+     * @return a PreservationModeOption enum object representing the current setting
      */
-    public StructureToKeepModeOption getStructureToKeepModeSetting() {
-        return this.structureToKeepModeSetting;
+    public PreservationModeOption getPreservationModeSetting() {
+        return this.preservationModeSetting;
     }
 
     /**
      * Returns the current threshold of e.g. molecular weight or heavy atom count (depending on the currently set
-     * structure to keep mode) an unconnected substructure resulting from the sugar removal has to reach in order to be
-     * kept and not discarded.
+     * preservation mode) an unconnected substructure resulting from the sugar removal has to reach in order to be
+     * preserved and not discarded.
      *
      * @return an integer specifying the currently set threshold
      */
-    public int getStructureToKeepModeThresholdSetting() {
-        return this.structureToKeepModeThresholdSetting;
+    public int getPreservationModeThresholdSetting() {
+        return this.preservationModeThresholdSetting;
     }
 
     /**
@@ -687,7 +612,7 @@ public class SugarRemovalUtility {
      * no isolated ring, more than one isolated ring, consists of more structures than one isolated ring or is isomorph
      * to a circular sugar structure already present
      */
-    public void addCircularSugarToStructureList(IAtomContainer aCircularSugar)
+    public boolean addCircularSugarToStructureList(IAtomContainer aCircularSugar)
             throws NullPointerException, IllegalArgumentException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aCircularSugar, "Given atom container is 'null'");
@@ -699,7 +624,7 @@ public class SugarRemovalUtility {
         List<IAtomContainer> tmpIsolatedRingFragments = tmpRingSearch.isolatedRingFragments();
         int tmpSize = tmpIsolatedRingFragments.size();
         if (tmpSize != 1) {
-            throw new IllegalArgumentException("Given molecule is either not circular or contains too many rings.");
+            throw new IllegalArgumentException("Given molecule does not contain an isolated ring or too many rings.");
         }
         UniversalIsomorphismTester tmpUnivIsomorphTester = new UniversalIsomorphismTester();
         boolean tmpIsolatedRingMatchesEntireInputStructure = false;
@@ -725,15 +650,19 @@ public class SugarRemovalUtility {
             }
         }
         //</editor-fold>
+        boolean tmpAdditionWasSuccessful = false;
         try {
-            this.circularSugarStructuresList.add(aCircularSugar);
+            tmpAdditionWasSuccessful = this.circularSugarStructuresList.add(aCircularSugar);
         } catch (Exception anException) {
             SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             throw new IllegalArgumentException("Could not add sugar to the list of circular sugars.");
         }
-        Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
-        //note: this can throw various exceptions but they should not appear here
-        this.circularSugarStructuresList.sort(tmpComparator);
+        if (tmpAdditionWasSuccessful) {
+            Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
+            //note: this can throw various exceptions but they should not appear here
+            this.circularSugarStructuresList.sort(tmpComparator);
+        }
+        return tmpAdditionWasSuccessful;
     }
 
     /**
@@ -749,7 +678,7 @@ public class SugarRemovalUtility {
      * to a circular sugar structure already present or if the given SMILES string cannot be parsed into a molecular
      * structure
      */
-    public void addCircularSugarToStructureList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
+    public boolean addCircularSugarToStructureList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
@@ -763,7 +692,7 @@ public class SugarRemovalUtility {
             throw new IllegalArgumentException("Could not parse given string as a SMILES code.");
         }
         //throws NullPointerException and IllegalArgumentException that are relayed
-        this.addCircularSugarToStructureList(tmpRingSugar);
+        return this.addCircularSugarToStructureList(tmpRingSugar);
     }
 
     //TODO: If circular candidates are discarded in the final algorithm, the param requirements need to be adjusted here!
@@ -782,7 +711,7 @@ public class SugarRemovalUtility {
      * @throws IllegalArgumentException if the given atom container is empty or is isomorph to a linear sugar structure
      * already present
      */
-    public void addLinearSugarToStructureList(IAtomContainer aLinearSugar) throws NullPointerException, IllegalArgumentException {
+    public boolean addLinearSugarToStructureList(IAtomContainer aLinearSugar) throws NullPointerException, IllegalArgumentException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aLinearSugar, "Given atom container is 'null'");
         if (aLinearSugar.isEmpty()) {
@@ -790,15 +719,8 @@ public class SugarRemovalUtility {
         }
         //note: no check for linearity here to allow adding of structures that contain rings, e.g. amino acids
         int tmpListSize = this.linearSugarStructuresList.size();
-        if (this.detectLinearAcidicSugarsSetting) {
-            tmpListSize += this.linearAcidicSugarStructuresList.size();
-        }
         List<IAtomContainer> tmpListToIterate = new ArrayList<>(tmpListSize);
         tmpListToIterate.addAll(0, this.linearSugarStructuresList);
-        //if the detection of linear acidic sugars is turned on, the presence of the given sugar here should also be tested
-        if (this.detectLinearAcidicSugarsSetting) {
-            tmpListToIterate.addAll(this.linearAcidicSugarStructuresList);
-        }
         UniversalIsomorphismTester tmpUnivIsomorphTester = new UniversalIsomorphismTester();
         for (IAtomContainer tmpSugar : tmpListToIterate) {
             boolean tmpIsIsomorph = false;
@@ -813,23 +735,17 @@ public class SugarRemovalUtility {
             }
         }
         //</editor-fold>
+        boolean tmpAdditionWasSuccessful = false;
         try {
-            this.linearSugarStructuresList.add(aLinearSugar);
+            tmpAdditionWasSuccessful = this.linearSugarStructuresList.add(aLinearSugar);
         } catch (Exception anException) {
             SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
             throw new IllegalArgumentException("Could not add sugar to the list of linear sugars");
         }
-        Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
-        //note: this can throw various exceptions but they should not appear here
-        this.linearSugarStructuresList.sort(tmpComparator);
-        //parsing linear sugars into patterns; this has to be re-done completely because the patterns cannot be sorted
-        for(IAtomContainer tmpSugarAC : this.linearSugarStructuresList){
-            try {
-                this.linearSugarPatternsList.add(DfPattern.findSubstructure(tmpSugarAC));
-            } catch (Exception anException) {
-                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
-            }
+        if (tmpAdditionWasSuccessful) {
+            this.updateLinearSugarPatterns();
         }
+        return tmpAdditionWasSuccessful;
     }
 
     /**
@@ -845,7 +761,7 @@ public class SugarRemovalUtility {
      * @throws IllegalArgumentException if the given SMILES string is empty or does represent a molecule that is isomorph
      * to a linear sugar structure already present or if it cannot be parsed into a molecular structure
      */
-    public void addLinearSugarToStructureList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
+    public boolean addLinearSugarToStructureList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
@@ -859,7 +775,125 @@ public class SugarRemovalUtility {
             throw new IllegalArgumentException("Could not parse given string as a SMILES code.");
         }
         //throws NullPointerException and IllegalArgumentException that are relayed
-        this.addLinearSugarToStructureList(tmpLinearSugar);
+        return this.addLinearSugarToStructureList(tmpLinearSugar);
+    }
+
+    /**
+     * TODO
+     */
+    public boolean removeCircularSugarFromStructureList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
+        Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
+        if (aSmilesCode.isEmpty()) {
+            throw new IllegalArgumentException("Given SMILES code is empty");
+        }
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer tmpCircularSugar = null;
+        try {
+            tmpCircularSugar = tmpSmiPar.parseSmiles(aSmilesCode);
+        } catch (InvalidSmilesException anException) {
+            SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            throw new IllegalArgumentException("Could not parse given string as a SMILES code.");
+        }
+        //throws NullPointerException and IllegalArgumentException that are relayed
+        return this.removeCircularSugarFromStructureList(tmpCircularSugar);
+    }
+
+    /**
+     * TODO
+     */
+    public boolean removeCircularSugarFromStructureList(IAtomContainer aCircularSugar) throws NullPointerException, IllegalArgumentException {
+        Objects.requireNonNull(aCircularSugar, "Given atom container is 'null'");
+        if (aCircularSugar.isEmpty()) {
+            throw new IllegalArgumentException("Given atom container is empty.");
+        }
+        UniversalIsomorphismTester tmpUnivIsomorphTester = new UniversalIsomorphismTester();
+        boolean tmpIsIsomorph = false;
+        boolean tmpRemovalSuccessful = false;
+        for (IAtomContainer tmpSugar : this.circularSugarStructuresList) {
+            try {
+                tmpIsIsomorph = tmpUnivIsomorphTester.isIsomorph(tmpSugar, aCircularSugar);
+            } catch (CDKException aCDKException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+                throw new IllegalArgumentException("Could not determine isomorphism with present sugar structures.");
+            }
+            if (tmpIsIsomorph) {
+                try {
+                    tmpRemovalSuccessful = this.circularSugarStructuresList.remove(tmpSugar);
+                } catch (Exception anException) {
+                    SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+                    throw new IllegalArgumentException("Could not remove sugar from the list of circular sugars");
+                }
+                break;
+            }
+        }
+        if (!tmpIsIsomorph) {
+            throw new IllegalArgumentException("No circular sugar matching the given molecule was found.");
+        } else {
+            if (tmpRemovalSuccessful) {
+                Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
+                //note: this can throw various exceptions but they should not appear here
+                this.circularSugarStructuresList.sort(tmpComparator);
+            }
+            return tmpRemovalSuccessful;
+        }
+    }
+
+    /**
+     * TODO
+     */
+    public boolean removeLinearSugarFromStructureList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
+        Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
+        if (aSmilesCode.isEmpty()) {
+            throw new IllegalArgumentException("Given SMILES code is empty");
+        }
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        IAtomContainer tmpLinearSugar = null;
+        try {
+            tmpLinearSugar = tmpSmiPar.parseSmiles(aSmilesCode);
+        } catch (InvalidSmilesException anException) {
+            SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            throw new IllegalArgumentException("Could not parse given string as a SMILES code.");
+        }
+        //throws NullPointerException and IllegalArgumentException that are relayed
+        return this.removeLinearSugarFromStructureList(tmpLinearSugar);
+    }
+
+    /**
+     * TODO
+     */
+    public boolean removeLinearSugarFromStructureList(IAtomContainer aLinearSugar) throws NullPointerException, IllegalArgumentException {
+        Objects.requireNonNull(aLinearSugar, "Given atom container is 'null'");
+        if (aLinearSugar.isEmpty()) {
+            throw new IllegalArgumentException("Given atom container is empty.");
+        }
+        UniversalIsomorphismTester tmpUnivIsomorphTester = new UniversalIsomorphismTester();
+        boolean tmpIsIsomorph = false;
+        boolean tmpRemovalSuccessful = false;
+        for (IAtomContainer tmpSugar : this.linearSugarStructuresList) {
+            try {
+                tmpIsIsomorph = tmpUnivIsomorphTester.isIsomorph(tmpSugar, aLinearSugar);
+            } catch (CDKException aCDKException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+                throw new IllegalArgumentException("Could not determine isomorphism with present sugar structures.");
+            }
+            if (tmpIsIsomorph) {
+                try {
+                    tmpRemovalSuccessful = this.linearSugarStructuresList.remove(tmpSugar);
+                } catch (Exception anException) {
+                    SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+                    throw new IllegalArgumentException("Could not remove sugar from the list of linear sugars");
+                }
+                break;
+            }
+        }
+        if (!tmpIsIsomorph) {
+            throw new IllegalArgumentException("No linear sugar matching the given molecule was found.");
+        } else {
+            if (tmpRemovalSuccessful) {
+                this.updateLinearSugarPatterns();
+            }
+            return tmpRemovalSuccessful;
+        }
     }
 
     /**
@@ -875,21 +909,24 @@ public class SugarRemovalUtility {
         }
     }
 
-    //TODO: note, detection of linear acidic sugars is turned off
+    //TODO: note, detection of linear acidic sugars is turned off (to clear also these structures and remain consistent)
     /**
      * Internally clears all the linear sugar structures an input molecule is scanned for by the methods for sugar
      * detection and removal.
      */
     public void clearLinearSugarStructuresList() {
         try {
+            if (this.detectLinearAcidicSugarsSetting) {
+                this.setDetectLinearAcidicSugarsSetting(false);
+            }
             this.linearSugarStructuresList.clear();
             this.linearSugarPatternsList.clear();
         } catch (UnsupportedOperationException anException) {
             SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            this.detectLinearAcidicSugarsSetting = false;
             this.linearSugarStructuresList = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
             this.linearSugarPatternsList = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
         }
-        this.setDetectLinearAcidicSugarsSetting(false);
     }
 
     /**
@@ -914,46 +951,46 @@ public class SugarRemovalUtility {
 
     /**
      * Sets the characteristic an unconnected substructure resulting from the sugar removal is judged by to determine
-     * whether it is worth keeping or should be discarded. This characteristic can e.g. be its heavy atom count or its
-     * molecular weight. Alternatively, it can be specified that all structures are to be kept. The available options
-     * can be selected from the StructureToKeepMode enum. If too small / too light structures are discarded, an
-     * additional threshold is specified that the structures have to fulfill in order to be kept (i.e. to be judged
+     * whether it is worth preserving or should be discarded. This characteristic can e.g. be its heavy atom count or its
+     * molecular weight. Alternatively, it can be specified that all structures are to be preserved. The available options
+     * can be selected from the PreservationModeOption enum. If too small / too light structures are discarded, an
+     * additional threshold is specified that the structures have to fulfill in order to be preserved (i.e. to be judged
      * 'big/heavy enough').
-     * <br>IMPORTANT NOTE: This threshold is overridden with the default threshold for the newly set option if this
+     * <br>IMPORTANT NOTE: This threshold is overridden with the default threshold for the newly set option when this
      * method is called!
-     * <br>Note: If the structure to keep mode 'All' is combined with the removal of only terminal sugars, even though
+     * <br>Note: If the preservation mode option 'ALL' is combined with the removal of only terminal sugars, even though
      * seemingly terminal circular sugars are not removed if they would leave behind their hydroxy groups as unconnected
      * fragments upon removal.
      *
-     * @param aMode the selected mode
+     * @param anOption the selected preservation mode option
      * @throws NullPointerException if given mode is 'null'
      */
-    public void setStructureToKeepModeSetting(StructureToKeepModeOption aMode) throws NullPointerException {
-        Objects.requireNonNull(aMode, "Given mode is 'null'.");
-        this.structureToKeepModeSetting = aMode;
-        this.structureToKeepModeThresholdSetting = this.structureToKeepModeSetting.getDefaultThreshold();
+    public void setPreservationModeSetting(PreservationModeOption anOption) throws NullPointerException {
+        Objects.requireNonNull(anOption, "Given mode is 'null'.");
+        this.preservationModeSetting = anOption;
+        this.preservationModeThresholdSetting = this.preservationModeSetting.getDefaultThreshold();
     }
 
     /**
-     * Sets the threshold of e.g. molecular weight or heavy atom count (depending on the currently set structure to keep
-     * mode) an unconnected substructure resulting from the sugar removal has to reach in order to be kept and not
+     * Sets the threshold of e.g. molecular weight or heavy atom count (depending on the currently set preservation
+     * mode) an unconnected substructure resulting from the sugar removal has to reach in order to be preserved and not
      * discarded.
      *
      * @param aThreshold the new threshold
-     * @throws IllegalArgumentException if the structure to keep mode is currently set to keep all structures or the
+     * @throws IllegalArgumentException if the preservation mode is currently set to preserve all structures or the
      * threshold is negative
      */
-    public void setStructureToKeepModeThresholdSetting(int aThreshold) throws IllegalArgumentException {
+    public void setPreservationModeThresholdSetting(int aThreshold) throws IllegalArgumentException {
         //<editor-fold desc="Checks">
-        if ((this.structureToKeepModeSetting == StructureToKeepModeOption.ALL) && aThreshold != 0) {
-            throw new IllegalArgumentException("The mode is currently set to keep all structures, so a nonzero threshold " +
+        if ((this.preservationModeSetting == PreservationModeOption.ALL) && aThreshold != 0) {
+            throw new IllegalArgumentException("The mode is currently set to preserve all structures, so a nonzero threshold " +
                     "makes no sense.");
         }
         if (aThreshold < 0) {
             throw new IllegalArgumentException("Threshold cannot be negative.");
         }
         //</editor-fold>
-        this.structureToKeepModeThresholdSetting = aThreshold;
+        this.preservationModeThresholdSetting = aThreshold;
     }
 
     /**
@@ -1021,6 +1058,7 @@ public class SugarRemovalUtility {
      * TODO
      * add test that it must be smaller than the current max size?
      * note in doc that the minimum is inclusive
+     * add note that it does not affect the linear sugar patterns
      */
     public void setLinearSugarCandidateMinSizeSetting(int aMinSize) throws IllegalArgumentException {
         if (aMinSize < 1) {
@@ -1033,6 +1071,7 @@ public class SugarRemovalUtility {
      * TODO
      * add test that it must be higher than the current min size?
      * note in doc that the maximum is inclusive
+     * add note that it does not affect the linear sugar patterns
      */
     public void setLinearSugarCandidateMaxSizeSetting(int aMaxSize) throws IllegalArgumentException {
         if (aMaxSize < 1) {
@@ -1045,7 +1084,27 @@ public class SugarRemovalUtility {
      * TODO
      */
     public void setDetectLinearAcidicSugarsSetting(boolean aBoolean) {
+        boolean tmpSettingHasChanged = !(this.detectLinearAcidicSugarsSetting == aBoolean);
         this.detectLinearAcidicSugarsSetting = aBoolean;
+        if (tmpSettingHasChanged) {
+            if (this.detectLinearAcidicSugarsSetting) {
+                for (IAtomContainer tmpLinearAcidicSugar : this.linearAcidicSugarStructuresList) {
+                    try {
+                        this.addLinearSugarToStructureList(tmpLinearAcidicSugar);
+                    } catch (NullPointerException | IllegalArgumentException anException) {
+                        SugarRemovalUtility.LOGGER.log(Level.FINE, anException.toString(), anException);
+                    }
+                }
+            } else {
+                for (IAtomContainer tmpLinearAcidicSugar : this.linearAcidicSugarStructuresList) {
+                    try {
+                        this.removeLinearSugarFromStructureList(tmpLinearAcidicSugar);
+                    } catch (NullPointerException | IllegalArgumentException anException) {
+                        SugarRemovalUtility.LOGGER.log(Level.FINE, anException.toString(), anException);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -1057,22 +1116,61 @@ public class SugarRemovalUtility {
 
     /**
      * TODO
-     * Does not restore the circular and linear sugar patterns to default!
      */
     public void restoreDefaultSettings() {
-        this.detectCircularSugarsOnlyWithOGlycosidicBondSetting = SugarRemovalUtility.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_DEFAULT;
-        this.removeOnlyTerminalSugarsSetting = SugarRemovalUtility.REMOVE_ONLY_TERMINAL_SUGARS_DEFAULT;
-        this.structureToKeepModeSetting = SugarRemovalUtility.STRUCTURE_TO_KEEP_MODE_DEFAULT;
-        this.structureToKeepModeThresholdSetting = this.structureToKeepModeSetting.defaultThreshold;
-        this.detectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting = SugarRemovalUtility.DETECT_CIRCULAR_SUGARS_ONLY_WITH_ENOUGH_EXOCYCLIC_OXYGEN_ATOMS_DEFAULT;
-        this.exocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting =
-                SugarRemovalUtility.EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT;
-        this.detectLinearSugarsInRingsSetting = SugarRemovalUtility.DETECT_LINEAR_SUGARS_IN_RINGS_DEFAULT;
-        this.addPropertyToSugarContainingMoleculesSetting = SugarRemovalUtility.ADD_PROPERTY_TO_SUGAR_CONTAINING_MOLECULES_DEFAULT;
-        this.linearSugarCandidateMinSizeSetting = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT;
-        this.linearSugarCandidateMaxSizeSetting = SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT;
-        this.detectLinearAcidicSugarsSetting = SugarRemovalUtility.DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT;
-        this.detectSpiroRingsAsCircularSugarsSetting = SugarRemovalUtility.DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_DEFAULT;
+        this.linearSugarStructuresList = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
+        this.circularSugarStructuresList = new ArrayList<>(SugarRemovalUtility.CIRCULAR_SUGARS_SMILES.length);
+        this.linearAcidicSugarStructuresList = new ArrayList<>(SugarRemovalUtility.LINEAR_ACIDIC_SUGARS_SMILES.length);
+        this.linearSugarPatternsList = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
+        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        //adding linear sugars to list
+        for (String tmpSmiles : SugarRemovalUtility.LINEAR_SUGARS_SMILES) {
+            try {
+                this.linearSugarStructuresList.add(tmpSmilesParser.parseSmiles(tmpSmiles));
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            }
+        }
+        //sorting for size decreasing; the patterns parsed afterwards are not sorted that easily, so sorting is done now
+        Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
+        //note: this can throw various exceptions but they should not appear here
+        this.linearSugarStructuresList.sort(tmpComparator);
+        //adding linear acidic sugars to list
+        for (String tmpSmiles : SugarRemovalUtility.LINEAR_ACIDIC_SUGARS_SMILES) {
+            try {
+                this.linearAcidicSugarStructuresList.add(tmpSmilesParser.parseSmiles(tmpSmiles));
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            }
+        }
+        this.linearAcidicSugarStructuresList.sort(tmpComparator);
+        //adding ring sugars to list
+        for (String tmpSmiles : SugarRemovalUtility.CIRCULAR_SUGARS_SMILES) {
+            try {
+                this.circularSugarStructuresList.add(tmpSmilesParser.parseSmiles(tmpSmiles));
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            }
+        }
+        this.circularSugarStructuresList.sort(tmpComparator);
+        //parsing linear sugars into patterns and sorting (in advance)
+        this.updateLinearSugarPatterns();
+        this.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(
+                SugarRemovalUtility.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_DEFAULT);
+        this.setRemoveOnlyTerminalSugarsSetting(SugarRemovalUtility.REMOVE_ONLY_TERMINAL_SUGARS_DEFAULT);
+        this.setPreservationModeSetting(SugarRemovalUtility.PRESERVATION_MODE_DEFAULT);
+        this.setPreservationModeThresholdSetting(this.preservationModeSetting.getDefaultThreshold());
+        this.setDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting(
+                SugarRemovalUtility.DETECT_CIRCULAR_SUGARS_ONLY_WITH_ENOUGH_EXOCYCLIC_OXYGEN_ATOMS_DEFAULT);
+        this.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(
+                SugarRemovalUtility.EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT);
+        this.setDetectLinearSugarsInRingsSetting(SugarRemovalUtility.DETECT_LINEAR_SUGARS_IN_RINGS_DEFAULT);
+        this.setAddPropertyToSugarContainingMoleculesSetting(
+                SugarRemovalUtility.ADD_PROPERTY_TO_SUGAR_CONTAINING_MOLECULES_DEFAULT);
+        this.setLinearSugarCandidateMinSizeSetting(SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT);
+        this.setLinearSugarCandidateMaxSizeSetting(SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT);
+        this.setDetectLinearAcidicSugarsSetting(SugarRemovalUtility.DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT);
+        this.setDetectSpiroRingsAsCircularSugarsSetting(SugarRemovalUtility.DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_DEFAULT);
     }
     //</editor-fold>
     //
@@ -1256,9 +1354,9 @@ public class SugarRemovalUtility {
      *     <br>If only terminal sugar moieties are to be removed, the sugar candidates are one-by-one tested for
      *     whether they are terminal or not and removed if they are. The procedure starts anew after iterating over all
      *     candidates and stops if no terminal sugar was removed in one whole iteration. The determination whether
-     *     a sugar is terminal or not depends also on the set structure to keep mode because if the removal of a sugar
+     *     a sugar is terminal or not depends also on the set preservation mode because if the removal of a sugar
      *     candidate leads to an unconnected fragment the sugar candidate can still be terminal if the fragment is
-     *     too small to keep and therefore discarded after the removal of the sugar. Resulting again in one connected
+     *     too small to preserve and therefore discarded after the removal of the sugar. Resulting again in one connected
      *     remaining structure.
      *     <br>If also non-terminal sugars should be removed, simply all detected candidates are removed from the given
      *     molecular structure. If too small/light structures are also removed according to the current settings, the
@@ -1273,8 +1371,8 @@ public class SugarRemovalUtility {
      *                        of it should be generated and the sugars be removed from that
      * @return if the given atom container should NOT be cloned, this method returns the same given atom container after the
      * sugar removal; the returned molecule may be unconnected if also non-terminal sugars are removed according to
-     * the settings and it may be empty if the resulting structure after sugar removal was too small to keep due to the
-     * set structure to keep mode and the associated threshold (i.e. the molecule basically was a sugar)
+     * the settings and it may be empty if the resulting structure after sugar removal was too small to preserve due to the
+     * set preservation mode and the associated threshold (i.e. the molecule basically was a sugar)
      * @throws NullPointerException if the given atom container is 'null'
      * @throws CloneNotSupportedException if the given atom container should be cloned but does not allow cloning
      * @throws IllegalArgumentException if only terminal sugars should be removed but the given atom container already
@@ -1387,9 +1485,9 @@ public class SugarRemovalUtility {
      *     <br>If only terminal sugar moieties are to be removed, the sugar candidates are one-by-one tested for
      *     whether they are terminal or not and removed if they are. The procedure starts anew after iterating over all
      *     candidates and stops if no terminal sugar was removed in one whole iteration. The determination whether
-     *     a sugar is terminal or not depends also on the set structure to keep mode because if the removal of a sugar
+     *     a sugar is terminal or not depends also on the set preservation mode because if the removal of a sugar
      *     candidate leads to an unconnected fragment the sugar candidate can still be terminal if the fragment is
-     *     too small to keep and therefore discarded after the removal of the sugar. Resulting again in one connected
+     *     too small to preserve and therefore discarded after the removal of the sugar. Resulting again in one connected
      *     remaining structure.
      *     <br>If also non-terminal sugars should be removed, simply all detected candidates are removed from the given
      *     molecular structure. If too small/light structures are also removed according to the current settings, the
@@ -1404,8 +1502,8 @@ public class SugarRemovalUtility {
      *                        of it should be generated and the sugars be removed from that
      * @return if the given atom container should NOT be cloned, this method returns the same given atom container after the
      * sugar removal; the returned molecule may be unconnected if also non-terminal sugars are removed according to
-     * the settings and it may be empty if the resulting structure after sugar removal was too small to keep due to the
-     * set structure to keep mode and the associated threshold (i.e. the molecule basically was a sugar)
+     * the settings and it may be empty if the resulting structure after sugar removal was too small to preserve due to the
+     * set preservation mode and the associated threshold (i.e. the molecule basically was a sugar)
      * @throws NullPointerException if the given atom container is 'null'
      * @throws CloneNotSupportedException if the given atom container should be cloned but does not allow cloning
      * @throws IllegalArgumentException if only terminal sugars should be removed but the given atom container already
@@ -1514,8 +1612,8 @@ public class SugarRemovalUtility {
      *                        of it should be generated and the sugars be removed from that
      * @return if the given atom container should NOT be cloned, this method returns the same given atom container after the
      * sugar removal; the returned molecule may be unconnected if also non-terminal sugars are removed according to
-     * the settings and it may be empty if the resulting structure after sugar removal was too small to keep due to the
-     * set structure to keep mode and the associated threshold (i.e. the molecule basically was a sugar)
+     * the settings and it may be empty if the resulting structure after sugar removal was too small to preserve due to the
+     * set preservation mode and the associated threshold (i.e. the molecule basically was a sugar)
      * @throws NullPointerException if the given atom container is 'null'
      * @throws CloneNotSupportedException if the given atom container should be cloned but does not allow cloning
      * @throws IllegalArgumentException if only terminal sugars should be removed but the given atom container already
@@ -1824,7 +1922,7 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Removes all unconnected fragments that are too small/light according to the current structure to keep mode and
+     * Removes all unconnected fragments that are too small/light according to the current preservation mode and
      * threshold setting. If all structures are too small/light, an empty atom container is returned. This does not
      * guarantee that the resulting atom container consists of only one connected structure.
      *
@@ -1836,15 +1934,15 @@ public class SugarRemovalUtility {
         if (aMolecule.isEmpty()) {
             return;
         }
-        if (this.structureToKeepModeSetting == StructureToKeepModeOption.ALL) {
+        if (this.preservationModeSetting == PreservationModeOption.ALL) {
             return;
         }
         IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(aMolecule);
         for (int i = 0; i < tmpComponents.getAtomContainerCount(); i++) {
             IAtomContainer tmpComponent = tmpComponents.getAtomContainer(i);
-            //May throw UnsupportedOperationException if a new StructureToKeepMode option has been added but not implemented
+            //May throw UnsupportedOperationException if a new PreservationModeOption constant has been added but not implemented
             // in this method yet. Since this is a serious issue, the code is supposed to crash.
-            boolean tmpIsTooSmall = this.isTooSmallToKeep(tmpComponent);
+            boolean tmpIsTooSmall = this.isTooSmallToPreserve(tmpComponent);
             if (tmpIsTooSmall) {
                 //note: careful with removing things from sets/lists while iterating over it! But here it is ok because elements
                 // are not removed from the same set that is iterated
@@ -1859,30 +1957,30 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Checks whether the given molecule or structure is too small/light according to the current structure to keep mode
+     * Checks whether the given molecule or structure is too small/light according to the current preservation mode
      * and threshold setting.
      *
      * @param aMolecule the molecule to check
      * @return true, if the given structure is too light/small
      * @throws NullPointerException if molecule is 'null'
-     * @throws UnsupportedOperationException if an unknown StructureToKeepMode enum constant is set
+     * @throws UnsupportedOperationException if an unknown PreservationModeOption enum constant is set
      */
-    public boolean isTooSmallToKeep(IAtomContainer aMolecule) throws NullPointerException, UnsupportedOperationException {
+    public boolean isTooSmallToPreserve(IAtomContainer aMolecule) throws NullPointerException, UnsupportedOperationException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
             return true;
         }
         boolean tmpIsTooSmall;
-        if (this.structureToKeepModeSetting == StructureToKeepModeOption.ALL) {
+        if (this.preservationModeSetting == PreservationModeOption.ALL) {
             tmpIsTooSmall = false;
-        } else if (this.structureToKeepModeSetting == StructureToKeepModeOption.HEAVY_ATOM_COUNT) {
+        } else if (this.preservationModeSetting == PreservationModeOption.HEAVY_ATOM_COUNT) {
             int tmpHeavyAtomCount = AtomContainerManipulator.getHeavyAtoms(aMolecule).size();
-            tmpIsTooSmall = tmpHeavyAtomCount < this.structureToKeepModeThresholdSetting;
-        } else if (this.structureToKeepModeSetting == StructureToKeepModeOption.MOLECULAR_WEIGHT) {
+            tmpIsTooSmall = tmpHeavyAtomCount < this.preservationModeThresholdSetting;
+        } else if (this.preservationModeSetting == PreservationModeOption.MOLECULAR_WEIGHT) {
             double tmpMolWeight = AtomContainerManipulator.getMass(aMolecule, AtomContainerManipulator.MolWeight);
-            tmpIsTooSmall = tmpMolWeight < this.structureToKeepModeThresholdSetting;
+            tmpIsTooSmall = tmpMolWeight < this.preservationModeThresholdSetting;
         } else {
-            throw new UnsupportedOperationException("Undefined StructuresToKeepMode setting!");
+            throw new UnsupportedOperationException("Undefined PreservationModeOption setting!");
         }
         return tmpIsTooSmall;
     }
@@ -1891,7 +1989,7 @@ public class SugarRemovalUtility {
      * Checks whether the given substructure is terminal in the given parent molecule. To do this, the substructure and
      * the parent molecule are cloned, the substructure is removed in the parent molecule clone and finally it is
      * checked whether the parent molecule clone still consists of only one connected structure. If that is the case,
-     * the substructure is terminal. If the structure to keep mode is not set to 'keep all structures', too small
+     * the substructure is terminal. If the preservation mode is not set to 'preserve all structures', too small
      * resulting fragments are cleared away in between.
      * TODO: Add note here about the new condition (see param below)
      * TODO: Add note that a substructure that would only be terminal after the removal of another candidate is NOT deemed
@@ -1945,7 +2043,7 @@ public class SugarRemovalUtility {
             tmpMoleculeClone.removeAtom(tmpIndexToAtomMap.get(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY)));
         }
         boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpMoleculeClone);
-        if (this.structureToKeepModeSetting == StructureToKeepModeOption.ALL) {
+        if (this.preservationModeSetting == PreservationModeOption.ALL) {
             tmpIsTerminal = tmpIsConnected;
         } else {
             if (tmpIsConnected) {
@@ -1963,10 +2061,10 @@ public class SugarRemovalUtility {
                     if (Objects.isNull(tmpComponent) || tmpComponent.isEmpty()) {
                         continue;
                     }
-                    //May throw UnsupportedOperationException if a new StructureToKeepMode option has been added but not implemented
+                    //May throw UnsupportedOperationException if a new PreservationModeOption constant has been added but not implemented
                     // in this method yet. Since this is a serious issue, the code is supposed to crash.
                     //throws NullPointerException if molecule is null
-                    boolean tmpIsTooSmall = this.isTooSmallToKeep(tmpComponent);
+                    boolean tmpIsTooSmall = this.isTooSmallToPreserve(tmpComponent);
                     boolean tmpIsPartOfSugarCandidate = false;
                     for (IAtom tmpAtom : tmpComponent.atoms()) {
                         int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
@@ -1990,7 +2088,7 @@ public class SugarRemovalUtility {
     /**
      * Removes the given sugar candidate structures (circular and linear) from the given molecule. The candidates have
      * to be pre-filtered according to the current settings. The only setting influencing the removal here is the
-     * option to remove only terminal sugar moieties (which is internally influenced by the structure to keep mode and
+     * option to remove only terminal sugar moieties (which is internally influenced by the preservation mode and
      * threshold).
      * <br>If only terminal sugar moieties are to be removed, the sugar candidates are one-by-one tested for
      * whether they are terminal or not and removed if they are. The procedure starts anew after iterating over all
@@ -2039,7 +2137,7 @@ public class SugarRemovalUtility {
         List<IAtomContainer> tmpRemovedSugarMoieties = new ArrayList<>(aCandidateList.size());
         if (this.removeOnlyTerminalSugarsSetting) {
             //Only terminal sugars should be removed
-            //but the definition of terminal depends on the set structures to keep mode!
+            //but the definition of terminal depends on the set preservation mode!
             //decisions based on this setting are made in the respective private method
             //No unconnected structures result at the end or at an intermediate step
             boolean tmpContainsNoTerminalSugar = false;
@@ -2138,8 +2236,8 @@ public class SugarRemovalUtility {
         }
         //if too small / too light, unconnected structures should be discarded, this is done now
         //otherwise, the possibly unconnected atom container is returned
-        //Even if only terminal sugars are removed, the resulting, connected structure may still be too small to keep!
-        if (this.structureToKeepModeSetting != StructureToKeepModeOption.ALL) {
+        //Even if only terminal sugars are removed, the resulting, connected structure may still be too small to preserve!
+        if (this.preservationModeSetting != PreservationModeOption.ALL) {
             //throws NullPointerException if molecule is null
             this.removeTooSmallDisconnectedStructures(aMolecule);
         }
@@ -2719,6 +2817,23 @@ public class SugarRemovalUtility {
     /**
      * TODO
      */
+    protected void updateLinearSugarPatterns() {
+        Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
+        //note: this can throw various exceptions but they should not appear here
+        this.linearSugarStructuresList.sort(tmpComparator);
+        //parsing linear sugars into patterns; this has to be re-done completely because the patterns cannot be sorted
+        for (IAtomContainer tmpSugarAC : this.linearSugarStructuresList){
+            try {
+                this.linearSugarPatternsList.add(DfPattern.findSubstructure(tmpSugarAC));
+            } catch (Exception anException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, anException.toString(), anException);
+            }
+        }
+    }
+
+    /**
+     * TODO
+     */
     protected List<IAtomContainer> detectLinearSugarCandidatesByPatternMatching(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'");
         IAtomContainer tmpNewMolecule = aMolecule;
@@ -2727,14 +2842,8 @@ public class SugarRemovalUtility {
         }
         List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpNewMolecule.getAtomCount() / 2);
         int tmpListSize = this.linearSugarPatternsList.size();
-        if (this.detectLinearAcidicSugarsSetting) {
-            tmpListSize += this.linearAcidicSugarPatternsList.size();
-        }
         List<DfPattern> tmpListToIterate = new ArrayList<>(tmpListSize);
         tmpListToIterate.addAll(0, this.linearSugarPatternsList);
-        if (this.detectLinearAcidicSugarsSetting) {
-            tmpListToIterate.addAll(this.linearAcidicSugarPatternsList);
-        }
         for (DfPattern tmpLinearSugarPattern : tmpListToIterate) {
             if (Objects.isNull(tmpLinearSugarPattern)) {
                 continue;
