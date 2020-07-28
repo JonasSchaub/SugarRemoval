@@ -1020,7 +1020,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         // to also test their appearance
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         //Note: Here, additional molecules could be added to the list to also test them
-        List<String> tmpLinearSugarsList = tmpSugarRemovalUtil.getLinearSugarStructuresList();
+        List<String> tmpLinearSugarsList = tmpSugarRemovalUtil.getLinearSugarPatternsList();
         List<List<Object>> tmpLinearSugarPatterns = new ArrayList<>(tmpLinearSugarsList.size());
         for (String tmpLinearSugarString : tmpLinearSugarsList) {
             List<Object> tmpList = new ArrayList<>(4);
@@ -2168,14 +2168,14 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //to check whether the addition and removal of the patterns work
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(false);
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
-        Assert.assertTrue(tmpSugarRemovalUtil.addLinearSugarToStructureList("CO"));
-        List<String> tmpLinearSugarsList = tmpSugarRemovalUtil.getLinearSugarStructuresList();
+        Assert.assertTrue(tmpSugarRemovalUtil.addLinearSugarToPatternsList("CO"));
+        List<String> tmpLinearSugarsList = tmpSugarRemovalUtil.getLinearSugarPatternsList();
         for (String tmpSmiles : tmpLinearSugarsList) {
             System.out.println(tmpSmiles);
         }
         System.out.println("-------------------");
-        Assert.assertTrue(tmpSugarRemovalUtil.addCircularSugarToStructureList("O1CCCCCCC1"));
-        List<String> tmpCircularSugarsList = tmpSugarRemovalUtil.getCircularSugarStructuresList();
+        Assert.assertTrue(tmpSugarRemovalUtil.addCircularSugarToPatternsList("O1CCCCCCC1"));
+        List<String> tmpCircularSugarsList = tmpSugarRemovalUtil.getCircularSugarPatternsList();
         for (String tmpSmiles : tmpCircularSugarsList) {
             System.out.println(tmpSmiles);
         }

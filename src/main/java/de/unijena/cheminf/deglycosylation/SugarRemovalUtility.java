@@ -75,8 +75,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * TODO: Heavily update this description!
- * Utility class to remove sugar moieties from molecular structures, primarily natural products.
+ * The Sugar Removal Utility (SRU) implements a generalized algorithm for automated removal of circular and linear
+ * sugars from molecular structures, as described in [put reference to publication].
+ * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
  * @version 1.0.0.0
@@ -84,43 +85,53 @@ import java.util.logging.Logger;
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum PreservationModeOption">
     /**
-     * Enum that contains options for how to judge whether a remaining (unconnected) substructure after sugar removal is
-     * worth preserving or should be discarded because it is too small/light etc.
-     * <br>The set option also plays a crucial role in judging whether a sugar moiety is terminal or not.
-     * <br>Also, the set threshold for the molecular weight / heavy atom count etc. interrelates with this option.
-     * <br>IMPORTANT Note: If an option is added here, it needs to have a treatment in the method isTooSmall(IAtomContainer).
-     * Otherwise, an UnsupportedOperationException will be thrown!
+     * Enum with options for how to determine whether a substructure that gets disconnected from the molecule by the
+     * removal of a sugar moiety is worth keeping or can get removed along with the sugar.
+     * <br>The set option plays a major role in discriminating terminal and non-terminal sugar moieties. If only terminal
+     * sugar moieties are to be removed from the molecule, any disconnected structure resulting
+     * from each removal step must be too small to preserve according to the preservation mode and is cleared away. If
+     * all the candidate sugars are to be removed from the query molecule, the disconnected structures that are too small
+     * are only cleared once at the end of the routine.
+     * <br>Also, the set preservation mode threshold interrelates with this option.
+     * <p>Important Note for further development: If an option is added here, it needs to have a treatment in the method
+     * isTooSmallToPreserve(IAtomContainer). Otherwise, an UnsupportedOperationException will be thrown.
      */
     public static enum PreservationModeOption {
         /**
-         * Specifies that all structures are worthy of preservation.
+         * Specifies that all structures should be preserved. Note that if this option is combined with the removal of
+         * only terminal moieties, even the smallest attached structure will prevent the removal of a sugar. The most
+         * important consequence is that circular sugars with any hydroxy groups will not be removed because these are
+         * not considered as part of the sugar moiety.
          */
         ALL (0),
 
         /**
          * Specifies that whether a structure is worth preserving will be judged by its heavy atom count. The default
-         * threshold to preserve a structure is set to 5 heavy atoms.
+         * threshold to preserve a structure is set to 5 heavy atoms (inclusive).
          */
         HEAVY_ATOM_COUNT (5),
 
         /**
          * Specifies that whether a structure is worth preserving will be judged by its molecular weight. The default
-         * threshold to preserve a structure is set to 60 Da (= 5 carbon atoms).
+         * threshold to preserve a structure is set to 60 Da (= 5 carbon atoms, inclusive).
          */
         MOLECULAR_WEIGHT (60);
 
         /**
-         * Default threshold to preserve a structure for the respective option.
+         * Default preservation mode threshold for the respective option.
          */
         private final int defaultThreshold;
 
         /**
          * Constructor.
          *
-         * @param aDefaultValue the default threshold to preserve a structure for the respective option; no parameter checks
-         *                      are implemented but it should of course be a positive number
+         * @param aDefaultValue the default threshold to preserve a structure for the respective option; must be positive
+         * @throws IllegalArgumentException if the default value is negative
          */
-        PreservationModeOption(int aDefaultValue) {
+        PreservationModeOption(int aDefaultValue) throws IllegalArgumentException {
+            if (aDefaultValue < 0) {
+                throw new IllegalArgumentException("Default threshold must be positive or zero.");
+            }
             this.defaultThreshold = aDefaultValue;
         }
 
@@ -148,18 +159,19 @@ public class SugarRemovalUtility {
     public static final String CONTAINS_LINEAR_SUGAR_PROPERTY_KEY = "CONTAINS_LINEAR_SUGAR";
 
     /**
-     * Property key to indicate that the structure contains (or contained before removal) sugar moieties.
+     * Property key to indicate that the structure contains (or contained before removal) sugar moieties (of any kind).
      */
     public static final String CONTAINS_SUGAR_PROPERTY_KEY = "CONTAINS_SUGAR";
 
     /**
      * Property key for index that is added to any IAtom object in a given IAtomContainer object for internal unique
-     * identification of the respective IAtom object.
+     * identification of the respective IAtom object. For internal use only.
      */
     public static final String INDEX_PROPERTY_KEY = "SUGAR_REMOVAL_UTILITY_INDEX";
 
     /**
-     * TODO
+     * Key for property that is added to IAtom objects that connect a spiro ring system for identification and preservation
+     * of these atoms in the removal process. For internal use only.
      */
     public static final String IS_SPIRO_ATOM_PROPERTY_KEY = "IS_SPIRO_ATOM";
     //</editor-fold>
@@ -167,27 +179,26 @@ public class SugarRemovalUtility {
     //<editor-fold desc="Substructure patterns">
     /**
      * Linear sugar structures represented as SMILES codes. An input molecule is scanned for these substructures for
-     * the detection of linear sugars.
+     * the detection of linear sugars. This set contains multiple aldoses, ketoses, and sugar alcohols sized between 3
+     * and 7 carbons. Additional structures can be added or specific ones removed from the set at run-time using the
+     * respective methods.
      */
     public static final String[] LINEAR_SUGARS_SMILES = {
-            /*note: even though it would save time in the constructor to already sort for length decreasing here, the author
+            /*note: even though it would save time in the constructor to already sort for length decreasing here, the authors
              decided against it to keep this more readable and easier to inspect or extend.*/
             //*aldoses*
-            //note: no octose and so on
             "C(C(C(C(C(C(C=O)O)O)O)O)O)O", //aldoheptose
             "C(C(C(C(C(C=O)O)O)O)O)O", //aldohexose
             "C(C(C(C(C=O)O)O)O)O", //aldopentose
             "C(C(C(C=O)O)O)O", //aldotetrose
             "C(C(C=O)O)O", //aldotriose
             //*ketoses*
-            //note: no octose and so on
             "C(C(C(C(C(C(CO)O)O)O)O)=O)O", //2-ketoheptose
             "C(C(C(C(C(CO)O)O)O)=O)O", //2-ketohexose
             "C(C(C(C(CO)O)O)=O)O", //2-ketopentose
             "C(C(C(CO)O)=O)O", //2-ketotetrose
             "C(C(CO)=O)O", //2-ketotriose
             //*sugar alcohols*
-            //note: no octitol and so on
             "C(C(C(C(C(C(CO)O)O)O)O)O)O", //heptitol
             "C(C(C(C(C(CO)O)O)O)O)O", //hexitol
             "C(C(C(C(CO)O)O)O)O", //pentitol
@@ -198,10 +209,10 @@ public class SugarRemovalUtility {
     };
 
     /**
-     *
+     * Linear acidic sugar structures represented as SMILES codes. These can be optionally added to the linear sugar structures
+     * used for initial detection of linear sugars in an input molecule.
      */
     public static final String[] LINEAR_ACIDIC_SUGARS_SMILES = {
-            //*sugar acids / acidic sugars*
             "C(C(CC(C(CO)O)O)O)(O)=O", //3-deoxyhexonic acid
             "CC(CC(CC(=O)O)O)O", //3,5-Dihydroxyhexanoic acid
             "O=C(O)CC(O)CC(=O)O", //3-hydroxypentanedioic acid
@@ -213,79 +224,89 @@ public class SugarRemovalUtility {
      * Circular sugar structures represented as SMILES codes. The isolated rings of an input molecule are matched with
      * these structures for the detection of circular sugars. The structures listed here only represent the circular
      * part of sugar rings (i.e. one oxygen atom and multiple carbon atoms). Common exocyclic structures like
-     * hydroxy groups are not part of the patterns and detected in another step.
+     * hydroxy groups are not part of the patterns and therefore not part of the detected circular sugar moieties.
+     * The set includes tetrahydrofuran, tetrahydropyran, and oxepane to match furanoses, pyranoses, and heptoses per
+     * default. It can be configured at run-time using the respective methods.
      */
     public static final String [] CIRCULAR_SUGARS_SMILES = {
-            "C1CCOC1", //tetrahydrofuran to match all 5-membered sugar rings
-            "C1CCOCC1", //tetrahydropyran to match all 6-membered sugar rings
-            "C1CCCOCC1" //oxepane to match all 7-membered sugar rings
+            "C1CCOC1", //tetrahydrofuran to match all 5-membered sugar rings (furanoses)
+            "C1CCOCC1", //tetrahydropyran to match all 6-membered sugar rings (pyranoses)
+            "C1CCCOCC1" //oxepane to match all 7-membered sugar rings (heptoses)
     };
     //</editor-fold>
 
     //<editor-fold desc="Default settings">
     /**
-     * Default setting for whether glycosidic bonds between sugar rings should be detected to determine whether a
-     * candidate sugar structure should be removed (default: false).
+     * Default setting for whether only circular sugar moieties that are attached to the parent structure or other sugar
+     * moieties via an O-glycosidic bond should be detected and subsequently removed (default: false).
      */
     public static final boolean DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_DEFAULT = false;
 
     /**
-     * Default setting for whether only terminal sugar moieties should be removed, i.e. those that result in a still
-     * fully-connected structure (default: true).
+     * Default setting for whether only terminal sugar moieties should be removed, i.e. glycosidic substructures of a
+     * molecule, which when removed do not split the original molecule into two or more disconnected substructures
+     * (default: true).
      */
     public static final boolean REMOVE_ONLY_TERMINAL_SUGARS_DEFAULT = true;
 
     /**
-     * Default setting for how to judge whether a remaining (unconnected) substructure after sugar removal is
-     * worth preserving or should be discarded because it is too small/light etc (default: judge by heavy atom count).
-     * The minimum value to reach for the respective characteristic to judge by is set in an additional option and all
-     * enum constants have their own default values. See the PreservationModeOption enum.
+     * Default setting for how to determine whether a substructure that gets disconnected from the molecule by the
+     * removal of a sugar moiety is worth keeping or can get removed along with the sugar. (default: preserve all
+     * structures that consist of 5 or more heavy atoms). The set option plays a major role in discriminating terminal
+     * and non-terminal sugar moieties. The minimum value to reach for the respective characteristic to judge by is set
+     * in an additional option and all enum constants have their own default values. See the PreservationModeOption enum.
      */
     public static final PreservationModeOption PRESERVATION_MODE_DEFAULT = PreservationModeOption.HEAVY_ATOM_COUNT;
 
     /**
-     * Default setting for whether the number of attached, exocyclic, single-bonded oxygen atoms should be evaluated to
-     * determine whether a circular candidate sugar structure should be removed (default: true).
+     * Default setting for whether detected circular sugar candidates must have a sufficient number of attached,
+     * exocyclic oxygen atoms in order to be detected as a sugar moiety (default: true). The 'sufficient number is
+     * defined in another option / default setting.
      */
     public static final boolean DETECT_CIRCULAR_SUGARS_ONLY_WITH_ENOUGH_EXOCYCLIC_OXYGEN_ATOMS_DEFAULT = true;
 
     /**
      * Default setting for the minimum ratio of attached, exocyclic, single-bonded oxygen atoms to the number of atoms
      * in the candidate circular sugar structure to reach in order to be classified as a sugar moiety
-     * if the number of exocyclic oxygen atoms should evaluated (default: 0.5 so at a minimum 3 connected, exocyclic
-     * oxygen atoms for a six-membered ring).
+     * if the number of exocyclic oxygen atoms should be evaluated (default: 0.5 so at a minimum 3 connected, exocyclic
+     * oxygen atoms for a six-membered ring, for example).
      */
     public static final double EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT = 0.5;
 
     /**
-     * Default setting for whether linear sugar structures that are part of a larger ring should be removed (default:
-     * false).
+     * Default setting for whether linear sugar structures that are part of a ring should be removed (default:
+     * false). This setting is important for e.g. macrocycles that contain sugars or pseudosugars.
      */
     public static final boolean DETECT_LINEAR_SUGARS_IN_RINGS_DEFAULT = false;
 
     /**
      * Default setting for whether to add a property to given atom containers to indicate that the structure contains
-     * (or contained before removal) sugar moieties. See property keys in the public constants of this class.
+     * (or contained before removal) sugar moieties (default: true). See property keys in the public constants of this class.
      */
     public static final boolean ADD_PROPERTY_TO_SUGAR_CONTAINING_MOLECULES_DEFAULT = true;
 
     /**
-     * TODO
+     * Default setting for the minimum number of carbon atoms a linear sugar candidate must have in order to be detected
+     * as a sugar moiety (and subsequently be removed, default: 4, inclusive).
      */
     public static final int LINEAR_SUGAR_CANDIDATE_MIN_SIZE_DEFAULT = 4;
 
     /**
-     * TODO
+     * Default setting for the maximum number of carbon atoms a linear sugar candidate can have in order to be detected
+     * as a sugar moiety (and subsequently be removed, default: 7, inclusive).
      */
     public static final int LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT = 7;
 
     /**
-     * TODO
+     * Default setting for whether to include the linear acidic sugar patterns in the linear sugar structures used for
+     * initial detection of linear sugars in a given molecule (default: false).
      */
     public static final boolean DETECT_LINEAR_ACIDIC_SUGARS_DEFAULT = false;
 
     /**
-     * TODO
+     * Default setting for whether to include spiro rings in the initial set of detected rings considered for circular
+     * sugar detection (default: false). If the option is turned on and a spiro sugar ring is removed, its atom connecting
+     * it to another ring is preserved.
      */
     public static final boolean DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_DEFAULT = false;
     //</editor-fold>
@@ -294,7 +315,8 @@ public class SugarRemovalUtility {
     /**
      * Daylight SMARTS pattern for matching ester bonds between linear sugars.
      * Defines a carbon atom connected to a double-bonded oxygen atom and a single-bonded oxygen atom that must not be
-     * in a ring and is connected to another carbon atom via a single bond.
+     * in a ring and is connected to another carbon atom via a single bond. The oxygen atom must not be in a ring to
+     * avoid breaking circular sugars.
      */
     public static final SmartsPattern ESTER_SMARTS_PATTERN = SmartsPattern.create("[C](=O)-[O!R]-[C]");
 
@@ -324,7 +346,7 @@ public class SugarRemovalUtility {
     //
     //<editor-fold desc="Private variables">
     /**
-     * Linear sugar structures parsed into atom containers. Not used for detection but parsed into patterns.
+     * Linear sugar structures parsed into atom containers. Not used for detection but parsed into patterns after sorting.
      */
     private List<IAtomContainer> linearSugarStructuresList;
 
@@ -339,7 +361,8 @@ public class SugarRemovalUtility {
     private List<DfPattern> linearSugarPatternsList;
 
     /**
-     * TODO
+     * Linear acidic sugar structures parsed into atom containers. This list serves as reference to be able to add and
+     * remove these structures from the linear sugar structures when the respective setting changes.
      */
     private List<IAtomContainer> linearAcidicSugarStructuresList;
 
@@ -354,7 +377,7 @@ public class SugarRemovalUtility {
     private boolean removeOnlyTerminalSugarsSetting;
 
     /**
-     * Preservation mode setting (see enum at the top).
+     * Preservation mode setting.
      */
     private PreservationModeOption preservationModeSetting;
 
@@ -380,35 +403,35 @@ public class SugarRemovalUtility {
     private boolean detectLinearSugarsInRingsSetting;
 
     /**
-     * Add a property to sugar-containing, given atom containers setting.
+     * Add a property to  given sugar-containing atom containers setting.
      */
     private boolean addPropertyToSugarContainingMoleculesSetting;
 
     /**
-     * TODO
+     * Linear sugar candidates minimum carbon atom count setting.
      */
     private int linearSugarCandidateMinSizeSetting;
 
     /**
-     * TODO
+     * Linear sugar candidates maximum carbon atom count setting.
      */
     private int linearSugarCandidateMaxSizeSetting;
 
     /**
-     * TODO
+     * Include linear acidic sugars in linear sugar detection setting.
      */
     private boolean detectLinearAcidicSugarsSetting;
 
     /**
-     * TODO
+     * Detect spiro rings as possible sugar rings setting.
      */
     private boolean detectSpiroRingsAsCircularSugarsSetting;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
     /**
-     * Sole constructor of this class. The circular and linear sugar structures are parsed into atom containers and patterns
-     * and all settings are set to their default values (see public static constants or enquire via get/is methods).
+     * Sole constructor of this class. All settings are set to their default values (see public static constants or
+     * enquire via get/is methods). To change these settings, use the respective set methods.
      */
     public SugarRemovalUtility() {
         /*method setDetectLinearAcidicSugarsSetting() called in restoreDefaultSettings() checks whether the setting has
@@ -422,20 +445,20 @@ public class SugarRemovalUtility {
     //<editor-fold desc="Public properties get/is">
     //TODO: Add note, includes the linear acidic sugars only if the are detected according to the settings
     /**
-     * Get a list of (unique) SMILES strings representing the linear sugar structures an input molecule is scanned for
-     * by the methods for sugar detection or removal. The default structures can also be retrieved from the respective
-     * public constant of this class. But additional structures added externally are only returned by this method.
-     * <br>If a structure cannot be parsed into a SMILES string, it is excluded from the list.
+     * Returns a list of (unique) SMILES strings representing the linear sugar structures an input molecule is scanned for
+     * for linear sugar detection. The returned list represents the current state of this list, i.e. externally added
+     * structures are included, externally removed structures not, and the linear acidic sugar structures are only
+     * included if the respective option is activated. The default structures can also be retrieved from the respective
+     * public constant of this class.
+     * <br>Note: If a structure cannot be parsed into a SMILES string, it is excluded from the list.
      *
      * @return a list of SMILES codes
      */
-    public List<String> getLinearSugarStructuresList() {
+    public List<String> getLinearSugarPatternsList() {
         int tmpListSize = this.linearSugarStructuresList.size();
         List<String> tmpSmilesList = new ArrayList<>(tmpListSize);
         SmilesGenerator tmpSmilesGen = new SmilesGenerator(SmiFlavor.Unique);
-        List<IAtomContainer> tmpListToIterate = new ArrayList<>(tmpListSize);
-        tmpListToIterate.addAll(0, this.linearSugarStructuresList);
-        for (IAtomContainer tmpLinearSugar : tmpListToIterate) {
+        for (IAtomContainer tmpLinearSugar : this.linearSugarStructuresList) {
             String tmpSmiles = null;
             try {
                 tmpSmiles = tmpSmilesGen.create(tmpLinearSugar);
@@ -454,14 +477,15 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Get a list of (unique) SMILES strings representing the circular sugar structures an input molecule is scanned for
-     * by the methods for sugar detection or removal. The default structures can also be retrieved from the respective
-     * public constant of this class. But additional structures added externally are only returned by this method.
-     * <br>If a structure cannot be parsed into a SMILES string, it is excluded from the list.
+     * Returns a list of (unique) SMILES strings representing the circular sugar structures an input molecule is scanned for
+     * for circular sugar detection. The returned list represents the current state of this list, i.e. externally added
+     * structures are included, externally removed structures are not. The default structures can also be retrieved from
+     * the respective public constant of this class.
+     * <br>Note: If a structure cannot be parsed into a SMILES string, it is excluded from the list.
      *
      * @return a list of SMILES codes
      */
-    public List<String> getCircularSugarStructuresList() {
+    public List<String> getCircularSugarPatternsList() {
         List<String> tmpSmilesList = new ArrayList<>(this.circularSugarStructuresList.size());
         SmilesGenerator tmpSmilesGen = new SmilesGenerator(SmiFlavor.Unique);
         for (IAtomContainer tmpRingSugar : this.circularSugarStructuresList) {
@@ -483,8 +507,8 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Specifies whether the glycosidic bond of a circular candidate sugar structure is detected and its presence taken
-     * into account to decide on whether the sugar is to be removed.
+     * Specifies whether only circular sugar moieties that are attached to the parent structure or other sugar
+     * moieties via an O-glycosidic bond should be detected and subsequently removed.
      *
      * @return true if only circular sugar moieties connected via a glycosidic bond are removed according to the current
      * settings
@@ -494,8 +518,8 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Specifies whether only terminal sugar moieties (i.e. those that result in a still fully-connected structure) are
-     * removed.
+     * Specifies whether only terminal sugar moieties should be removed, i.e. glycosidic substructures of a
+     * molecule, which when removed do not split the original molecule into two or more disconnected substructures.
      *
      * @return true if only terminal sugar moieties are removed according to the current settings
      */
@@ -504,10 +528,11 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Returns the current setting on how to judge whether an unconnected substructure resulting from the sugar removal
-     * should be discarded or preserved. This can e.g. be judged by its heavy atom count or its molecular weight or it can be
-     * set that all structures are to be preserved. If too small / too light structures are discarded, an additional threshold
-     * is specified that the structures have to fulfill in order to be preserved (i.e. to be judged 'big/heavy enough').
+     * Returns the current setting for how to determine whether a substructure that gets disconnected from the molecule by the
+     * removal of a sugar moiety is worth keeping or can get removed along with the sugar. This can e.g. be judged by its
+     * heavy atom count or its molecular weight or it can be specified that all structures are to be preserved. If too
+     * small / too light structures are discarded, an additional threshold is specified in the preservation mode threshold
+     * setting that the structures have to reach in order to be preserved (i.e. to be judged 'big/heavy enough').
      *
      * @return a PreservationModeOption enum object representing the current setting
      */
@@ -517,51 +542,54 @@ public class SugarRemovalUtility {
 
     /**
      * Returns the current threshold of e.g. molecular weight or heavy atom count (depending on the currently set
-     * preservation mode) an unconnected substructure resulting from the sugar removal has to reach in order to be
-     * preserved and not discarded.
+     * preservation mode) a substructure that gets disconnected from the molecule by the
+     * removal of a sugar moiety has to reach in order to be preserved and not discarded.
      *
-     * @return an integer specifying the currently set threshold
+     * @return an integer specifying the currently set threshold (either specified in Da or number of heavy atoms)
      */
     public int getPreservationModeThresholdSetting() {
         return this.preservationModeThresholdSetting;
     }
 
     /**
-     * Specifies whether the number of attached, exocyclic, single-bonded oxygen atoms is currently evaluated to determine
-     * whether a circular candidate sugar structure is to be removed. If this option is set, the circular sugar candidates
+     * Specifies whether detected circular sugar candidates must have a sufficient number of attached,
+     * exocyclic oxygen atoms in order to be detected as a sugar moiety. If this option is set, the circular sugar candidates
      * have to reach an additionally specified minimum ratio of said oxygen atoms to the number of atoms in the respective
-     * ring in order to be seen as a sugar ring and therefore removed.
+     * ring in order to be seen as a sugar ring and being subsequently removed removed. See exocyclic oxygen atoms
+     * to atoms in ring ratio threshold setting.
      *
-     * @return true if the ratio of the number of attached, exocyclic, single-bonded oxygen atoms to the number of atoms
-     * in the candidate sugar ring is included in the decision making process according to the current settings
+     * @return true if the ratio of attached, exocyclic, single-bonded oxygen atoms to the number of atoms
+     * in the candidate sugar ring is evaluated at circular sugar detection according to the current settings
      */
     public boolean areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected() {
         return this.detectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting;
     }
 
     /**
-     * Returns the currently set minimum ratio of attached, exocyclic single-bonded oxygen atoms to the number of atoms
-     * in the candidate circular sugar structure to be classified as a sugar moiety and therefore removed
-     * (if the option to include this characteristic in the decision making process is enabled).
+     * Returns the currently set minimum ratio of attached, exocyclic, single-bonded oxygen atoms to the number of atoms
+     * in the candidate circular sugar structure to reach in order to be classified as a sugar moiety
+     * if the number of exocyclic oxygen atoms should be evaluated.
      *
-     * @return the minimum ratio of attached oxygen atoms to the number of atoms in the sugar ring
+     * @return the minimum ratio of attached oxygen atoms to the number of atoms in the sugar ring; A value of e.g. 0.5
+     * means that a six-membered sugar ring needs at least 3 attached oxygen atoms to be classified as a circular sugar
+     * moiety
      */
     public double getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting() {
         return this.exocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting;
     }
 
     /**
-     * Specifies whether linear sugar structures that are part of a larger ring are removed according to the current
-     * settings.
+     * Specifies whether linear sugar structures that are part of a ring should be removed according to the current
+     * settings. This setting is important for e.g. macrocycles that contain sugars or pseudosugars.
      *
-     * @return true if linear sugars in larger rings are removed with the current settings
+     * @return true if linear sugars in rings are removed with the current settings
      */
     public boolean areLinearSugarsInRingsDetected() {
         return this.detectLinearSugarsInRingsSetting;
     }
 
     /**
-     * Specifies whether a respective property is added to given atom containers that contain (or contained before
+     * Specifies whether a property is added to given atom containers that contain (or contained before
      * removal) sugar moieties. See property keys in the public constants of this class.
      *
      * @return true if properties are added to the given atom containers
@@ -571,28 +599,40 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Returns the currently set minimum number of carbon atoms a linear sugar candidate must have in order to be detected
+     * as a sugar moiety (and subsequently be removed).
+     *
+     * @return the set minimum carbon atom count of detected linear sugars (inclusive)
      */
     public int getLinearSugarCandidateMinSizeSetting() {
         return this.linearSugarCandidateMinSizeSetting;
     }
 
     /**
-     * TODO
+     * Returns the currently set maximum number of carbon atoms a linear sugar candidate can have in order to be detected
+     * as a sugar moiety (and subsequently be removed).
+     *
+     * @return the set maximum carbon atom count of detected linear sugars (inclusive)
      */
     public int getLinearSugarCandidateMaxSizeSetting() {
         return this.linearSugarCandidateMaxSizeSetting;
     }
 
     /**
-     * TODO
+     * Specifies whether linear acidic sugar patterns are currently included in the linear sugar structures used for
+     * initial detection of linear sugars in a given molecule.
+     *
+     * @return true if acidic sugars are detected
      */
     public boolean areLinearAcidicSugarsDetected() {
         return this.detectLinearAcidicSugarsSetting;
     }
 
     /**
-     * TODO
+     * Specifies whether spiro rings are included in the initial set of detected rings considered for circular
+     * sugar detection.
+     *
+     * @true if spiro rings can be detected as circular sugars with the current settings
      */
     public boolean areSpiroRingsDetectedAsCircularSugars() {
         return this.detectSpiroRingsAsCircularSugarsSetting;
@@ -602,17 +642,18 @@ public class SugarRemovalUtility {
     //<editor-fold desc="Public properties set/add/clear">
     /**
      * Allows to add an additional sugar ring to the list of circular sugar structures an input molecule is scanned for
-     * by the methods for sugar detection and removal. The given structure must not be isomorph to the already present
-     * ones and it must contain only exactly one isolated ring (because only the isolated rings of an input structure are
-     * matched with the circular sugar pattern).
+     * for circular sugar detection. The given structure must not be isomorph to the already present
+     * ones and it must contain exactly one isolated ring without any exocyclic moieties because only the isolated
+     * rings of an input structure are matched with the circular sugar patterns.
      *
      * @param aCircularSugar an atom container representing only one isolated sugar ring
-     * @throws NullPointerException if given atom container is 'null'
+     * @throws NullPointerException if the given atom container is 'null'
      * @throws IllegalArgumentException if the given atom container is empty or does represent a molecule that contains
      * no isolated ring, more than one isolated ring, consists of more structures than one isolated ring or is isomorph
      * to a circular sugar structure already present
+     * @return true if the addition was successful
      */
-    public boolean addCircularSugarToStructureList(IAtomContainer aCircularSugar)
+    public boolean addCircularSugarToPatternsList(IAtomContainer aCircularSugar)
             throws NullPointerException, IllegalArgumentException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aCircularSugar, "Given atom container is 'null'");
@@ -667,18 +708,20 @@ public class SugarRemovalUtility {
 
     /**
      * Allows to add an additional sugar ring (represented as a SMILES string) to the list of circular sugar structures
-     * an input molecule is scanned for by the methods for sugar detection and removal. The given structure must not be
-     * isomorph to the already present ones and it must contain only exactly one isolated ring (because only the isolated
-     * rings of an input structure are matched with the circular sugar pattern).
+     * an input molecule is scanned for
+     * for circular sugar detection. The given structure must not be isomorph to the already present
+     * ones and it must contain exactly one isolated ring without any exocyclic moieties because only the isolated
+     * rings of an input structure are matched with the circular sugar patterns.
      *
      * @param aSmilesCode a SMILES code representation of a molecule consisting of only one isolated sugar ring
-     * @throws NullPointerException if given string is 'null'
+     * @throws NullPointerException if the given string is 'null'
      * @throws IllegalArgumentException if the given SMILES string is empty or does represent a molecule that contains
      * no isolated ring, more than one isolated ring, consists of more structures than one isolated ring, is isomorph
      * to a circular sugar structure already present or if the given SMILES string cannot be parsed into a molecular
      * structure
+     * @return true if the addition was successful
      */
-    public boolean addCircularSugarToStructureList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
+    public boolean addCircularSugarToPatternsList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
@@ -692,37 +735,35 @@ public class SugarRemovalUtility {
             throw new IllegalArgumentException("Could not parse given string as a SMILES code.");
         }
         //throws NullPointerException and IllegalArgumentException that are relayed
-        return this.addCircularSugarToStructureList(tmpRingSugar);
+        return this.addCircularSugarToPatternsList(tmpRingSugar);
     }
 
-    //TODO: If circular candidates are discarded in the final algorithm, the param requirements need to be adjusted here!
-    //TODO: note, if the detection of acidic sugars is turned on afterwards, there may be doublets in the lists and
-    // given sugar can also already be present in the acidic sugars
     /**
      * Allows to add an additional linear sugar to the list of linear sugar structures an input molecule is scanned for
-     * by the methods for sugar detection and removal. The given structure must not be isomorph to the already present
-     * ones (no further requirements, so in fact, any kind of structure could be added here, e.g. to detect/remove amino
-     * acids also). Note: If the given structure contains circles, to remove its matches entirely in the removal methods,
-     * the option to remove linear sugars in rings needs to be disabled. Otherwise, all circular substructures of the
-     * 'linear sugars' will not be removed.
+     * for linear sugar detection. The given structure must not be isomorph to the already present
+     * ones or the patterns for circular sugars.
+     * <br>Note: If the given structure contains cycles, the
+     * option to detect linear sugars in rings needs to be enabled to detect its matches entirely. Otherwise, all
+     * circular substructures of the 'linear sugars' will not be detected.
+     * <br>Additional note: If the given structure is isomorph to a default linear acidic sugar pattern, it may be added
+     * here when the option to detect these structures is turned off but will be removed from the pattern list if the option
+     * is turned on and off again after this addition.
      *
-     * @param aLinearSugar an atom container representing a molecular structure to search for
+     * @param aLinearSugar an atom container representing a molecular structure to search for at linear sugar detection
      * @throws NullPointerException if given atom container is 'null'
      * @throws IllegalArgumentException if the given atom container is empty or is isomorph to a linear sugar structure
-     * already present
+     * already present or a circular sugar pattern
+     * @return true if the addition was successful
      */
-    public boolean addLinearSugarToStructureList(IAtomContainer aLinearSugar) throws NullPointerException, IllegalArgumentException {
+    public boolean addLinearSugarToPatternsList(IAtomContainer aLinearSugar) throws NullPointerException, IllegalArgumentException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aLinearSugar, "Given atom container is 'null'");
         if (aLinearSugar.isEmpty()) {
             throw new IllegalArgumentException("Given atom container is empty.");
         }
         //note: no check for linearity here to allow adding of structures that contain rings, e.g. amino acids
-        int tmpListSize = this.linearSugarStructuresList.size();
-        List<IAtomContainer> tmpListToIterate = new ArrayList<>(tmpListSize);
-        tmpListToIterate.addAll(0, this.linearSugarStructuresList);
         UniversalIsomorphismTester tmpUnivIsomorphTester = new UniversalIsomorphismTester();
-        for (IAtomContainer tmpSugar : tmpListToIterate) {
+        for (IAtomContainer tmpSugar : this.linearSugarStructuresList) {
             boolean tmpIsIsomorph = false;
             try {
                 tmpIsIsomorph = tmpUnivIsomorphTester.isIsomorph(tmpSugar, aLinearSugar);
@@ -732,6 +773,18 @@ public class SugarRemovalUtility {
             }
             if (tmpIsIsomorph) {
                 throw new IllegalArgumentException("Given sugar pattern is already present.");
+            }
+        }
+        for (IAtomContainer tmpSugar : this.circularSugarStructuresList) {
+            boolean tmpIsIsomorph = false;
+            try {
+                tmpIsIsomorph = tmpUnivIsomorphTester.isIsomorph(tmpSugar, aLinearSugar);
+            } catch (CDKException aCDKException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+                throw new IllegalArgumentException("Could not determine isomorphism with already present sugar structures.");
+            }
+            if (tmpIsIsomorph) {
+                throw new IllegalArgumentException("Given sugar pattern isomorph to a circular sugar pattern.");
             }
         }
         //</editor-fold>
@@ -749,19 +802,24 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Allows to add an additional linear sugar (represented as a SMILES string) to the list of linear sugar structures
-     * an input molecule is scanned for by the methods for sugar detection and removal. The given structure must not be
-     * isomorph to the already present ones (no further requirements, so in fact, any kind of structure could be added
-     * here, e.g. to detect/remove amino acids also). Note: If the given structure contains circles, to remove its
-     * matches entirely in the removal methods, the option to remove linear sugars in rings needs to be disabled.
-     * Otherwise, all circular substructures of the 'linear sugars' will not be removed.
+     * Allows to add an additional linear sugar (represented as SMILES string) to the list of linear sugar structures
+     * an input molecule is scanned for
+     * for linear sugar detection. The given structure must not be isomorph to the already present
+     * ones or the patterns for circular sugars.
+     * <br>Note: If the given structure contains cycles, the
+     * option to detect linear sugars in rings needs to be enabled to detect its matches entirely. Otherwise, all
+     * circular substructures of the 'linear sugars' will not be detected.
+     * <br>Additional note: If the given structure is isomorph to a default linear acidic sugar pattern, it may be added
+     * here when the option to detect these structures is turned off but will be removed from the pattern list if the option
+     * is turned on and off again after this addition.
      *
      * @param aSmilesCode a SMILES code representation of a molecular structure to search for
      * @throws NullPointerException if given string is 'null'
      * @throws IllegalArgumentException if the given SMILES string is empty or does represent a molecule that is isomorph
-     * to a linear sugar structure already present or if it cannot be parsed into a molecular structure
+     * to a linear sugar structure already present or a circular sugar pattern or if it cannot be parsed into a molecular structure
+     * @return true if the addition was successful
      */
-    public boolean addLinearSugarToStructureList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
+    public boolean addLinearSugarToPatternsList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
@@ -775,11 +833,11 @@ public class SugarRemovalUtility {
             throw new IllegalArgumentException("Could not parse given string as a SMILES code.");
         }
         //throws NullPointerException and IllegalArgumentException that are relayed
-        return this.addLinearSugarToStructureList(tmpLinearSugar);
+        return this.addLinearSugarToPatternsList(tmpLinearSugar);
     }
 
     /**
-     * TODO
+     * 
      */
     public boolean removeCircularSugarFromStructureList(String aSmilesCode) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aSmilesCode, "Given SMILES code is 'null'");
@@ -1090,7 +1148,7 @@ public class SugarRemovalUtility {
             if (this.detectLinearAcidicSugarsSetting) {
                 for (IAtomContainer tmpLinearAcidicSugar : this.linearAcidicSugarStructuresList) {
                     try {
-                        this.addLinearSugarToStructureList(tmpLinearAcidicSugar);
+                        this.addLinearSugarToPatternsList(tmpLinearAcidicSugar);
                     } catch (NullPointerException | IllegalArgumentException anException) {
                         SugarRemovalUtility.LOGGER.log(Level.FINE, anException.toString(), anException);
                     }
