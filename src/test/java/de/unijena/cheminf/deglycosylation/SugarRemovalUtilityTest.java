@@ -378,7 +378,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 tmpMolecule.setTitle(tmpID);
 
                 //using default settings where nothing else is specified
-                boolean tmpHasAnyTypeOfSugar = tmpSugarRemovalUtil.hasCircularAndOrLinearSugars(tmpMolecule);
+                boolean tmpHasAnyTypeOfSugar = tmpSugarRemovalUtil.hasCircularOrLinearSugars(tmpMolecule);
                 //note: per default, circular sugars having too few exocyclic oxygen atoms attached are not counted!
                 boolean tmpHasAnyCircularSugar = tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY);
                 //note: per default, linear sugars in rings, those too small or too big, and acidic linear sugars are not counted!
@@ -1291,7 +1291,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         for (String tmpKey : tmpSmilesBeforeAndAfterDeglycosylationMap.keySet()) {
             tmpOriginalMolecule = tmpSmiPar.parseSmiles(tmpKey);
             Assert.assertTrue(tmpSugarRemovalUtil.hasCircularSugars(tmpOriginalMolecule));
-            Assert.assertTrue(tmpSugarRemovalUtil.hasCircularAndOrLinearSugars(tmpOriginalMolecule));
+            Assert.assertTrue(tmpSugarRemovalUtil.hasCircularOrLinearSugars(tmpOriginalMolecule));
             tmpOriginalMolecule = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, false);
             String tmpSmilesAfterDeglycosylation = tmpSmiGen.create(tmpOriginalMolecule);
             System.out.println(tmpSmilesAfterDeglycosylation);
@@ -2129,7 +2129,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         for (IAtomContainer tmpCandidate : tmpCandidateList) {
             System.out.println(tmpSmiGen.create(tmpCandidate));
         }
-        System.out.println(tmpSugarRemovalUtil.hasCircularAndOrLinearSugars(tmpOriginalMolecule));
+        System.out.println(tmpSugarRemovalUtil.hasCircularOrLinearSugars(tmpOriginalMolecule));
         tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeLinearSugars(tmpOriginalMolecule, true);
         tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
         System.out.println(tmpSmilesCode);
