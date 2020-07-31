@@ -1,7 +1,7 @@
-#Sugar Removal Utility (SRU)
-#####An algorithmic approach for <i>in silico</i> removal of circular and linear sugars from molecular structures
+# Sugar Removal Utility (SRU)
+##### An algorithmic approach for <i>in silico</i> removal of circular and linear sugars from molecular structures
 
-##Description
+## Description
 Here, we present source code and examples for the Sugar Removal Utility, an algorithmic approach for <i>in silico</i> 
 removal of circular and linear sugars from molecular structures, as described in [**put publication reference**]. 
 <br>The algorithm's implementation is available in three forms: As a web application, a command-line application, and
@@ -11,20 +11,20 @@ can be found [here](https://github.com/mSorok/SugarRemovalWeb). The command-line
 and the sugar removal algorithm's main implementation are part of this repository.
 <p>Further description on the implemented sugar removal algorithm and its various configurations will be added soon.
 
-##Contents
-###SugarRemovalUtility CMD App
+## Contents
+### SugarRemovalUtility CMD App
 The sub-folder "SugarRemovalUtility CMD App" contains the sugar removal command-line application downloadable as 
 compressed archive. After decompression, the JAR file "SugarRemovalUtility-jar-with-dependencies.jar" can be executed
 from the command-line using Java version 11 or higher. A detailed explanation how to use the application can be found in
 "Usage instructions.txt". Also, an example input file is provided, named "smiles_test_file.txt".
 
-###Natural product test set
+### Natural product test set
 The text file "hand_picked_np.txt" contains a list of SMILES codes serving as a natural product test set for the 
 performance of the SugarRemovalUtility. They were hand-picked from public databases via the 
 [COlleCtion of Open NatUral producTs (COCONUT)](https://coconut.naturalproducts.net). More details can be found in the test class (see below) and the Sugar Removal 
 Utility publication [**put reference**].
 
-###Sources
+### Sources
 In the directory <i>/src/main/java/de/unijena/cheminf/deglycosylation/</i> the class <i>SugarRemovalUtility</i> can be found.
 This class represents the stand-alone implementation of the sugar removal algorithm. It can be used to detect and remove 
 circular and linear sugar moieties from molecules supplied as CDK IAtomContainer objects with many configurable options.
@@ -37,17 +37,17 @@ The class <i>SugarRemovalUtilityTest</i> can be found in the directory
 Sugar Removal Utility on multiple specific molecular structures of natural products hand-picked from public databases 
 (see above). Code examples of how to use and configure the <i>SugarRemovalUtility</i> class can be found here.
 
-##Installation
-###Command-line application JAR
+## Installation
+### Command-line application JAR
 The command-line application JAR has to be downloaded and decompressed. After that, it can be executed from the command-line
 as described in the usage instructions. Java version 11 or higher has to be installed on your machine.
 
-###Sources
+### Sources
 This is a Maven project. In order to use the source code for your own software, download or clone the repository and 
 open it in a Maven-supporting IDE (e.g. IntelliJ) as a Maven project and execute the pom.xml file. Maven will then take
 care of installing all dependencies.
 
-##Dependencies
+## Dependencies
 * Java Development Kit (JDK) version 11
     * [AdoptOpenJDK](https://adoptopenjdk.net) (as one possible source of the JDK)
 * Chemistry Development Kit (CDK) version 2.3
@@ -57,7 +57,7 @@ care of installing all dependencies.
 * JUnit version 4.13
     * [JUnit 4](https://junit.org/junit4/)
 
-##References and useful links
+## References and useful links
 **Sugar Removal Utility**
 * [**put publication reference**]
 * [Sugar Removal Web Application](https://sugar.naturalproducts.net)
