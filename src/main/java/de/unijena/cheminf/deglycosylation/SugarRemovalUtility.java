@@ -28,6 +28,7 @@ package de.unijena.cheminf.deglycosylation;
  * TODO:
  * - Revise documentation (continue with protected methods)
  * - see to dos in the code
+ * - implement contains/has functions for the pattern lists
  *
  * Future perspectives / ideas:
  * - investigate use of Ertl algorithm for detection of initial candidates, maybe all C-O FG with a ratio of C to O?
@@ -75,8 +76,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The Sugar Removal Utility (SRU) implements a generalized algorithm for automated removal of circular and linear
- * sugars from molecular structures, as described in [put reference to publication].
+ * The Sugar Removal Utility (SRU) implements a generalized algorithm for automated detection of circular and linear
+ * sugars in molecular structures and their removal, as described in [put reference to publication].
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
@@ -85,14 +86,16 @@ import java.util.logging.Logger;
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum PreservationModeOption">
     /**
-     * Enum with options for how to determine whether a substructure that gets disconnected from the molecule by the
-     * removal of a sugar moiety is worth keeping or can get removed along with the sugar.
+     * Enum with options for how to determine whether a substructure that gets disconnected from the molecule during the
+     * removal of a sugar moiety should be preserved or can get removed along with the sugar.
      * <br>The set option plays a major role in discriminating terminal and non-terminal sugar moieties. If only terminal
-     * sugar moieties are to be removed from the molecule, any disconnected structure resulting
-     * from each removal step must be too small to preserve according to the preservation mode and is cleared away. If
-     * all the candidate sugars are to be removed from the query molecule, the disconnected structures that are too small
-     * are only cleared once at the end of the routine.
-     * <br>Also, the set preservation mode threshold interrelates with this option.
+     * sugar moieties are removed from the molecule, any disconnected structure resulting
+     * from a removal step must be too small to keep according to the set preservation mode option and the set threshold
+     * and is cleared away. If all the sugar moieties are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
+     * <br>Also, the set preservation mode threshold interrelates with this option. It specifies at least how many heavy
+     * atoms or what minimum  molecular weight a disconnected structure needs to have to be preserved (depending on the
+     * set option).
      * <p>Important Note for further development: If an option is added here, it needs to have a treatment in the method
      * isTooSmallToPreserve(IAtomContainer). Otherwise, an UnsupportedOperationException will be thrown.
      */
@@ -179,8 +182,8 @@ public class SugarRemovalUtility {
     //<editor-fold desc="Substructure patterns">
     /**
      * Linear sugar structures represented as SMILES codes. An input molecule is scanned for these substructures for
-     * the detection of linear sugars. This set contains multiple aldoses, ketoses, and sugar alcohols sized between 3
-     * and 7 carbons. Additional structures can be added or specific ones removed from the set at run-time using the
+     * the detection of linear sugars. This set consists of multiple aldoses, ketoses, and sugar alcohols with sizes
+     * between 3 and 7 carbons. Additional structures can be added or specific ones removed from the set at run-time using the
      * respective methods.
      */
     public static final String[] LINEAR_SUGARS_SMILES = {
@@ -243,15 +246,14 @@ public class SugarRemovalUtility {
     public static final boolean DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_DEFAULT = false;
 
     /**
-     * Default setting for whether only terminal sugar moieties should be removed, i.e. glycosidic substructures of a
-     * molecule, which when removed do not split the original molecule into two or more disconnected substructures
-     * (default: true).
+     * Default setting for whether only terminal sugar moieties should be removed, i.e. those that when removed do not
+     * cause a split of the remaining molecular structure into two or more disconnected substructures (default: true).
      */
     public static final boolean REMOVE_ONLY_TERMINAL_SUGARS_DEFAULT = true;
 
     /**
-     * Default setting for how to determine whether a substructure that gets disconnected from the molecule by the
-     * removal of a sugar moiety is worth keeping or can get removed along with the sugar. (default: preserve all
+     * Default setting for how to determine whether a substructure that gets disconnected from the molecule during the
+     * removal of a sugar moiety should be preserved or can get removed along with the sugar. (default: preserve all
      * structures that consist of 5 or more heavy atoms). The set option plays a major role in discriminating terminal
      * and non-terminal sugar moieties. The minimum value to reach for the respective characteristic to judge by is set
      * in an additional option and all enum constants have their own default values. See the PreservationModeOption enum.
@@ -259,14 +261,14 @@ public class SugarRemovalUtility {
     public static final PreservationModeOption PRESERVATION_MODE_DEFAULT = PreservationModeOption.HEAVY_ATOM_COUNT;
 
     /**
-     * Default setting for whether detected circular sugar candidates must have a sufficient number of attached,
-     * exocyclic oxygen atoms in order to be detected as a sugar moiety (default: true). The 'sufficient number is
+     * Default setting for whether detected circular sugar candidates must have a sufficient number of attached, single-bonded
+     * exocyclic oxygen atoms in order to be detected as a sugar moiety (default: true). The 'sufficient number' is
      * defined in another option / default setting.
      */
     public static final boolean DETECT_CIRCULAR_SUGARS_ONLY_WITH_ENOUGH_EXOCYCLIC_OXYGEN_ATOMS_DEFAULT = true;
 
     /**
-     * Default setting for the minimum ratio of attached, exocyclic, single-bonded oxygen atoms to the number of atoms
+     * Default setting for the minimum ratio of attached exocyclic, single-bonded oxygen atoms to the number of atoms
      * in the candidate circular sugar structure to reach in order to be classified as a sugar moiety
      * if the number of exocyclic oxygen atoms should be evaluated (default: 0.5 so at a minimum 3 connected, exocyclic
      * oxygen atoms for a six-membered ring, for example).
@@ -403,7 +405,7 @@ public class SugarRemovalUtility {
     private boolean detectLinearSugarsInRingsSetting;
 
     /**
-     * Add a property to  given sugar-containing atom containers setting.
+     * Add a property to given sugar-containing atom containers setting.
      */
     private boolean addPropertyToSugarContainingMoleculesSetting;
 
@@ -517,8 +519,8 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Specifies whether only terminal sugar moieties should be removed, i.e. glycosidic substructures of a
-     * molecule, which when removed do not split the original molecule into two or more disconnected substructures.
+     * Specifies whether only terminal sugar moieties should be removed, i.e. those that when removed do not
+     * cause a split of the remaining molecular structure into two or more disconnected substructures.
      *
      * @return true if only terminal sugar moieties are removed according to the current settings
      */
@@ -527,8 +529,8 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Returns the current setting for how to determine whether a substructure that gets disconnected from the molecule by the
-     * removal of a sugar moiety is worth keeping or can get removed along with the sugar. This can e.g. be judged by its
+     * Returns the current setting for how to determine whether a substructure that gets disconnected from the molecule during the
+     * removal of a sugar moiety should be preserved or can get removed along with the sugar. This can e.g. be judged by its
      * heavy atom count or its molecular weight or it can be specified that all structures are to be preserved. If too
      * small / too light structures are discarded, an additional threshold is specified in the preservation mode threshold
      * setting that the structures have to reach in order to be preserved (i.e. to be judged 'big/heavy enough').
@@ -551,7 +553,7 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Specifies whether detected circular sugar candidates must have a sufficient number of attached,
+     * Specifies whether detected circular sugar candidates must have a sufficient number of attached
      * exocyclic oxygen atoms in order to be detected as a sugar moiety. If this option is set, the circular sugar candidates
      * have to reach an additionally specified minimum ratio of said oxygen atoms to the number of atoms in the respective
      * ring in order to be seen as a sugar ring and being subsequently removed. See exocyclic oxygen atoms
@@ -1040,8 +1042,8 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Sets the option to remove only terminal sugar moieties, i.e. glycosidic substructures of a
-     * molecule, which when removed do not split the original molecule into two or more disconnected substructures.
+     * Sets the option to remove only terminal sugar moieties, i.e. those that when removed do not
+     * cause a split of the remaining molecular structure into two or more disconnected substructures.
      *
      * @param aBoolean true, if only terminal sugar moieties should be removed
      */
@@ -1052,8 +1054,8 @@ public class SugarRemovalUtility {
     /**
      * Sets the preservation mode for structures that get disconnected by sugar removal and the preservation mode threshold
      * is set to the default value of the given enum constant.
-     * The preservation mode option specifies how to determine whether a substructure that gets disconnected from the molecule by the
-     * removal of a sugar moiety is worth keeping or can get removed along with the sugar. This can e.g. be judged by its
+     * The preservation mode option specifies how to determine whether a substructure that gets disconnected from the molecule during the
+     * removal of a sugar moiety should be preserved or can get removed along with the sugar. This can e.g. be judged by its
      * heavy atom count or its molecular weight or it can be specified that all structures are to be preserved.
      * The available options can be selected from the PreservationModeOption enum. If too
      * small / too light structures are discarded, an additional threshold is specified in the preservation mode threshold
@@ -1074,9 +1076,9 @@ public class SugarRemovalUtility {
 
     /**
      * Sets the preservation mode threshold, i.e. the molecular weight or heavy atom count (depending on the currently
-     * set preservation mode) a substructure that gets disconnected from the molecule by the
+     * set preservation mode) a substructure that gets disconnected from the molecule during the
      * removal of a sugar moiety has to reach in order to be
-     * preserved and not removed along with the sugar. If the preservation mode is set to "HEAVY_ATOM_COUNT", the threshold
+     * kept and not removed along with the sugar. If the preservation mode is set to "HEAVY_ATOM_COUNT", the threshold
      * is interpreted as the needed minimum number of heavy atoms and if it is set to "MOLECUAL_WEIGHT", the threshold
      * is interpreted as minimum molecular weight in Da.
      * <br>Notes: A threshold of zero can be set here but it is recommended to choose the preservation mode "ALL" instead.
@@ -1515,10 +1517,10 @@ public class SugarRemovalUtility {
      * <br>If only terminal sugar moieties are to be removed, the detected circular sugars are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all the circular sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the set preservation mode option and the set threshold and is cleared away.
+     * <br>If all the circular sugar moieties are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures when
      * returned, whereas in the former case, the returned structure always consists of one connected structure.
      * <br>If the given molecule consists only of circular sugars, an empty atom container is returned.
@@ -1568,10 +1570,10 @@ public class SugarRemovalUtility {
      * <br>If only terminal sugar moieties are to be removed, the detected circular sugars are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all the circular sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the set preservation mode option and the set threshold and is cleared away.
+     * <br>If all the circular sugar moieties are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures when
      * returned, whereas in the former case, the returned structure always consists of one connected structure.
      * <br>If the given molecule consists only of circular sugars, an empty atom container is returned.
@@ -1621,10 +1623,10 @@ public class SugarRemovalUtility {
      * <br>If only terminal sugar moieties are to be removed, the detected circular sugars are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all the circular sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the set preservation mode option and the set threshold and is cleared away.
+     * <br>If all the circular sugar moieties are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule (aglycon at list index 0) may consist of two or more
      * disconnected structures when
      * returned, whereas in the former case, the returned structure always consists of one connected structure.
@@ -1703,10 +1705,10 @@ public class SugarRemovalUtility {
      * <br>If only terminal sugar moieties are to be removed, the detected linear sugars are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all the linear sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the set preservation mode option and the set threshold and is cleared away.
+     * <br>If all the linear sugar moieties are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures when
      * returned, whereas in the former case, the returned structure always consists of one connected structure.
      * <br>If the given molecule consists only of linear sugars, an empty atom container is returned.
@@ -1754,10 +1756,10 @@ public class SugarRemovalUtility {
      * <br>If only terminal sugar moieties are to be removed, the detected linear sugars are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all the linear sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the set preservation mode option and the set threshold and is cleared away.
+     * <br>If all the linear sugar moieties are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures when
      * returned, whereas in the former case, the returned structure always consists of one connected structure.
      * <br>If the given molecule consists only of linear sugars, an empty atom container is returned.
@@ -1805,10 +1807,10 @@ public class SugarRemovalUtility {
      * <br>If only terminal sugar moieties are to be removed, the detected linear sugars are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all the linear sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the set preservation mode option and the set threshold and is cleared away.
+     * <br>If all the linear sugar moieties are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule (aglycon at list index 0) may consist of two or more
      * disconnected structures when
      * returned, whereas in the former case, the returned structure always consists of one connected structure.
@@ -1885,15 +1887,15 @@ public class SugarRemovalUtility {
      * <br>If only terminal sugar moieties are to be removed, the detected sugars are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. Important note: To ensure the removal
-     * also of linear sugars that only become terminal after the removal of one or more terminal circular sugar and
+     * also of linear sugars that only become terminal after removing one or more terminal circular sugar and
      * vice-versa, multiple iterations of circular and linear sugar detection and removal are done here. Therefore, this
      * method might in special cases return another aglycon (the 'true' aglycon) than e.g. a subsequent call to the methods
      * for separate circular and linear sugar removal.
      * <br>If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all the circular and linear sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the preservation mode option and the set threshold and is cleared away.
+     * <br>If all the circular and linear sugars are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures when
      * returned, whereas in the former case, the returned structure always consists of one connected structure.
      * <br>If the given molecule consists only of sugars, an empty atom container is returned.
@@ -1943,15 +1945,15 @@ public class SugarRemovalUtility {
      * <br>If only terminal sugar moieties are to be removed, the detected sugars are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. Important note: To ensure the removal
-     * also of linear sugars that only become terminal after the removal of one or more terminal circular sugar and
+     * also of linear sugars that only become terminal after removing one or more terminal circular sugar and
      * vice-versa, multiple iterations of circular and linear sugar detection and removal are done here. Therefore, this
      * method might in special cases return another aglycon (the 'true' aglycon) than e.g. a subsequent call to the methods
      * for separate circular and linear sugar removal.
      * <br>If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all the circular and linear sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the preservation mode option and the set threshold and is cleared away.
+     * <br>If all the circular and linear sugars are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures when
      * returned, whereas in the former case, the returned structure always consists of one connected structure.
      * <br>If the given molecule consists only of sugars, an empty atom container is returned.
@@ -2001,15 +2003,15 @@ public class SugarRemovalUtility {
      * <br>If only terminal sugar moieties are to be removed, the detected sugars are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. Important note: To ensure the removal
-     * also of linear sugars that only become terminal after the removal of one or more terminal circular sugar and
+     * also of linear sugars that only become terminal after removing one or more terminal circular sugar and
      * vice-versa, multiple iterations of circular and linear sugar detection and removal are done here. Therefore, this
      * method might in special cases return another aglycon (the 'true' aglycon) than e.g. a subsequent call to the methods
      * for separate circular and linear sugar removal.
      * <br>If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all the circular and linear sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the preservation mode option and the set threshold and is cleared away.
+     * <br>If all the circular and linear sugars are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule (aglycon at list index 0) may consist of two or more
      * disconnected structures when
      * returned, whereas in the former case, the returned structure always consists of one connected structure.
@@ -2286,7 +2288,7 @@ public class SugarRemovalUtility {
     */
 
     /**
-     * Removes all unconnected fragments that are too small to preserve according to the current preservation mode and
+     * Removes all unconnected fragments that are too small to keep according to the current preservation mode and
      * threshold setting. If all structures are too small, an empty atom container is returned.
      * <br>This does not guarantee that the resulting atom container consists of only one connected structure. There might
      * be multiple unconnected structures that are big enough to be preserved.
@@ -2322,7 +2324,7 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Checks whether the given molecule or structure is too small to be preserved according to the current preservation mode
+     * Checks whether the given molecule or structure is too small to be kept according to the current preservation mode
      * and threshold setting.
      *
      * @param aMolecule the molecule to check
@@ -2462,22 +2464,22 @@ public class SugarRemovalUtility {
 
     /**
      * Removes the given sugar moieties (or substructures in general) from the given molecule and returns the removed
-     * moieties (not the aglycon!). The removal of sugar
-     * moieties is comprised of the same steps for both linear and circular sugars. The only settings influencing the
+     * moieties (not the aglycon!). The removal algorithm is the same for linear and circular sugars. The only settings
+     * influencing the
      * removal are the option specifying whether to remove only terminal sugar moieties and the set preservation mode
      * (because it influences the determination of terminal vs. non-terminal).
      * <br>If only terminal sugar moieties are to be removed, the sugar candidates are one-by-one tested for
      * whether they are terminal or not and removed if they are. The iteration starts anew after iterating over all
      * candidates and stops if no terminal sugar was removed in one whole iteration. If only terminal sugar moieties are
-     * to be removed from the molecule, any disconnected structure resulting from each removal step is too small to
-     * preserve according to the preservation mode and is cleared away.
-     * <br>If all sugars are to be removed from the query molecule, the disconnected structures that are
-     * too small are only cleared once at the end of the routine.
+     * removed from the molecule, any disconnected structure resulting from a removal step must be too small to
+     * keep according to the preservation mode option and the set threshold and is cleared away.
+     * <br>If all the sugars are to be removed from the query molecule (including non-terminal
+     * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
      * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures after this
      * method call, whereas in the former case, the remaining structure always consists of one connected structure.
      * <br>Spiro atoms connecting a removed circular sugar moiety to another cycle are preserved (if labelled by the
      * respective property).
-     * <br>Note that the deglycosylated core is returned as part of the given list in this method.
+     * <br>Note that the deglycosylated core is not returned as part of the given list in this method.
      *
      * @param aMolecule the molecule to remove the sugar candidates from
      * @param aCandidateList the list of sugar moieties in the given molecule
