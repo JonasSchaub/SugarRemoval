@@ -451,7 +451,8 @@ public class SugarRemovalServiceApplication {
         }
         System.out.println("Finished analysis of molecules.");
         System.out.println((tmpMoleculeCounter - 1) + " molecules were analysed.");
-        System.out.println(tmpFatalExceptionCounter + " fatal exceptions occurred (molecule could not be read, was disconnected or could not be cloned.");
+        System.out.println(tmpFatalExceptionCounter + " fatal exceptions occurred (molecule could not be read, was " +
+                "disconnected or could not be cloned).");
         System.out.println(tmpMinorExceptionsCounter + " minor exceptions occurred (SMILES codes could not be generated etc.).");
         System.out.println(tmpSugarContainingMoleculesCounter + " molecules contained sugar moieties.");
         System.out.println(tmpContainsCircularSugarsCounter + " molecules contained circular sugar moieties.");
