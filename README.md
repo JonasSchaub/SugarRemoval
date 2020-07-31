@@ -54,7 +54,7 @@ care of installing all dependencies.
     * [Chemistry Development Kit on GitHub](https://cdk.github.io/)
 * Apache Maven version 4
     * [Apache Maven](http://maven.apache.org)
-* JUnit version 4.1
+* JUnit version 4.13
     * [JUnit 4](https://junit.org/junit4/)
 
 ##References and useful links
