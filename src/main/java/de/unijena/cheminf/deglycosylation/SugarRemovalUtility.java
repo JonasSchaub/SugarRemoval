@@ -25,11 +25,6 @@
 package de.unijena.cheminf.deglycosylation;
 
 /**
- * TODO:
- * - Revise documentation (continue with protected methods)
- * - see to dos in the code
- * - implement contains/has functions for the pattern lists
- *
  * Future perspectives / ideas:
  * - investigate use of Ertl algorithm for detection of initial candidates, maybe all C-O FG with a ratio of C to O?
  * - investigate use of SMARTS pattern for detection of initial candidates (maybe with explicit Hs to avoid matching cross-linked structures)
@@ -37,6 +32,9 @@ package de.unijena.cheminf.deglycosylation;
  *   for the next matching and so on?
  * - maintain connection info for reconstruction?
  * - replace isomorphism testing with hash codes or the ids for substructures (for better performance)?
+ * - Circular and linear sugar candidates can no longer overlap in any case, right? Therefore, a
+ *   'getCircularAndLinearSugarCandidates()' method could be implemented and used safely and
+ *   'removeAndReturnCircularAndLinearSugars()' could be revised
  * - include all connected oxygen atoms in the circular sugars? Or at least all hydroxy groups?
  */
 
@@ -446,7 +444,7 @@ public class SugarRemovalUtility {
     }
     //</editor-fold>
     //
-    //<editor-fold desc="Public properties get/is">
+    //<editor-fold desc="Public properties get/is/has">
     /**
      * Returns a list of (unique) SMILES strings representing the linear sugar structures an input molecule is scanned for
      * in linear sugar detection. The returned list represents the current state of this list, i.e. externally added
@@ -480,6 +478,40 @@ public class SugarRemovalUtility {
     }
 
     /**
+     * Checks whether the given linear sugar is already present in the list of linear sugar structures an input molecule
+     * is scanned for in linear sugar detection. It is checked whether it is isomorph to any linear sugar pattern already
+     * present in the list. Note that the return value 'false' does not guarantee its safe addition to the pattern list
+     * because is may not comply with other requirements detailed in the 'add'-method. Also note that the linear acidic
+     * sugar patterns are only included here if the respective option is turned on.
+     *
+     * @param aLinearSugar the linear sugar pattern to check for
+     * @return true if the linear sugar is already present in the linear sugar pattern list
+     * @throws NullPointerException if the given molecule is 'null'
+     * @throws IllegalArgumentException if the given atom container is empty or its isomorphism with the already present
+     * structures could not be determined
+     */
+    public boolean hasLinearSugarInPatternsList(IAtomContainer aLinearSugar) throws NullPointerException, IllegalArgumentException {
+        Objects.requireNonNull(aLinearSugar, "Given atom container is 'null'");
+        if (aLinearSugar.isEmpty()) {
+            throw new IllegalArgumentException("Given atom container is empty.");
+        }
+        UniversalIsomorphismTester tmpUnivIsomorphTester = new UniversalIsomorphismTester();
+        boolean tmpIsIsomorph = false;
+        for (IAtomContainer tmpSugar : this.linearSugarStructuresList) {
+            try {
+                tmpIsIsomorph = tmpUnivIsomorphTester.isIsomorph(tmpSugar, aLinearSugar);
+            } catch (CDKException aCDKException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+                throw new IllegalArgumentException("Could not determine isomorphism with already present sugar structures.");
+            }
+            if (tmpIsIsomorph) {
+                break;
+            }
+        }
+        return tmpIsIsomorph;
+    }
+
+    /**
      * Returns a list of (unique) SMILES strings representing the circular sugar structures an input molecule is scanned for
      * in circular sugar detection. The returned list represents the current state of this list, i.e. externally added
      * structures are included, externally removed structures are not. The default structures can also be retrieved from
@@ -507,6 +539,39 @@ public class SugarRemovalUtility {
             }
         }
         return tmpSmilesList;
+    }
+
+    /**
+     * Checks whether the given circular sugar is already present in the list of circular sugar structures an input molecule
+     * is scanned for in circular sugar detection. It is checked whether it is isomorph to any circular sugar pattern already
+     * present in the list. Note that the return value 'false' does not guarantee its safe addition to the pattern list
+     * because is may not comply with other requirements detailed in the 'add'-method.
+     *
+     * @param aCircularSugar the circular sugar pattern to check for
+     * @return true if the circular sugar is already present in the circular sugar pattern list
+     * @throws NullPointerException if the given molecule is 'null'
+     * @throws IllegalArgumentException if the given atom container is empty or its isomorphism with the already present
+     * structures could not be determined
+     */
+    public boolean hasCircularSugarInPatternsList(IAtomContainer aCircularSugar) throws NullPointerException, IllegalArgumentException {
+        Objects.requireNonNull(aCircularSugar, "Given atom container is 'null'");
+        if (aCircularSugar.isEmpty()) {
+            throw new IllegalArgumentException("Given atom container is empty.");
+        }
+        UniversalIsomorphismTester tmpUnivIsomorphTester = new UniversalIsomorphismTester();
+        boolean tmpIsIsomorph = false;
+        for (IAtomContainer tmpSugar : this.circularSugarStructuresList) {
+            try {
+                tmpIsIsomorph = tmpUnivIsomorphTester.isIsomorph(tmpSugar, aCircularSugar);
+            } catch (CDKException aCDKException) {
+                SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
+                throw new IllegalArgumentException("Could not determine isomorphism with already present sugar structures.");
+            }
+            if (tmpIsIsomorph) {
+                break;
+            }
+        }
+        return tmpIsIsomorph;
     }
 
     /**
@@ -635,14 +700,14 @@ public class SugarRemovalUtility {
      * Specifies whether spiro rings are included in the initial set of detected rings considered for circular
      * sugar detection.
      *
-     * @true if spiro rings can be detected as circular sugars with the current settings
+     * @return true if spiro rings can be detected as circular sugars with the current settings
      */
     public boolean areSpiroRingsDetectedAsCircularSugars() {
         return this.detectSpiroRingsAsCircularSugarsSetting;
     }
     //</editor-fold>
     //
-    //<editor-fold desc="Public properties set/add/clear">
+    //<editor-fold desc="Public properties set/add/remove/clear">
     /**
      * Allows to add an additional sugar ring to the list of circular sugar structures an input molecule is scanned for
      * in circular sugar detection. The given structure must not be isomorph to the already present
@@ -1311,7 +1376,7 @@ public class SugarRemovalUtility {
     }
     //</editor-fold>
     //
-    //<editor-fold desc="Public methods">
+    //<editor-fold desc="Public methods for sugar detection and removal">
     /**
      * Detects linear sugar moieties in the given molecule, according to the current settings for linear sugar detection.
      * It is not influenced by the setting specifying whether only terminal sugar moieties should be removed and
@@ -2552,6 +2617,8 @@ public class SugarRemovalUtility {
                                 Boolean tmpAtomIsSpiroAtom = tmpAtom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY);
                                 if (!Objects.isNull(tmpAtomIsSpiroAtom)) {
                                     if (tmpAtomIsSpiroAtom) {
+                                        //here, one of the spiro cycles is removed; therefore, the atom is not spiro anymore
+                                        tmpAtom.setProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY, false);
                                         continue;
                                     }
                                 }
@@ -2588,6 +2655,8 @@ public class SugarRemovalUtility {
                         Boolean tmpAtomIsSpiroAtom = tmpAtom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY);
                         if (!Objects.isNull(tmpAtomIsSpiroAtom)) {
                             if (tmpAtomIsSpiroAtom) {
+                                //here, one of the spiro cycles is removed; therefore, the atom is not spiro anymore
+                                tmpAtom.setProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY, false);
                                 continue;
                             }
                         }
@@ -2769,11 +2838,12 @@ public class SugarRemovalUtility {
     //<editor-fold desc="Protected methods">
     //<editor-fold desc="General processing">
     /**
-     * Adds indices as properties to all atom objects of the given atom container to identify them uniquely within the
+     * Adds an index as property to all atom objects of the given atom container to identify them uniquely within the
      * atom container and its clones. This is required e.g. for the determination of terminal vs. non-terminal sugar
      * moieties.
      *
-     * @throws NullPointerException if molecule is 'null' (note: no further parameter tests are implemented!)
+     * @param aMolecule the molecule that will be processed by the class
+     * @throws NullPointerException if molecule is 'null'
      */
     protected void addUniqueIndicesToAtoms(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
@@ -2787,11 +2857,26 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Creates an identifier string for every substructures in the given list, based on the unique indices of the
+     * included atoms, respectively, and returns a set of the generated ids.
+     * It is only encoded which atoms are part of the respective substructure, no bond information etc. Used for a quick
+     * matching of substructures in the same molecule. The unique indices in every atom have to be set.
+     * Note: The returned set includes every id only once but duplicates are allowed in the input list.
+     *
+     * @param aSubstructureList a list of substructures to create identifiers for
+     * @return a set of the generated identifier strings
+     * @throws NullPointerException if the given list is 'null' (list elements may be null or empty, they will be skipped)
+     * @throws IllegalArgumentException if the unique indices are not set in any non-null atom container of the list
      */
     protected Set<String> generateSubstructureIdentifiers(List<IAtomContainer> aSubstructureList) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aSubstructureList, "Given list is 'null'");
         for (IAtomContainer tmpSubstructure : aSubstructureList) {
+            if (Objects.isNull(tmpSubstructure)) {
+                continue;
+            }
+            if (tmpSubstructure.isEmpty()) {
+                continue;
+            }
             //method checks that no index appears multiple times but does not check whether there are numbers missing
             boolean tmpAreIndicesSet = this.checkUniqueIndicesOfAtoms(tmpSubstructure);
             if (!tmpAreIndicesSet) {
@@ -2813,7 +2898,14 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Creates an identifier string for substructures of a molecule, based on the unique indices of the included atoms.
+     * It is only encoded which atoms are part of the substructure, no bond information etc. Used for a quick matching
+     * of substructures in the same molecule. The unique indices in every atom have to be set.
+     *
+     * @param aSubstructure the substructure to create an identifier for
+     * @return the identifier string
+     * @throws NullPointerException if the given substructure is 'null'
+     * @throws IllegalArgumentException if the unique indices are not set
      */
     protected String generateSubstructureIdentifier(IAtomContainer aSubstructure) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aSubstructure, "Given substructure is 'null'.");
@@ -2835,7 +2927,14 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Checks whether all atoms in the given molecule have a unique (in the given molecule) index as property. It checks
+     * the uniqueness of the detected indices but not whether there are numbers missing (the ids of this class are
+     * created as numbers starting from zero and growing in integer steps).
+     *
+     * @param aMolecule the molecule to check
+     * @return true if every atom has an index property that is unique in the given molecule
+     * @throws NullPointerException if the given molecule is 'null'
+     * @throws IllegalArgumentException if the given molecule is empty
      */
     protected boolean checkUniqueIndicesOfAtoms(IAtomContainer aMolecule) throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
@@ -2860,24 +2959,48 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Used for debugging and in test class
+     * Prints all molecules in the given list as unique SMILES representations to System.out.
+     * Used for debugging and in test class.
+     *
+     * @param aMoleculeList the list to print to console
      */
     protected void printAllMoleculesAsSmiles(List<IAtomContainer> aMoleculeList) {
+        if (Objects.isNull(aMoleculeList) || aMoleculeList.isEmpty()) {
+            System.out.println("[List is null or empty]");
+            return;
+        }
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Unique);
         for (IAtomContainer tmpCandidate : aMoleculeList) {
+            if (Objects.isNull(tmpCandidate)) {
+                System.out.println("[null molecule]");
+                continue;
+            }
+            if (tmpCandidate.isEmpty()) {
+                System.out.println("[empty molecule]");
+                continue;
+            }
             try {
                 System.out.println(tmpSmiGen.create(tmpCandidate));
             } catch (CDKException anException) {
                 SugarRemovalUtility.LOGGER.log(Level.SEVERE, anException.toString(), anException);
+                System.out.println("[molecule could not be parsed to SMILES code]");
             }
         }
     }
     //</editor-fold>
     //<editor-fold desc="Methods for circular sugars">
     /**
-     * TODO
+     * Detects and returns cycles of the given molecule that are isolated (spiro rings included or not according to the
+     * current settings), isomorph to the circular sugar patterns, and only have exocyclic single bonds. These cycles are
+     * the general candidates for circular sugars that are filtered according to the other settings in the following steps.
+     * Spiro atoms are marked by a property.
+     *
+     * @param aMolecule the molecule to extract potential circular sugars from
+     * @return a list of the potential sugar cycles
+     * @throws NullPointerException if the given molecule is 'null'
      */
     protected List<IAtomContainer> detectPotentialSugarCycles(IAtomContainer aMolecule) throws NullPointerException {
+        //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
             return new ArrayList<IAtomContainer>(0);
@@ -2893,29 +3016,35 @@ public class SugarRemovalUtility {
         if (tmpIsolatedRings.isEmpty()) {
             return new ArrayList<IAtomContainer>(0);
         }
-        //*Iterating through all atoms in rings to identify spiro rings*
+        //</editor-fold>
+        //<editor-fold desc="Identification of spiro rings / atoms">
+        //iterating through all atoms in rings to identify spiro rings
         List<IAtomContainer> tmpRingFragments = tmpRingSearch.isolatedRingFragments();
         tmpRingFragments.addAll(tmpRingSearch.fusedRingFragments());
-        //Mapping identifiers of all the rings in the molecule to whether they are fused or spiro (true) or isolated and non-spiro (false)
+        //Mapping identifiers of all the rings in the molecule to whether they are fused OR spiro (true) or isolated
+        // AND non-spiro (false)
         HashMap<String, Boolean> tmpRingIdentifierToIsFusedOrSpiroMap = new HashMap(tmpRingFragments.size(), 1.0f);
         //Mapping atom identifiers to identifiers of the rings they are part of
         HashMap<Integer, Set<String>> tmpAtomIDToRingIDMap = new HashMap(tmpRingFragments.size() * 6, 0.9f);
+        /* Every atom of every ring is visited; If one atom is visited multiple times, it is in a fused ring or a spiro
+         * atom connecting two spiro rings */
         for (IAtomContainer tmpRing : tmpRingFragments) {
             String tmpRingID = this.generateSubstructureIdentifier(tmpRing);
+            //initial value false until one atom of the ring is visited more than once
             tmpRingIdentifierToIsFusedOrSpiroMap.put(tmpRingID, false);
             for (IAtom tmpAtom : tmpRing.atoms()) {
                 int tmpAtomID = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                //atom is not present in the map yet, so it is not shared by another ring that was already visited
+                //case 1: atom is not present in the map yet, so it is not shared by another ring that was already visited
                 if (!tmpAtomIDToRingIDMap.containsKey(tmpAtomID)) {
                     //the atom (id) is added to the map with a set that for now only contains the id of the current ring
                     HashSet<String> tmpRingIDSet = new HashSet<>(5, 0.9f);
                     tmpRingIDSet.add(tmpRingID);
                     tmpAtomIDToRingIDMap.put(tmpAtomID, tmpRingIDSet);
-                //atom was already visited, so it is part of at least one other ring
+                //case 2: atom was already visited, so it is part of at least one other ring
                 } else {
                     //current ring is marked as fused or spiro
                     tmpRingIdentifierToIsFusedOrSpiroMap.put(tmpRingID, true);
-                    //set of all identifiers of all rings already visited this atom is part of
+                    //set of all identifiers of all rings already visited that this atom is part of
                     Set<String> tmpRingIDSet = tmpAtomIDToRingIDMap.get(tmpAtomID);
                     //they are marked as fused or spiro since they share at least the current atom with another ring
                     for (String tmpAlreadyVisitedRingID : tmpRingIDSet) {
@@ -2928,6 +3057,7 @@ public class SugarRemovalUtility {
                 }
             }
         }
+        //</editor-fold>
         List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpIsolatedRings.size());
         for (IAtomContainer tmpIsolatedRing : tmpIsolatedRings) {
             if (Objects.isNull(tmpIsolatedRing) || tmpIsolatedRing.isEmpty()) {
@@ -2936,6 +3066,8 @@ public class SugarRemovalUtility {
             if (!this.detectSpiroRingsAsCircularSugarsSetting) {
                 //Filtering spiro rings if they should not be detected as sugars
                 String tmpRingID = this.generateSubstructureIdentifier(tmpIsolatedRing);
+                //if true, the ring is fused or spiro according to the map; but since only isolated cycles are queried,
+                // they are definitely spiro if the map returns true
                 if (tmpRingIdentifierToIsFusedOrSpiroMap.get(tmpRingID)) {
                     continue;
                 }
@@ -2950,7 +3082,7 @@ public class SugarRemovalUtility {
                     continue;
                 }
                 if (tmpIsIsomorph) {
-                    /*note: another requirement of a suspected sugar ring is that it contains only single bonds.
+                    /* note: another requirement of a suspected sugar ring should be that it contains only single bonds.
                      * This is not tested here because all the structures in the reference rings do meet this criterion.
                      * But a structure that does not meet this criterion could be added to the references by the user.*/
                     boolean tmpAreAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(tmpIsolatedRing, aMolecule);
@@ -2958,19 +3090,19 @@ public class SugarRemovalUtility {
                         //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
                         break;
                     }
-                    //identification of spiro atoms (the cycle is isolated, so it can share at max one atom with another cycle
-                    // and this atom is therefore a spiro bridge); this is done only now to not disturb the removal of linear sugars
-                    // that are part of cycles; the info is only needed if spiro ring are detected as sugars and not filtered
-                    // according to the settings (but always noted here anyway, should the setting change between detection and removal
+                    /*identification of spiro atoms (the cycle is isolated, so it can share at max one atom with another cycle
+                     * and this atom is therefore a spiro bridge); this is done only now to not disturb the removal of linear sugars
+                     * that are part of cycles; the info is only needed if spiro ring are detected as sugars and not filtered
+                     * according to the settings (but always noted here anyway, should the setting change between detection and removal)*/
                     for (IAtom tmpAtom : tmpIsolatedRing.atoms()) {
                         int tmpAtomID = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
                         //note: the id HAS TO be in the map
                         Set<String> tmpRingIDSet = tmpAtomIDToRingIDMap.get(tmpAtomID);
                         int tmpSize = tmpRingIDSet.size();
-                        //atom is part of multiple rings, so keep it at removal of the sugar to protect the adjacent ring!
-                        //note: If the adjacent ring is also a sugar and also removed, this one atom will most likely get cleared away
-                        //note: the removal method has to test for the presence of the property anyway, so adding it with
-                        // value 'false' to the other atoms in the ring is redundant
+                        /* if size > 1 atom is part of multiple rings and therefore the spiro bridge of two cycles, so
+                         * keep it at removal of the sugar to protect the adjacent ring!
+                         * note: the removal method has to test for the presence of the property anyway, so adding it with
+                         * value 'false' to the other atoms in the ring is redundant */
                         if (tmpSize > 1) {
                             tmpAtom.setProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY, true);
                         }
@@ -2984,9 +3116,10 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Checks whether all exocyclic bonds connected to a given ring fragment of an original atom container are of single
+     * Checks whether all exocyclic bonds connected to a given ring fragment of a parent atom container are of single
      * order. The method iterates over all cyclic atoms and all of their bonds. So the runtime scales linear with the number
-     * of cyclic atoms and their connected bonds.
+     * of cyclic atoms and their connected bonds. In principle, this method can be used also for non-cyclic substructures.
+     * <br>Note: It is not tested whether the original molecule is actually the parent of the ring to test.
      *
      * @param aRingToTest the ring fragment to test; exocyclic bonds do not have to be included in the fragment but if it
      *                    is a fused system of multiple rings, the internal interconnecting bonds of the different rings
@@ -2995,13 +3128,17 @@ public class SugarRemovalUtility {
      * @param anOriginalMolecule the molecule that contains the ring under investigation; The exocyclic bonds will be
      *                           queried from it
      * @return true, if all exocyclic bonds connected to the ring are of single order
-     * @throws NullPointerException if a parameter is 'null' (note: no further parameter tests are implemented!)
+     * @throws NullPointerException if one parameter is 'null'
+     * @throws IllegalArgumentException if one parameter is empty
      */
     protected boolean areAllExocyclicBondsSingle(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
-            throws NullPointerException {
+            throws NullPointerException, IllegalArgumentException {
         Objects.requireNonNull(aRingToTest, "Given ring atom container is 'null'");
         Objects.requireNonNull(anOriginalMolecule, "Given atom container representing the original molecule " +
                 "is 'null'");
+        if (aRingToTest.isEmpty() || anOriginalMolecule.isEmpty()) {
+            throw new IllegalArgumentException("One of the given parameters is empty.");
+        }
         int tmpAtomCountInRing = aRingToTest.getAtomCount();
         int tmpArrayListInitCapacity = tmpAtomCountInRing * 2;
         List<IBond> tmpExocyclicBondsList = new ArrayList<>(tmpArrayListInitCapacity);
@@ -3022,27 +3159,32 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Checks all exocyclic connections of the given ring to detect a glycosidic bond. Checklist for glycosidic bond:
+     * Checks all exocyclic connections of the given ring to detect an  O-glycosidic bond. Checklist for glycosidic bond:
      * Connected oxygen atom that is not in the ring, has two bonds that are both of single order and no bond partner
-     * is a hydrogen atom.
-     * <br>Note: This algorithm also classifies ester and ether bonds as a glycosidic bond which is not really bad. They
-     * occur frequently in natural products.
-     * <br>Note 2: The 'ring' is not tested for whether it is circular or not. So theoretically, this method
+     * is a hydrogen atom. This algorithm also classifies ester bonds as glycosidic bonds and any other bond type
+     * that meets the above criteria. Therefore, many 'non-classical, glycoside-like' connections are classified
+     * as O-glycosidic bonds.
+     * <br>Note: The 'ring' is not tested for whether it is circular or not. So theoretically, this method
      * can also be used to detect glycosidic bonds of linear structures. BUT: The oxygen atom must not be part of the
      * structure itself. Due to the processing of candidate linear sugar moieties this can make it difficult to use
      * this method also for linear sugars.
+     * <br>Note: It is not tested whether the original molecule is actually the parent of the ring to test.
      *
      * @param aRingToTest the candidate sugar ring
      * @param anOriginalMolecule the molecule in which the ring is contained as a substructure to query the connected
      *                           atoms from
      * @return true, if a glycosidic bond is detected
-     * @throws NullPointerException if any parameter is 'null' (note: no further parameter tests are implemented!)
+     * @throws NullPointerException if one parameter is 'null'
+     * @throws IllegalArgumentException if one parameter is empty
      */
     protected boolean hasGlycosidicBond(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
             throws NullPointerException {
         Objects.requireNonNull(aRingToTest, "Given ring atom container is 'null'");
         Objects.requireNonNull(anOriginalMolecule, "Given atom container representing the original molecule " +
                 "is 'null'");
+        if (aRingToTest.isEmpty() || anOriginalMolecule.isEmpty()) {
+            throw new IllegalArgumentException("One of the given parameters is empty.");
+        }
         Iterable<IAtom> tmpRingAtoms = aRingToTest.atoms();
         boolean tmpContainsGlycosidicBond = false;
         for (IAtom tmpRingAtom : tmpRingAtoms) {
@@ -3086,8 +3228,18 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
-     * Note: Number of rings = 1 and sugar ring has no glycosidic bond are not checked again!
+     * Checks whether the given molecule would be empty after removal of the given ring. Any remaining
+     * fragment will be cleared away if it is too small according to the set preservation mode option. The given
+     * parameters are not altered, clones of them are generated and processed. This method is intended to test for whether
+     * a molecule qualifies for the gylcosidic bond exemption.
+     *
+     * @param aRing the ring to test whether its removal would result in an empty molecule
+     * @param aMolecule the parent molecule
+     * @return true if the parent molecule is empty after removal of the given ring and subsequent removal of too small
+     * remaining fragments
+     * @throws NullPointerException if any parameter is 'null'
+     * @throws IllegalArgumentException if the given ring is not actually part of the given parent molecule
+     * @throws CloneNotSupportedException if the ring or the molecule cannot be cloned
      */
     protected boolean isMoleculeEmptyAfterRemovalOfThisRing(IAtomContainer aRing, IAtomContainer aMolecule)
             throws NullPointerException, IllegalArgumentException, CloneNotSupportedException {
@@ -3129,24 +3281,25 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Gives the number of attached exocyclic oxygen atoms of a given ring fragment of an original atom container.
+     * Returns the number of attached exocyclic oxygen atoms of a given ring in the original atom container.
      * The method iterates over all cyclic atoms and all of their connected atoms. So the runtime scales linear with
      * the number of cyclic atoms and their connected atoms.
-     * <br>Note: The oxygen atoms are not tested for being attached by a single bond since in the algorithm, the
+     * The oxygen atoms are not tested for being attached by a single bond since in the algorithm, the
      * determination whether a candidate sugar ring has only exocyclic single bonds precedes the calling of this method.
      * <br>Note: The circularity of the given 'ring' is not tested, so this method could in theory also be used for linear
      * structures. But his does not make much sense.
      * <br>Note: This method does NOT check for hydroxy groups but for oxygen atoms. So e.g. the oxygen atom in a
      * glycosidic bond is counted.
+     * <br>Note: It is not tested whether the original molecule is actually the parent of the ring to test.
      *
      * @param aRingToTest the ring fragment to test; exocyclic bonds do not have to be included in the fragment but if it
      *                    is a fused system of multiple rings, the internal interconnecting bonds of the different rings
      *                    need to be included; all its atoms need to be exactly the same objects as in the second atom
-     *                    container parameter
+     *                    container parameter (they will be skipped otherwise)
      * @param anOriginalMolecule the molecule that contains the ring under investigation; The exocyclic bonds will be
      *                           queried from it
-     * @return number of attached exocyclic oxygen atoms
-     * @throws NullPointerException if a parameter is 'null' (note: no further parameter tests are implemented!)
+     * @return number of attached exocyclic oxygen atoms of the given ring
+     * @throws NullPointerException if a parameter is 'null'
      */
     protected int getExocyclicOxygenAtomCount(IAtomContainer aRingToTest, IAtomContainer anOriginalMolecule)
            throws NullPointerException {
@@ -3175,7 +3328,7 @@ public class SugarRemovalUtility {
 
     /**
      * Simple decision making function for deciding whether a candidate sugar ring has enough attached, single-bonded
-     * exocyclic oxygen atoms, called if this option is enabled in the current settings. The given number of oxygen atoms
+     * exocyclic oxygen atoms according to the set threshold. The given number of oxygen atoms
      * is divided by the given number of atoms in the ring (should also contain the usually present oxygen atom in
      * a sugar ring) and the resulting ratio is checked for being equal or higher than the currently set
      * threshold.
@@ -3202,7 +3355,10 @@ public class SugarRemovalUtility {
     //</editor-fold>
     //<editor-fold desc="Methods for linear sugars">
     /**
-     * TODO
+     * All linear sugar patterns represented by atom containers in the respective list are sorted, parsed into actual
+     * pattern objects and stored in the internal list for initial linear sugar detection. To be called when a linear
+     * sugar patterns has been deleted or added to the list. It cannot directly be operated on the pattern objects
+     * because they cannot be sorted or represented in a human-readable format.
      */
     protected void updateLinearSugarPatterns() {
         Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
@@ -3219,7 +3375,14 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Initial detection of linear sugar candidates by substructure search for the linear sugar patterns in the given
+     * molecule. All 'unique' matches are returned as atom container objects. this means that the same substructure will
+     * not be included multiple times but the substructures may overlap.
+     *
+     * @param aMolecule the molecule to search for linear sugar candidates
+     * @return a list of possibly overlapping substructures from the given molecule matching the internal linear sugar
+     * patterns
+     * @throws NullPointerException if the given molecule is 'null'
      */
     protected List<IAtomContainer> detectLinearSugarCandidatesByPatternMatching(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'");
@@ -3251,10 +3414,14 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
-     * Con: Resulting candidates can grow to big and need to be split at specific bonds
-     * Con: Circular sugars end up in the linear sugar candidates
-     * note: this method does not change the param list and returns a new list containing the results
+     * Combines all overlapping (i.e. sharing the same atoms or bonds) structures in the given list into one atom container,
+     * respectively, to return distinct, non-overlapping substructures. Second step of linear sugar detection. Note: The
+     * returned substructures can grow very big. This addressed in the third step.
+     * The parameter list is not altered and a completely new list returned.
+     *
+     * @param aCandidateList a list of possibly overlapping substructures from the same atom container object
+     * @return a list of distinct, non-overlapping substructures after combining every formerly overlapping structure
+     * @throws NullPointerException if the given list or one of its elements is 'null'
      */
     protected List<IAtomContainer> combineOverlappingCandidates(List<IAtomContainer> aCandidateList) throws NullPointerException  {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
@@ -3266,6 +3433,7 @@ public class SugarRemovalUtility {
         IAtomContainer tmpMatchesContainer = new AtomContainer();
         for (int i = 0; i < tmpListSize; i++) {
             IAtomContainer tmpCandidate = aCandidateList.get(i);
+            Objects.requireNonNull(tmpCandidate, "A substructure in the list is 'null'.");
             tmpMatchesContainer.add(tmpCandidate);
         }
         boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpMatchesContainer);
@@ -3282,12 +3450,19 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
-     * note: here, the given list is altered, unlike in the method above
-     * Con: This is a black box!
-     * Con: Very small moieties like CH3OH, OH, CH3 etc can get removed this way, especially at rings
-     * note: this method changes the given list (since the objects in it would be changed anyway) and that is why its return type is void
+     * Alternative method to combining overlapping substructures after the initial detection: Splitting them pseudo-randomly.
+     * The method iterates the given substructures and notes the indices of atoms already visited. If an already visited
+     * atom appears again in another substructure (-> overlap), it is removed from the respective candidate. In the end,
+     * all candidates that got disconnected by this, are separated into distinct atom container objects. The result
+     * are distinct, non-overlapping, connected substructures. Note: The returned substructures can be very small, even
+     * single-atom candidates can result. Another problem is that this method is practically an unpredictable black-box
+     * because the order of the substructures is not predictable.
+     * Note: here, the given list is altered, unlike in some other methods! Therefore, the list is not returned again.
+     *
+     * @param aCandidateList a list of possibly overlapping substructures from the same atom container object
+     * @throws NullPointerException if the given list is 'null'
      */
+    @Deprecated
     protected void splitOverlappingCandidatesPseudoRandomly(List<IAtomContainer> aCandidateList) throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
@@ -3302,9 +3477,12 @@ public class SugarRemovalUtility {
                 i = i - 1;
                 continue;
             }
+            boolean tmpIndicesAreSet = this.checkUniqueIndicesOfAtoms(tmpCandidate);
+            if (!tmpIndicesAreSet) {
+                this.addUniqueIndicesToAtoms(tmpCandidate);
+            }
             for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
                 IAtom tmpAtom = tmpCandidate.getAtom(j);
-                //note: maybe add a check here
                 int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
                 boolean tmpIsAtomAlreadyInCandidates = tmpSugarCandidateAtomsSet.contains(tmpAtomIndex);
                 if (tmpIsAtomAlreadyInCandidates) {
@@ -3337,286 +3515,17 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
-     * note: the list is altered
-     * Con: again, things like OH groups do not get removed, they appear later as sugar candidates themselves!
-     * add test for actual 'parenthood'?
-     * note: this method changes the given list (since the objects in it would be changed anyway) and that is why its return type is void
-     */
-    protected void removeCircularSugarsFromCandidates(List<IAtomContainer> aCandidateList,
-                                                      IAtomContainer aParentMolecule)
-            throws NullPointerException {
-        //<editor-fold desc="Checks">
-        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
-        if (aCandidateList.isEmpty()) {
-            return;
-        }
-        Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
-        //</editor-fold>
-        // generating ids for the isolated potential sugar circles in the parent molecule
-        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule);
-        // nothing to process
-        if (tmpPotentialSugarRingsParent.isEmpty()) {
-            return;
-        }
-        Set<String> tmpPotentialSugarRingsParentIdentifierSet = this.generateSubstructureIdentifiers(tmpPotentialSugarRingsParent);
-        // iterating over candidates
-        for (int i = 0; i < aCandidateList.size(); i++) {
-            IAtomContainer tmpCandidate = aCandidateList.get(i);
-            if (Objects.isNull(tmpCandidate)) {
-                aCandidateList.remove(i);
-                //The removal shifts the remaining indices!
-                i = i - 1;
-                continue;
-            }
-            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.detectPotentialSugarCycles(tmpCandidate);
-            if (!tmpPotentialSugarRingsCandidate.isEmpty()) {
-                //iterating over potential sugar rings in candidate
-                for(IAtomContainer tmpRing : tmpPotentialSugarRingsCandidate) {
-                    if (Objects.isNull(tmpRing) || tmpRing.isEmpty()) {
-                        continue;
-                    }
-                    String tmpRingIdentifier = this.generateSubstructureIdentifier(tmpRing);
-                    boolean tmpIsAlsoIsolatedInParent = tmpPotentialSugarRingsParentIdentifierSet.contains(tmpRingIdentifier);
-                    if (tmpIsAlsoIsolatedInParent) {
-                        for (IAtom tmpAtom : tmpRing.atoms()) {
-                            if (tmpCandidate.contains(tmpAtom)) {
-                                tmpCandidate.removeAtom(tmpAtom);
-                            }
-                        }
-                    }
-                }
-                // remove the candidate if it is empty after removal of cycles
-                if (tmpCandidate.isEmpty()) {
-                    aCandidateList.remove(i);
-                    i = i - 1;
-                    continue;
-                }
-                // if the candidate got unconnected by the removal of cycles, split the parts in separate candidates
-                boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
-                if (!tmpIsConnected) {
-                    IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
-                    for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
-                        aCandidateList.add(tmpComponent);
-                    }
-                    aCandidateList.remove(i);
-                    i = i - 1;
-                    continue;
-                }
-            }
-        }
-    }
-
-    /**
-     * TODO
-     * Con: A possibly connected linear moiety also gets discarded
-     * add test for actual 'parenthood'?
-     * note: this method changes the given list (since the objects in it would be changed anyway) and that is why its return type is void
-     */
-    protected void removeCandidatesContainingCircularSugars(List<IAtomContainer> aCandidateList,
-                                                                            IAtomContainer aParentMolecule)
-            throws NullPointerException {
-        //<editor-fold desc="Checks">
-        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
-        if (aCandidateList.isEmpty()) {
-            return;
-        }
-        Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
-        //</editor-fold>
-        // generating ids for the isolated potential sugar circles in the parent molecule
-        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule);
-        // nothing to process
-        if (tmpPotentialSugarRingsParent.isEmpty()) {
-            return;
-        }
-        Set<String> tmpPotentialSugarRingsParentIdentifierSet = this.generateSubstructureIdentifiers(tmpPotentialSugarRingsParent);
-        // iterating over candidates
-        for (int i = 0; i < aCandidateList.size(); i++) {
-            IAtomContainer tmpCandidate = aCandidateList.get(i);
-            if (Objects.isNull(tmpCandidate)) {
-                aCandidateList.remove(i);
-                //The removal shifts the remaining indices!
-                i = i - 1;
-                continue;
-            }
-            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.detectPotentialSugarCycles(tmpCandidate);
-            boolean tmpIsAlsoIsolatedInParent = false;
-            if (!tmpPotentialSugarRingsCandidate.isEmpty()) {
-                //iterating over potential sugar rings in candidate
-                for(IAtomContainer tmpRing : tmpPotentialSugarRingsCandidate) {
-                    if (Objects.isNull(tmpRing) || tmpRing.isEmpty()) {
-                        continue;
-                    }
-                    String tmpRingIdentifier = this.generateSubstructureIdentifier(tmpRing);
-                    tmpIsAlsoIsolatedInParent = tmpPotentialSugarRingsParentIdentifierSet.contains(tmpRingIdentifier);
-                    if (tmpIsAlsoIsolatedInParent) {
-                        aCandidateList.remove(i);
-                        i = i - 1;
-                        // break the iteration of rings and go to the next candidate
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * TODO
-     * @param aCandidateList
-     * @param aParentMolecule
-     * @throws NullPointerException
-     */
-    protected void removeAtomsOfCircularSugarsFromCandidates(List<IAtomContainer> aCandidateList,
-                                                            IAtomContainer aParentMolecule)
-            throws NullPointerException {
-        //<editor-fold desc="Checks">
-        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
-        if (aCandidateList.isEmpty()) {
-            return;
-        }
-        Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
-        /*boolean tmpAreIndicesSet = this.checkUniqueIndicesOfAtoms(aSubstructure);
-        if (!tmpAreIndicesSet) {
-            throw new IllegalArgumentException("This method requires that every atom has a unique index.");
-        }*/
-        //</editor-fold>
-        // generating set of atom ids of atoms that are part of the circular sugars in the molecule
-        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule);
-        // nothing to process
-        if (tmpPotentialSugarRingsParent.isEmpty()) {
-            return;
-        }
-        HashSet<Integer> tmpCircularSugarAtomIDSet = new HashSet<>(tmpPotentialSugarRingsParent.size() * 7, 0.9f);
-        for (IAtomContainer tmpCircularSugarCandidate : tmpPotentialSugarRingsParent) {
-            for (IAtom tmpAtom : tmpCircularSugarCandidate.atoms()) {
-                int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                if (!tmpCircularSugarAtomIDSet.contains(tmpAtomIndex)) {
-                    tmpCircularSugarAtomIDSet.add(tmpAtomIndex);
-                }
-            }
-        }
-        // iterating over candidates
-        for (int i = 0; i < aCandidateList.size(); i++) {
-            IAtomContainer tmpCandidate = aCandidateList.get(i);
-            if (Objects.isNull(tmpCandidate)) {
-                aCandidateList.remove(i);
-                //The removal shifts the remaining indices!
-                i = i - 1;
-                continue;
-            }
-            for (IAtom tmpCandidateAtom : tmpCandidate.atoms()) {
-                int tmpAtomIndex = tmpCandidateAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                if (tmpCircularSugarAtomIDSet.contains(tmpAtomIndex)) {
-                    if (tmpCandidate.contains(tmpCandidateAtom)) {
-                        tmpCandidate.removeAtom(tmpCandidateAtom);
-                    }
-                }
-            }
-            //remove the candidate if it is empty after removal of cycles
-            if (tmpCandidate.isEmpty()) {
-                aCandidateList.remove(i);
-                i = i - 1;
-                continue;
-            }
-            //if the candidate got unconnected by the removal of cycles, split the parts in separate candidates
-            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
-            if (!tmpIsConnected) {
-                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
-                for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
-                    aCandidateList.add(tmpComponent);
-                }
-                aCandidateList.remove(i);
-                i = i - 1;
-                continue;
-            }
-        }
-    }
-
-    /**
-     * TODO
-     * note: list is altered
-     * Con: Very small moieties like CH3OH, OH, CH3 etc can get removed this way
-     * note: this method changes the given list (since the objects in it would be changed anyway) and that is why its return type is void
-     */
-    protected void removeCyclicAtomsFromSugarCandidates(List<IAtomContainer> aCandidateList,
-                                                                      IAtomContainer aMolecule)
-            throws NullPointerException {
-        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
-        if (aCandidateList.isEmpty()) {
-            return;
-        }
-        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
-        int[][] tmpAdjList = GraphUtil.toAdjList(aMolecule);
-        RingSearch tmpRingSearch = new RingSearch(aMolecule, tmpAdjList);
-        for (int i = 0; i < aCandidateList.size(); i++) {
-            IAtomContainer tmpCandidate = aCandidateList.get(i);
-            if (Objects.isNull(tmpCandidate)) {
-                aCandidateList.remove(i);
-                //The removal shifts the remaining indices!
-                i = i - 1;
-                continue;
-            }
-            for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
-                IAtom tmpAtom = tmpCandidate.getAtom(j);
-                if (tmpRingSearch.cyclic(tmpAtom)) {
-                    if (tmpCandidate.contains(tmpAtom)) {
-                        tmpCandidate.removeAtom(tmpAtom);
-                        //The removal shifts the remaining indices!
-                        j = j - 1;
-                    }
-                }
-            }
-            if (tmpCandidate.isEmpty()) {
-                aCandidateList.remove(i);
-                //The removal shifts the remaining indices!
-                i = i - 1;
-            }
-            //if the candidate got unconnected by the removal of cycles, split the parts in separate candidates
-            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
-            if (!tmpIsConnected) {
-                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
-                for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
-                    aCandidateList.add(tmpComponent);
-                }
-                aCandidateList.remove(i);
-                i = i - 1;
-                continue;
-            }
-        }
-    }
-
-    /**
-     * TODO
-     * note: the list is altered
-     * Con: Rejecting the whole candidate also discards a possibly connected linear moiety
-     * note: this method changes the given list (since the objects in it would be changed anyway) and that is why its return type is void
-     */
-    protected void removeSugarCandidatesWithCyclicAtoms(List<IAtomContainer> aCandidateList,
-                                                                      IAtomContainer aMolecule) throws NullPointerException {
-        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
-        if (aCandidateList.isEmpty()) {
-            return;
-        }
-        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
-        int[][] tmpAdjList = GraphUtil.toAdjList(aMolecule);
-        RingSearch tmpRingSearch = new RingSearch(aMolecule, tmpAdjList);
-        for (int i = 0; i < aCandidateList.size(); i++) {
-            IAtomContainer tmpCandidate = aCandidateList.get(i);
-            for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
-                IAtom tmpAtom = tmpCandidate.getAtom(j);
-                if (tmpRingSearch.cyclic(tmpAtom)) {
-                    aCandidateList.remove(i);
-                    //removal shifts the remaining indices
-                    i = i - 1;
-                    break;
-                }
-            }
-        }
-    }
-
-    /**
-     * TODO
-     * note: Here, the param list is NOT altered
+     * Splits all ether, ester, and peroxide bonds in the given linear sugar candidates and separates those that get
+     * disconnected in the process. Third step of linear sugar detection. This step was introduced because the linear sugar
+     * candidates returned by the combination method can be very big and contain connected sugar chains that should be
+     * detected as separate candidates. The detection is done using SMARTS patterns that are public constants of this
+     * class.
+     * The parameter list is not altered and a completely new list returned.
+     *
+     * @param aCandidateList a list of potential sugar substructures from the same atom container object
+     * @return a new list of candidates where all ether, ester, and peroxide bonds have been split and disconnected
+     * candidates separated
+     * @throws NullPointerException if the given list is 'null'
      */
     protected List<IAtomContainer> splitEtherEsterAndPeroxideBonds(List<IAtomContainer> aCandidateList) throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
@@ -3625,10 +3534,13 @@ public class SugarRemovalUtility {
         }
         List<IAtomContainer> tmpProcessedCandidates = new ArrayList<>(aCandidateList.size() * 2);
         for (IAtomContainer tmpCandidate : aCandidateList) {
+            if (Objects.isNull(tmpCandidate)) {
+                continue;
+            }
             SmartsPattern.prepare(tmpCandidate);
 
-            // note: ester matching has to precede the ether matching because the ether pattern also matches esters
-            // note 2: here, which bond is removed is specifically defined. This is not the case for the ether
+            //note: ester matching has to precede the ether matching because the ether pattern also matches esters
+            //note 2: here, which bond is removed is specifically defined. This is not the case for the ether
             Mappings tmpEsterMappings = SugarRemovalUtility.ESTER_SMARTS_PATTERN.matchAll(tmpCandidate).uniqueAtoms();
             if (tmpEsterMappings.atLeast(1)) {
                 for (IAtomContainer tmpEsterGroup : tmpEsterMappings.toSubstructures()) {
@@ -3650,7 +3562,7 @@ public class SugarRemovalUtility {
                 }
             }
 
-            // note: which bond is actually removed is 'random', i.e. not to predict by a human
+            //note: which bond is actually removed is 'pseudo-random', i.e. not predictable by a human
             Mappings tmpEtherMappings = SugarRemovalUtility.ETHER_SMARTS_PATTERN.matchAll(tmpCandidate).uniqueAtoms();
             if (tmpEtherMappings.atLeast(1)) {
                 for (IAtomContainer tmpEtherGroup : tmpEtherMappings.toSubstructures()) {
@@ -3704,10 +3616,371 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * TODO
-     * note: Here, the param list is NOT altered
+     * Removes all atoms belonging to possible circular sugars, as returned by the method for initial circular sugar
+     * detection, from the given linear sugar candidates. Fourth step of linear sugar detection. The linear sugar patterns
+     * also match parts of circular sugar, so this step has to be done to ensure the separate treatment of circular and
+     * linear sugars. After the removal, disconnected candidates are separated into new candidates.
+     * Note: here, the given list is altered, unlike in some other methods! Therefore, the list is not returned again.
+     * Note also that it is not checked whether the given parent molecule is actually the parent of the given
+     * substructures.
+     *
+     * @param aCandidateList a list of potential sugar substructures from the same atom container object
+     * @param aParentMolecule the molecule that is currently scanned for linear sugars to detect its circular sugars
+     * @throws NullPointerException if any parameter is 'null'
      */
-    protected List<IAtomContainer> removeTooSmallAndTooLargeCandidates(List<IAtomContainer> aCandidateList) throws NullPointerException {
+    protected void removeAtomsOfCircularSugarsFromCandidates(List<IAtomContainer> aCandidateList,
+                                                             IAtomContainer aParentMolecule)
+            throws NullPointerException {
+        //<editor-fold desc="Checks">
+        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
+        if (aCandidateList.isEmpty()) {
+            return;
+        }
+        Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
+        boolean tmpAreIndicesSet = this.checkUniqueIndicesOfAtoms(aParentMolecule);
+        if (!tmpAreIndicesSet) {
+            this.addUniqueIndicesToAtoms(aParentMolecule);
+        }
+        //</editor-fold>
+        //generating set of atom ids of atoms that are part of the circular sugars in the molecule
+        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule);
+        //nothing to process
+        if (tmpPotentialSugarRingsParent.isEmpty()) {
+            return;
+        }
+        HashSet<Integer> tmpCircularSugarAtomIDSet = new HashSet<>(tmpPotentialSugarRingsParent.size() * 7, 0.9f);
+        for (IAtomContainer tmpCircularSugarCandidate : tmpPotentialSugarRingsParent) {
+            for (IAtom tmpAtom : tmpCircularSugarCandidate.atoms()) {
+                int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                if (!tmpCircularSugarAtomIDSet.contains(tmpAtomIndex)) {
+                    tmpCircularSugarAtomIDSet.add(tmpAtomIndex);
+                }
+            }
+        }
+        //iterating over candidates
+        for (int i = 0; i < aCandidateList.size(); i++) {
+            IAtomContainer tmpCandidate = aCandidateList.get(i);
+            if (Objects.isNull(tmpCandidate)) {
+                aCandidateList.remove(i);
+                //The removal shifts the remaining indices!
+                i = i - 1;
+                continue;
+            }
+            boolean tmpAreIndicesSetInCandidate = this.checkUniqueIndicesOfAtoms(tmpCandidate);
+            if (!tmpAreIndicesSetInCandidate) {
+                this.addUniqueIndicesToAtoms(tmpCandidate);
+            }
+            for (IAtom tmpCandidateAtom : tmpCandidate.atoms()) {
+                int tmpAtomIndex = tmpCandidateAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
+                if (tmpCircularSugarAtomIDSet.contains(tmpAtomIndex)) {
+                    if (tmpCandidate.contains(tmpCandidateAtom)) {
+                        tmpCandidate.removeAtom(tmpCandidateAtom);
+                    }
+                }
+            }
+            //remove the candidate if it is empty after removal of cycles
+            if (tmpCandidate.isEmpty()) {
+                aCandidateList.remove(i);
+                i = i - 1;
+                continue;
+            }
+            //if the candidate got unconnected by the removal of cycles, split the parts in separate candidates
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
+            if (!tmpIsConnected) {
+                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
+                for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+                    aCandidateList.add(tmpComponent);
+                }
+                aCandidateList.remove(i);
+                i = i - 1;
+                continue;
+            }
+        }
+    }
+
+    /**
+     * Alternative method to removing all atoms that belong to circular sugars from the linear sugar candidates: Removing
+     * only complete, intact circular sugar rings from the candidates. The method detects potential circular sugars in the
+     * candidates and compares them to the potential sugar cycles in the parent molecule. If there is a match, the respective
+     * sugar ring is removed from the candidate. In the end, all candidates that got disconnected by this, are separated
+     * into distinct atom container objects. This method was deprecated because it relies on the circular sugars
+     * being intact in the linear sugar candidates which is not always the case and can lead to removal of parts of circular
+     * sugars.
+     * Note: here, the given list is altered, unlike in some other methods! Therefore, the list is not returned again.
+     * Note also that it is not checked whether the given parent molecule is actually the parent of the given
+     * substructures.
+     *
+     * @param aCandidateList a list of linear sugar candidates from the same atom container object
+     * @param aParentMolecule the molecule that is currently scanned for linear sugars to detect its circular sugars
+     * @throws NullPointerException if any parameter is 'null'
+     */
+    @Deprecated
+    protected void removeCircularSugarsFromCandidates(List<IAtomContainer> aCandidateList,
+                                                      IAtomContainer aParentMolecule)
+            throws NullPointerException {
+        //<editor-fold desc="Checks">
+        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
+        if (aCandidateList.isEmpty()) {
+            return;
+        }
+        Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
+        boolean tmpAreIndicesSet = this.checkUniqueIndicesOfAtoms(aParentMolecule);
+        if (!tmpAreIndicesSet) {
+            this.addUniqueIndicesToAtoms(aParentMolecule);
+        }
+        //</editor-fold>
+        //generating ids for the isolated potential sugar circles in the parent molecule
+        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule);
+        //nothing to process
+        if (tmpPotentialSugarRingsParent.isEmpty()) {
+            return;
+        }
+        Set<String> tmpPotentialSugarRingsParentIdentifierSet = this.generateSubstructureIdentifiers(tmpPotentialSugarRingsParent);
+        // iterating over candidates
+        for (int i = 0; i < aCandidateList.size(); i++) {
+            IAtomContainer tmpCandidate = aCandidateList.get(i);
+            if (Objects.isNull(tmpCandidate)) {
+                aCandidateList.remove(i);
+                //The removal shifts the remaining indices!
+                i = i - 1;
+                continue;
+            }
+            boolean tmpAreIndicesSetInCandidate = this.checkUniqueIndicesOfAtoms(tmpCandidate);
+            if (!tmpAreIndicesSetInCandidate) {
+                this.addUniqueIndicesToAtoms(tmpCandidate);
+            }
+            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.detectPotentialSugarCycles(tmpCandidate);
+            if (!tmpPotentialSugarRingsCandidate.isEmpty()) {
+                //iterating over potential sugar rings in candidate
+                for(IAtomContainer tmpRing : tmpPotentialSugarRingsCandidate) {
+                    if (Objects.isNull(tmpRing) || tmpRing.isEmpty()) {
+                        continue;
+                    }
+                    String tmpRingIdentifier = this.generateSubstructureIdentifier(tmpRing);
+                    boolean tmpIsAlsoIsolatedInParent = tmpPotentialSugarRingsParentIdentifierSet.contains(tmpRingIdentifier);
+                    if (tmpIsAlsoIsolatedInParent) {
+                        for (IAtom tmpAtom : tmpRing.atoms()) {
+                            if (tmpCandidate.contains(tmpAtom)) {
+                                tmpCandidate.removeAtom(tmpAtom);
+                            }
+                        }
+                    }
+                }
+                //remove the candidate if it is empty after removal of cycles
+                if (tmpCandidate.isEmpty()) {
+                    aCandidateList.remove(i);
+                    i = i - 1;
+                    continue;
+                }
+                //if the candidate got unconnected by the removal of cycles, split the parts in separate candidates
+                boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
+                if (!tmpIsConnected) {
+                    IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
+                    for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+                        aCandidateList.add(tmpComponent);
+                    }
+                    aCandidateList.remove(i);
+                    i = i - 1;
+                    continue;
+                }
+            }
+        }
+    }
+
+    /**
+     * Alternative method to removing all atoms that belong to circular sugars from the linear sugar candidates: Rejecting
+     * every candidate completely that contains a circular sugar. The method detects potential circular sugars in the
+     * candidates and compares them to the potential sugar cycles in the parent molecule. If there is a match, the respective
+     * candidate is filtered out. This method was deprecated because it relies on the circular sugars
+     * being intact in the linear sugar candidates which is not always the case and because connected linear sugar
+     * moieties would also be filtered out using this approach.
+     * Note: here, the given list is altered, unlike in some other methods! Therefore, the list is not returned again.
+     * Note also that it is not checked whether the given parent molecule is actually the parent of the given
+     * substructures.
+     *
+     * @param aCandidateList a list of linear sugar candidates from the same atom container object
+     * @param aParentMolecule the molecule that is currently scanned for linear sugars to detect its circular sugars
+     * @throws NullPointerException if any parameter is 'null'
+     */
+    @Deprecated
+    protected void removeCandidatesContainingCircularSugars(List<IAtomContainer> aCandidateList,
+                                                            IAtomContainer aParentMolecule)
+            throws NullPointerException {
+        //<editor-fold desc="Checks">
+        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
+        if (aCandidateList.isEmpty()) {
+            return;
+        }
+        Objects.requireNonNull(aParentMolecule, "Given parent molecule is 'null'.");
+        boolean tmpAreIndicesSet = this.checkUniqueIndicesOfAtoms(aParentMolecule);
+        if (!tmpAreIndicesSet) {
+            this.addUniqueIndicesToAtoms(aParentMolecule);
+        }
+        //</editor-fold>
+        //generating ids for the isolated potential sugar circles in the parent molecule
+        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule);
+        //nothing to process
+        if (tmpPotentialSugarRingsParent.isEmpty()) {
+            return;
+        }
+        Set<String> tmpPotentialSugarRingsParentIdentifierSet = this.generateSubstructureIdentifiers(tmpPotentialSugarRingsParent);
+        //iterating over candidates
+        for (int i = 0; i < aCandidateList.size(); i++) {
+            IAtomContainer tmpCandidate = aCandidateList.get(i);
+            if (Objects.isNull(tmpCandidate)) {
+                aCandidateList.remove(i);
+                //The removal shifts the remaining indices!
+                i = i - 1;
+                continue;
+            }
+            boolean tmpAreIndicesSetInCandidate = this.checkUniqueIndicesOfAtoms(tmpCandidate);
+            if (!tmpAreIndicesSetInCandidate) {
+                this.addUniqueIndicesToAtoms(tmpCandidate);
+            }
+            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.detectPotentialSugarCycles(tmpCandidate);
+            boolean tmpIsAlsoIsolatedInParent = false;
+            if (!tmpPotentialSugarRingsCandidate.isEmpty()) {
+                //iterating over potential sugar rings in candidate
+                for(IAtomContainer tmpRing : tmpPotentialSugarRingsCandidate) {
+                    if (Objects.isNull(tmpRing) || tmpRing.isEmpty()) {
+                        continue;
+                    }
+                    String tmpRingIdentifier = this.generateSubstructureIdentifier(tmpRing);
+                    tmpIsAlsoIsolatedInParent = tmpPotentialSugarRingsParentIdentifierSet.contains(tmpRingIdentifier);
+                    if (tmpIsAlsoIsolatedInParent) {
+                        aCandidateList.remove(i);
+                        i = i - 1;
+                        //break the iteration of rings and go to the next candidate
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Removes all atoms that are part of a cycle from the given linear sugar candidates. Optional fifth step of linear
+     * sugar detection. The linear sugar patterns can also match in cycles that do not represent circular sugars but e.g.
+     * pseudo-sugars or macrocycles. It is optional to detect linear sugars in such structures or not.
+     * After the removal, disconnected candidates are separated into new candidates.
+     * Note: here, the given list is altered, unlike in some other methods! Therefore, the list is not returned again.
+     * Note also that it is not checked whether the given parent molecule is actually the parent of the given
+     * substructures.
+     *
+     * @param aCandidateList a list of potential sugar substructures from the same atom container object
+     * @param aMolecule the molecule that is currently scanned for linear sugars to detect its cycles
+     * @throws NullPointerException if any parameter is 'null'
+     */
+    protected void removeCyclicAtomsFromSugarCandidates(List<IAtomContainer> aCandidateList,
+                                                        IAtomContainer aMolecule)
+            throws NullPointerException {
+        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
+        if (aCandidateList.isEmpty()) {
+            return;
+        }
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        int[][] tmpAdjList = GraphUtil.toAdjList(aMolecule);
+        RingSearch tmpRingSearch = new RingSearch(aMolecule, tmpAdjList);
+        boolean tmpMoleculeHasRings = tmpRingSearch.numRings() > 0;
+        if (!tmpMoleculeHasRings) {
+            //nothing to process
+            return;
+        }
+        for (int i = 0; i < aCandidateList.size(); i++) {
+            IAtomContainer tmpCandidate = aCandidateList.get(i);
+            if (Objects.isNull(tmpCandidate)) {
+                aCandidateList.remove(i);
+                //The removal shifts the remaining indices!
+                i = i - 1;
+                continue;
+            }
+            for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
+                IAtom tmpAtom = tmpCandidate.getAtom(j);
+                if (tmpRingSearch.cyclic(tmpAtom)) {
+                    if (tmpCandidate.contains(tmpAtom)) {
+                        tmpCandidate.removeAtom(tmpAtom);
+                        //The removal shifts the remaining indices!
+                        j = j - 1;
+                    }
+                }
+            }
+            if (tmpCandidate.isEmpty()) {
+                aCandidateList.remove(i);
+                //The removal shifts the remaining indices!
+                i = i - 1;
+            }
+            //if the candidate got unconnected by the removal of cycles, split the parts in separate candidates
+            boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpCandidate);
+            if (!tmpIsConnected) {
+                IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpCandidate);
+                for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
+                    aCandidateList.add(tmpComponent);
+                }
+                aCandidateList.remove(i);
+                i = i - 1;
+                continue;
+            }
+        }
+    }
+
+    /**
+     * Alternative method to removing all cyclic atoms from the linear sugar candidates: Rejecting
+     * every candidate completely that contains a cyclic atom. This method was deprecated because this way also connected
+     * linear moieties get discarded.
+     * Note: here, the given list is altered, unlike in some other methods! Therefore, the list is not returned again.
+     * Note also that it is not checked whether the given parent molecule is actually the parent of the given
+     * substructures.
+     *
+     * @param aCandidateList a list of linear sugar candidates from the same atom container object
+     * @param aMolecule the molecule that is currently scanned for linear sugars to detect its circular sugars
+     * @throws NullPointerException if any parameter is 'null'
+     */
+    @Deprecated
+    protected void removeSugarCandidatesWithCyclicAtoms(List<IAtomContainer> aCandidateList,
+                                                        IAtomContainer aMolecule)
+            throws NullPointerException {
+        Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
+        if (aCandidateList.isEmpty()) {
+            return;
+        }
+        Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
+        int[][] tmpAdjList = GraphUtil.toAdjList(aMolecule);
+        RingSearch tmpRingSearch = new RingSearch(aMolecule, tmpAdjList);
+        boolean tmpMoleculeHasRings = tmpRingSearch.numRings() > 0;
+        if (!tmpMoleculeHasRings) {
+            //nothing to process
+            return;
+        }
+        for (int i = 0; i < aCandidateList.size(); i++) {
+            IAtomContainer tmpCandidate = aCandidateList.get(i);
+            for (int j = 0; j < tmpCandidate.getAtomCount(); j++) {
+                IAtom tmpAtom = tmpCandidate.getAtom(j);
+                if (tmpRingSearch.cyclic(tmpAtom)) {
+                    aCandidateList.remove(i);
+                    //removal shifts the remaining indices
+                    i = i - 1;
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Discards all linear sugar candidates that are too small or too big according to the current settings. Final step
+     * of linear sugar detection. This step was introduced because the preceding steps may produce small 'fragments',
+     * e.g. the hydroxy group of a circular sugar that was removed from a linear sugar candidate. These should be
+     * filtered out. ALso, a very large linear sugar that does not consist of multiple subunits linked by ether, ester,
+     * or peroxide bonds is considered too interesting to remove and should therefore also be filtered from the linear sugars
+     * detected for removal. The 'size' of the linear sugar candidates is determined as their carbon atom count. The
+     * set minimum and maximum sizes are inclusive.
+     * The parameter list is not altered and a completely new list returned.
+     *
+     * @param aCandidateList a list of potential sugar substructures from the same atom container object
+     * @return a new list of candidates where all too small and too big candidates have been filtered out
+     * @throws NullPointerException if the given list is 'null'
+     */
+    protected List<IAtomContainer> removeTooSmallAndTooLargeCandidates(List<IAtomContainer> aCandidateList)
+            throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
             return aCandidateList;
