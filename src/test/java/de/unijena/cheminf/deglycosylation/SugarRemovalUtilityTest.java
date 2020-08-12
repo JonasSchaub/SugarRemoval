@@ -25,16 +25,13 @@
 package de.unijena.cheminf.deglycosylation;
 
 /**
- * TODO:
- * - write docs
- * - linear sugar detection: make some inspections about the non-default settings
- * - include tests for static methods
+ * TODO (if there are bugs):
+ * - test more of the non-default settings, especially for linear sugar detection
+ * - test the static methods
  * - test the protected routines
- * - remove some of the 'experiments'
  */
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openscience.cdk.Atom;
 import org.openscience.cdk.AtomContainer;
@@ -64,12 +61,9 @@ import java.awt.Color;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.math.RoundingMode;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.logging.FileHandler;
@@ -1233,15 +1227,63 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     /**
-     * The tested molecule has three interlinked linear sugar moieties that illustrate the splitting of ether, ester,
-     * and peroxide bonds to separate such polymers into distinct sugar moieties during detection. The test also creates
-     * images of the molecule and the sugar moieties in the molecule. The files will be written to
-     * .\SugarRemovalUtilityTest_Output\easy_depiction_test\ in the repositories root directory.
+     * The tested molecule has two terminal circular sugar moieties and a terminal linear sugar moiety. All are correctly
+     * removed.
      *
      * @throws Exception if anything goes wrong or an AssertionError occurs
      */
     @Test
-    public void specificTest32WithDepiction() throws Exception {
+    public void specificTest32() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1000DefaultSettings();
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles(
+                //CNP0149497
+                "O=C(OCC(O)C(O)C(O)CO)C1(C)CC2=C3C=CC4C5(C)CCC(OC6OC(C)C(O)C(OC7OC(CO)C(O)C(O)C7O)C6O)C(C)(CO)C5CCC4(C)C3(C)CC(O)C2(CO)CC1");
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //the two terminal circular sugars and the terminal linear sugar are removed
+        Assert.assertEquals("O=CC1(C)CC2=C3C=CC4C5(C)CCC(O)C(C)(CO)C5CCC4(C)C3(C)CC(O)C2(CO)CC1", tmpSmilesCode);
+    }
+
+    /**
+     * The tested molecule has 14 terminal circular sugar moieties. All are correctly
+     * removed.
+     *
+     * @throws Exception if anything goes wrong or an AssertionError occurs
+     */
+    @Test
+    public void specificTest33() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1000DefaultSettings();
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles(
+                //CNP0083402
+                "CC(CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C)CCOP(=O)(O)OP(=O)(O)OC1C(C(C(C(O1)CO)OC2C(C(C(C(O2)CO)OC3C(C(C(C(O3)COC4C(C(C(C(O4)COC5C(C(C(C(O5)CO)OC6C(C(C(C(O6)CO)O)O)O)O)O)O)OC7C(C(C(C(O7)CO)OC8C(C(C(C(O8)CO)O)O)O)O)O)O)O)OC9C(C(C(C(O9)CO)O)O)OC1C(C(C(C(O1)CO)O)O)OC1C(C(C(C(O1)CO)O)OC1C(C(C(C(O1)CO)O)OC1C(C(C(C(O1)CO)O)O)OC1C(C(C(C(O1)CO)O)O)O)O)O)O)O)NC(=O)C)O)NC(=O)C");
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //All 14 circular sugar moieties are correctly removed
+        Assert.assertEquals("O=P(O)(O)OP(=O)(O)OCCC(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C", tmpSmilesCode);
+    }
+
+    /**
+     * The tested molecule has three interlinked linear sugar moieties that illustrate the splitting of ether, ester,
+     * and peroxide bonds to separate such polymers into distinct sugar moieties during detection. The test also creates
+     * images of the molecule and the sugar moieties in the molecule. The files will be written to
+     * .\SugarRemovalUtilityTest_Output\easy_depiction_test\ in the repository's root directory.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    public void specificTest34WithDepiction() throws Exception {
         String tmpOutputFolderPath = (new File("SugarRemovalUtilityTest_Output")).getAbsolutePath() + File.separator
                 + "easy_depiction_test" + File.separator;
         File tmpOutputFolderFile = new File(tmpOutputFolderPath);
@@ -1255,7 +1297,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1000DefaultSettings();
         //the molecule has three interlinked linear sugars, illustrating why splitting ether, ester, and peroxide bonds
         // makes sense in some cases, such as this one
-        tmpOriginalMolecule = tmpSmiPar.parseSmiles("O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O"); //CNP0138295 (not tested yet)
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles(
+                //CNP0138295
+                "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O");
         tmpDepictionGenerator.withSize(2000, 2000)
                 .withFillToFit()
                 .depict(tmpOriginalMolecule)
@@ -1286,9 +1330,16 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     //
     //<editor-fold desc="Tests involving databases">
     /**
-     * TODO doc
+     * This test analyses the data on sugar moieties in bacterial natural products from "Elshahawi SI, Shaaban KA,
+     * Kharel MK, Thorson JS. A comprehensive review of glycosylated bacterial natural products, 04 March 2015,
+     * Chem. Soc. Rev., 2015, 44, 7591-7697, <a href="https://doi.org/10.1039/C4CS00426D">DOI:10.1039/C4CS00426D</a>".
+     * The 344 sugar molecules are loaded from an SDF in the resource directory. They are analysed using the
+     * SugarRemovalUtility and detected sugar moieties removed. Some statistics about the deglycosylation are printed
+     * to console and should molecules cause exceptions, they are logged in a file with path
+     * .\SugarRemovalUtilityTest_Output\review_glycosylated_NPs_bacteria_data_test\ in the repository's root directory.
+     *
+     * @throws Exception if anything goes wrong or an AssertionError occurs
      */
-    @Ignore
     @Test
     public void reviewGlycosylatedNPsBacteriaDataTest() throws Exception {
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
@@ -1327,7 +1378,6 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMaxSizeSetting());
         System.out.println(tmpSugarRemovalUtil.areLinearAcidicSugarsDetected());
         IteratingSDFReader tmpReader = new IteratingSDFReader(new FileInputStream(tmpSDFile), DefaultChemObjectBuilder.getInstance(), true);
-        //SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Canonical);
         int tmpMoleculesCounter = 0;
         int tmpExceptionsCounter = 0;
@@ -1372,7 +1422,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
             } catch (Exception anException) {
                 tmpLogger.log(Level.SEVERE, anException.toString() + " ID: " + tmpID, anException);
                 tmpExceptionsCounter++;
-                continue;
+                //continue;
             }
         }
         System.out.println("Done.");
@@ -1393,34 +1443,49 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     //
     //<editor-fold desc="Tests for protected routines of SugarRemovalUtility">
     /**
-     * TODO: make this a real test with example structures to split
+     * Tests the protected routine to split ether, ester and peroxide bonds.
+     *
+     * @throws Exception if anything goes wrong or an AssertionError occurs
      */
     @Test
     public void testEtherEsterPeroxideSplitting() throws Exception {
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
-        IAtomContainer target1 = tmpSmiPar.parseSmiles("CCOCC");
-        IAtomContainer target2 = tmpSmiPar.parseSmiles("CC(=O)OCC");
-        IAtomContainer target3 = tmpSmiPar.parseSmiles("CCOOCC");
-        List<IAtomContainer> tmpCandidates = new ArrayList<>(3);
-        tmpCandidates.add(target1);
-        tmpCandidates.add(target2);
-        tmpCandidates.add(target3);
-        for (IAtomContainer tmpCandidate : this.splitEtherEsterAndPeroxideBonds(tmpCandidates)) {
-            System.out.println(tmpSmiGen.create(tmpCandidate));
+        IAtomContainer tmpOriginalMolecule;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1000DefaultSettings();
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles(
+                //CNP0138295
+                "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O");
+        List<IAtomContainer> tmpBeforeSplittingList = new ArrayList<>(1);
+        tmpBeforeSplittingList.add(tmpOriginalMolecule);
+        List<IAtomContainer> tmpAfterSplittingList = tmpSugarRemovalUtil.splitEtherEsterAndPeroxideBonds(tmpBeforeSplittingList);
+        List<String> tmpSmilesAfterSplittingList = new ArrayList<>(3);
+        for (IAtomContainer tmpFragment : tmpAfterSplittingList) {
+            String tmpSmilesCode = tmpSmiGen.create(tmpFragment);
+            System.out.println(tmpSmiGen.create(tmpFragment));
+            tmpSmilesAfterSplittingList.add(tmpSmilesCode);
         }
+        List<String> tmpExpectedList = new ArrayList<>(3);
+        tmpExpectedList.add("O=CC(O)C(O)C(O)C(O)C[O]");
+        tmpExpectedList.add("O=CC(O)C(O)[C](O)C(O)C[O]");
+        //note: This structure is not split because one of the carbon atoms surrounding the ether oxygen is aromatic
+        tmpExpectedList.add("O=[C]C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C");
+        Assert.assertEquals(tmpExpectedList, tmpSmilesAfterSplittingList);
     }
     //</editor-fold>
     //
     //<editor-fold desc="Miscellaneous">
     /**
+     * Tests adding additional linear and circular sugars to the respective pattern lists and retrieving some class
+     * properties. The settings are printed to console.
      *
+     * @throws Exception if anything goes wrong or an AssertionError occurs
      */
     @Test
     public void classPropertiesTest() throws Exception {
         SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
-        tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true); //default would be false
         //to check whether the addition and removal of the patterns work
+        tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true); //default would be false
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(false);
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         Assert.assertTrue(tmpSugarRemovalUtil.addLinearSugarToPatternsList("CO"));
@@ -1450,7 +1515,10 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Tests the exception-free execution of the SugarRemovalServiceApplication on a molfile, an SDF, and a SMILES file.
+     * The files are loaded from the resource directory.
+     *
+     * @throws Exception if anything goes wrong
      */
     @Test
     public void testApplication() throws Exception {
@@ -1467,13 +1535,16 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpSMILESFile, 3);
         tmpSugarRemovalApp.execute();
     }
-
+    //</editor-fold>
+    //<editor-fold desc="CDK routines experiments">
     /**
+     * This test illustrates how substructures detected using DfPattern can overlap and what 'unique' means in this
+     * context.
      *
-     * @throws Exception
+     * @throws Exception if anything goes wrong
      */
     @Test
-    public void mappingsExperiment() throws Exception {
+    public void dfPatternExperiment() throws Exception {
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer target = tmpSmiPar.parseSmiles("CCCCC");
@@ -1483,24 +1554,33 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         for (IAtomContainer tmpMap : tmpMappings.toSubstructures()) {
             System.out.println(tmpSmiGen.create(tmpMap));
         }
+        System.out.println(tmpMappings.count());
         System.out.println(tmpMappings.countUnique());
     }
 
+    /**
+     * This test illustrates that to combine overlapping substructures of the same atom container, one just has to add
+     * them all to one atom container in CDK. The IAtomContainer object recognizes the already present atoms (and bonds).
+     *
+     * @throws Exception if anything goes wrong
+     */
     @Test
-    public void experiments() throws Exception {
+    public void combineOverlappingSubstructuresExperiment() throws Exception {
         IAtomContainer tmpMol = new AtomContainer();
         IAtom tmpAtom = new Atom();
         tmpMol.addAtom(tmpAtom);
         tmpMol.addAtom(tmpAtom);
         System.out.println(tmpMol.getAtomCount());
-        NumberFormat df = NumberFormat.getInstance(Locale.US);
-        df.setMaximumFractionDigits(1);
-        df.setRoundingMode(RoundingMode.DOWN);
-        System.out.println(df.format(4.99));
     }
 
+    /**
+     * This test illustrates what file formats the CDK FormatFactory can recognize. It is used in the sugar removal
+     * application.
+     *
+     * @throws Exception if anything goes wrong
+     */
     @Test
-    public void readingFilesTest() throws Exception {
+    public void readingFilesExperiment() throws Exception {
         FormatFactory tmpCDKFormatFactory = new FormatFactory();
         tmpCDKFormatFactory.registerFormat((IChemFormatMatcher) SMILESFormatMatcher.getInstance());
         for (IChemFormat tmpFormat : tmpCDKFormatFactory.getFormats()) {
@@ -1508,8 +1588,13 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         }
     }
 
+    /**
+     * This test illustrates the handling of SMARTS patterns in CDK and how they can be used to split a specific bond.
+     *
+     * @throws Exception if anything goes wrong
+     */
     @Test
-    public void smartsTest() throws Exception {
+    public void smartsExperiment() throws Exception {
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer target = tmpSmiPar.parseSmiles("CCOCC");
@@ -1541,17 +1626,23 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
             System.out.println(tmpSmiGen.create(tmpComponent));
         }
+        System.out.println();
         target = tmpSmiPar.parseSmiles("CC(=O)OCC");
         SmartsPattern tmpEsterPattern = SmartsPattern.create("[CD3](=[OX1])-[OX2]-[CD2]");
         tmpMappings = tmpEsterPattern.matchAll(target).uniqueAtoms();
         for (IAtomContainer tmpMap : tmpMappings.toSubstructures()) {
             System.out.println(tmpSmiGen.create(tmpMap));
         }
-
     }
 
+    /**
+     * This test illustrates that open valences do not disturb the isomorphism determination in CDK. This is important
+     * since the sugar candidates have open valences during their processing.
+     *
+     * @throws Exception if anything goes wrong
+     */
     @Test
-    public void testIsomorphismDependencyOnValences() throws Exception {
+    public void isomorphismDependencyOnValencesExperiment() throws Exception {
         SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
         IAtomContainer tmpMissingValenceRing = tmpSmiPar.parseSmiles("O=C(O)C1OC([O])[C](O)C(O)C1O");
         RingSearch tmpRingSearch = new RingSearch(tmpMissingValenceRing);
@@ -1562,28 +1653,16 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         boolean tmpAreIsomorph = tmpUnivIsoTester.isIsomorph(tmpRingSearch.isolatedRingFragments().get(0), tmpReferenceRing);
         System.out.println(tmpAreIsomorph);
     }
-
-    @Test
-    public void testEtherEsterPeroxideSplitting2() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
-        IAtomContainer tmpCandidate = tmpSmiPar.parseSmiles("O=C(O)C[C](O)CC(=O)OC1COC(OC2C(O)C(OC(CO)C2O)OC3C(O)C(O)C([O])OC3CO)C(O)C1O");
-        SmartsPattern tmpEtherPattern = SmartsPattern.create("[C]-[OX2;!R]-[C]");
-        Mappings tmpMapping = tmpEtherPattern.matchAll(tmpCandidate).uniqueAtoms();
-        System.out.println(tmpMapping.count());
-        List<IAtomContainer> tmpList = new ArrayList<>(1);
-        SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Unique);
-        tmpList.add(tmpCandidate);
-        for (IAtomContainer tmpNewCandidate : this.splitEtherEsterAndPeroxideBonds(tmpList)) {
-            System.out.println(tmpSmiGen.create(tmpNewCandidate));
-        }
-    }
     //</editor-fold>
     //</editor-fold>
     //
     //<editor-fold desc="Protected methods">
     /**
-     * TODO
-     * @return
+     * Returns a SugarRemovalUtility class object whose sugar removal settings correspond to the default values in
+     * version 1.0.0.0 of the class. Should the default settings change, the tests do not have to be re-written,
+     * because of this method.
+     *
+     * @return a SugarRemovalUtility object with version 1.0.0.0 default settings
      */
     protected SugarRemovalUtility getSugarRemovalUtilityV1000DefaultSettings() {
         SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();

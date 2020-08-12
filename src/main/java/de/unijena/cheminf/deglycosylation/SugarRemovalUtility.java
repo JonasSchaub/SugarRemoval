@@ -316,24 +316,24 @@ public class SugarRemovalUtility {
     //<editor-fold desc="SMARTS patterns for ester, ether, peroxide bonds">
     /**
      * Daylight SMARTS pattern for matching ester bonds between linear sugars.
-     * Defines a carbon atom connected to a double-bonded oxygen atom and a single-bonded oxygen atom that must not be
-     * in a ring and is connected to another carbon atom via a single bond. The oxygen atom must not be in a ring to
+     * Defines an aliphatic carbon atom connected to a double-bonded oxygen atom and a single-bonded oxygen atom that must not be
+     * in a ring and is connected to another aliphatic carbon atom via a single bond. The oxygen atom must not be in a ring to
      * avoid breaking circular sugars.
      */
     public static final SmartsPattern ESTER_SMARTS_PATTERN = SmartsPattern.create("[C](=O)-[O!R]-[C]");
 
     /**
      * Daylight SMARTS pattern for matching ether bonds between linear sugars.
-     * Defines a carbon atom connected via single bond to an oxygen atom that must not be in a ring and is in turn connected
-     * to another carbon atom. The oxygen atom must not be in a ring to avoid breaking circular sugars.
+     * Defines an aliphatic carbon atom connected via single bond to an oxygen atom that must not be in a ring and is in turn connected
+     * to another aliphatic carbon atom. The oxygen atom must not be in a ring to avoid breaking circular sugars.
      * This pattern also matches ester bonds which is why esters must be detected and processed before ethers.
      */
     public static final SmartsPattern ETHER_SMARTS_PATTERN = SmartsPattern.create("[C]-[O!R]-[C]");
 
     /**
      * Daylight SMARTS pattern for matching peroxide bonds between linear sugars.
-     * Defines a carbon atom connected via single bond to an oxygen atom that must not be in a ring and is connected to
-     * another oxygen atom of the same kind, followed by another carbon atom.
+     * Defines an aliphatic carbon atom connected via single bond to an oxygen atom that must not be in a ring and is connected to
+     * another oxygen atom of the same kind, followed by another aliphatic carbon atom.
      * Even tough it is highly unlikely for a peroxide bond to be in a ring, every ring should be preserved.
      */
     public static final SmartsPattern PEROXIDE_SMARTS_PATTERN = SmartsPattern.create("[C]-[O!R]-[O!R]-[C]");
