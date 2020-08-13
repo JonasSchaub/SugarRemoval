@@ -1516,7 +1516,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
     /**
      * Tests the exception-free execution of the SugarRemovalServiceApplication on a molfile, an SDF, and a SMILES file.
-     * The files are loaded from the resource directory.
+     * The files are loaded from the resource directory. The Main.main() method is not used because the system would
+     * exit after completion.
      *
      * @throws Exception if anything goes wrong
      */
@@ -1524,15 +1525,15 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     public void testApplication() throws Exception {
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpMolFile = new File(tmpClassLoader.getResource("CNP0083088.mol").getFile());
-        SugarRemovalServiceApplication tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpMolFile, 3);
+        SugarRemovalUtilityCmdApplication tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpMolFile, 3);
         tmpSugarRemovalApp.execute();
 
         File tmpSDFile = new File(tmpClassLoader.getResource("review_glycosylated_NPs_bacteria_data.sdf").getFile());
-        tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpSDFile, 3);
+        tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpSDFile, 3);
         tmpSugarRemovalApp.execute();
 
         File tmpSMILESFile = new File(tmpClassLoader.getResource("smiles_test_file.txt").getFile());
-        tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpSMILESFile, 3);
+        tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpSMILESFile, 3);
         tmpSugarRemovalApp.execute();
     }
     //</editor-fold>

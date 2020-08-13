@@ -26,8 +26,6 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO
- * - add test of Java version at the beginning
- * - parse duration into double
  * - improve command line argument management
  */
 
@@ -36,38 +34,93 @@ import java.io.IOException;
 import java.util.Objects;
 
 /**
- * TODO add doc
+ * Main entry point for the SugarRemovalUtility command line application. The main() method parses the command line
+ * arguments, instantiates, and starts the application.
  */
 public class Main {
     /**
-     * TODO
+     * Parses the command line arguments, instantiates the SugarRemovalUtilityCmdApplication, and executes it.
+     * The method also tests the Java version (must be version 11.0.5 or higher) and measures the time it takes to
+     * execute the application. Outputs are written to System.out and System.err if anything goes wrong. Exceptions
+     * are not thrown. The system is exited if an error occurs or the application is run successfully.
+     * <br>The command line arguments 'args' must be constructed as follows:
+     * <p>
+     * * args[0]: Path to the input file, either absolute or relative to the current directory. Example:
+     * "D:\Project_Sugar_Removal\SugarRemovalUtility CMD App\smiles_test_file.txt" or
+     * "smiles_test_file.txt" if the console is already in the "SugarRemovalUtility CMD App"
+     * directory. The backslahes '\' are used in a Microsoft Windows operating system; it should be slash
+     * '/' in a Unix shell. Double quotes " are not mandatory but recommended to allow for spaces in the path. The
+     * path must not be empty and the given file must exist and be accessible and readable. The file type extension
+     * is not important for the determination of the file type but it must be specified in the path. Accepted input
+     * formats: MDL Molfile, MDL Structure data file (SDF) and SMILES files (of format: [SMILES string][space][name]
+     * in each line, see example file).
+     * <br>* args[1]: A number of ["1","2","3"] indicating which type of sugar moieties should be removed, "1" for
+     * circular sugar moieties, "2" for linear sugar moieties, or "3" for circular AND linear sugar moieties.
+     * <p>
+     * These two arguments must ALWAYS be given. The remaining arguments are optional. But either
+     * none of them or all of them must be given. If only these two arguments are given, the other
+     * settings will be in their default value.
+     * <p>
+     * * args[2]: Either "true" or "false", indicating whether circular sugars should be detected (and
+     * removed) only if they have an O-glycosidic bond to another moiety or the core of the molecule. Any other value
+     * of this argument will be interpreted as "false". Default: "false".
+     * <br>* args[3]: Either "true" or "false", indicating whether only terminal sugar moieties should be removed.
+     * Any other value of this argument will be interpreted as "false". Default: "true". Important note: If this
+     * setting is set to "true", the input molecules must all consist of one connected structure, respectively. If they
+     * already contain multiple, disconnected structures (e.g. counter-ions), the respective molecules are ignored.
+     * <br>* args[4]: A number of ["0","1","2"] indicating which preservation mode to use. This specifies under what
+     * circumstances to discard structures that get disconnected from the central core in the sugar removal process,
+     * "0" to preserve all disconnected structures (note: this might lead to no circular sugar moieties being detected,
+     * depending on the other settings), "1" to remove disconnected structures that do not have enough heavy atoms, or
+     * "2" to remove disconnected structures that do not have a sufficient molecular weight. Default: "1" (judge
+     * disconnected structures by their heavy atom count).
+     * <br>* args[5]: An integer number giving the threshold of the preservation mode, i.e. how many heavy atoms a
+     * disconnected structure needs to have at least to be not removed or how heavy (in terms of its molecular weight)
+     * it needs to be. Default: "5" (heavy atoms). The integer number must be positive. If the previous argument at
+     * position 4 was passed the value "0" (preserve all structures), this argument must also be passed a zero value.
+     * In the opposite case, this argument must be passed a non-zero value if the previous argument at position 4 was
+     * given the value 1 or 2.
+     * <br>* args[6]: Either "true" or "false", indicating whether circular sugars should be detected (and
+     * removed) only if they have a sufficient number of attached exocyclic oxygen atoms. Any other value of this
+     * argument will be interpreted as "false". Default: "true".
+     * <br>* args[7]: A number giving the minimum attached exocyclic oxygen atoms to atom number in the ring
+     * ratio a circular sugar needs to have to be detected as such.
+     * Default: "0.5" (a 6-membered ring needs at least 3 attached exocyclic oxygen atoms).
+     * If the previous argument at position 6 was passed the value "false" (detect circular sugars
+     * neglecting their number of attached exocyclic oxygen atoms), this argument must be passed a zero
+     * value. In the opposite case, this argument must be passed a non-zero value if the previous argument at
+     * position 6 was given the value "true". The number must be positive.
+     * <br>* args[8]: Either "true" or "false", indicating whether linear sugars in rings should be detected (and
+     * removed). Any other value of this argument will be interpreted as "false". Default: "false".
+     * <br>* args[9]: An integer number indicating the minimum number of carbon atoms a linear sugar needs to have
+     * to be detected as such. Default: "4". The integer number must be positive and higher than or equal to 1.
+     * <br>* args[10]: An integer number indicating the maximum number of carbon atoms a linear sugar needs to
+     * have to be detected as such. Default: "7". The integer number must be positive higher than or equal to 1.
+     * <br>* args[11]: Either "true" or "false", indicating whether linear acidic sugars should be included in the
+     * set of linear sugar patterns for the initial detection. Any other value of this argument will be interpreted as
+     * "false". Default: "false".
+     * <br>* args[12]: Either "true" or "false", indicating whether spiro rings (rings that share one atom with
+     * another cycle) should be included in the circular sugar detection. Any other value of this argument will be
+     * interpreted as "false". Default: "false".
+     * <p>
+     * Example (all settings in default): String[] args = new String[] {"smiles_test_file.txt", "3", "false", "true", "1", "5", "true", "0.5",
+     * "false", "4", "7", "false", "false"}
      *
-     * arg 0: Path to SMILES file, SDF, or molfile [String]
-     * arg 1: param to indicate whether circular, linear, or both types of sugars should be removed [int?]
-     * the other params should be optional (but if one is present, all should be present?)
-     *
-     * arg 2: detect circular sugars only with O glycosidic bond [boolean]
-     * arg 3: remove only terminal sugars [boolean]
-     *      -> this requires checking all the molecules for being connected before processing them!
-     *      -> must be done by the app, not here
-     * arg 4: structure to keep mode [int?]
-     * arg 5: structure to keep mode threshold [int]
-     * arg 6: detect circular sugars only with enough exocyclic oxygen atoms [boolean]
-     * arg 7: ratio attached oxygen atoms to atoms in ring threshold [double]
-     * arg 8: detect linear sugars in rings [boolean]
-     * arg 9: linear sugar candidate min size [int]
-     * arg 10: linear sugar candidate max size [int]
-     * arg 11: detect linear acidic sugars [boolean]
-     * arg 12: detect spiro rings as circular sugars [boolean]
+     * @param args the command line arguments, see above
      */
     public static void main(String[] args) {
         try {
+            String tmpJavaVersion = System.getProperty("java.version");
+            if (tmpJavaVersion.compareTo("11.0.5") < 0) {
+                System.err.println("The version of your Java installation has to be at least 11.0.5 for this application to run.");
+                System.exit(-1);
+            }
             System.out.println("Sugar Removal Service Application starting. Evaluating command line arguments...");
             if (args.length != 2 && args.length != 13) {
                 System.err.println("Number of command line arguments must be either 2 or 13.");
                 System.exit(-1);
             }
-            SugarRemovalServiceApplication tmpSugarRemovalApp = null;
+            SugarRemovalUtilityCmdApplication tmpSugarRemovalApp = null;
             String tmpPath = args[0].trim();
             if (Objects.isNull(tmpPath) || tmpPath.isBlank()) {
                 System.err.println("Given path to SMILES, SD, or MOL file (argument at position 0) is empty or blank.");
@@ -87,13 +140,13 @@ public class Main {
                         "cannot be parsed.");
                 System.exit(-1);
             }
-            if (!SugarRemovalServiceApplication.isLegalTypeOfMoietiesToRemove(tmpTypeOfMoietiesToRemove)) {
+            if (!SugarRemovalUtilityCmdApplication.isLegalTypeOfMoietiesToRemove(tmpTypeOfMoietiesToRemove)) {
                 System.err.println("Argument at position 1 indicating which type of moieties is to remove must be " +
                         "either 1 (circular sugar moieties), 2 (linear sugar moieties), or 3 (both).");
                 System.exit(-1);
             }
             if (args.length == 2) {
-                tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpFile, tmpTypeOfMoietiesToRemove);
+                tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpFile, tmpTypeOfMoietiesToRemove);
             } else if (args.length == 13) {
                 //note: The boolean returned represents the value true if the string argument is not null and is equal,
                 // ignoring case, to the string "true". Otherwise, a false value is returned, including for a null argument.
@@ -188,7 +241,7 @@ public class Main {
                 boolean tmpDetectLinearAcidicSugarsSetting = Boolean.parseBoolean(args[11].trim());
                 boolean tmpDetectSpiroRingsAsCircularSugarsSetting = Boolean.parseBoolean(args[12].trim());
                 //throws IllegalArgumentException but that should not happen since all arguments have been thoroughly tested.
-                tmpSugarRemovalApp = new SugarRemovalServiceApplication(tmpFile,
+                tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpFile,
                         tmpTypeOfMoietiesToRemove,
                         tmpDetectCircularSugarsOnlyWithOGlycosidicBondSetting,
                         tmpRemoveOnlyTerminalSugarsSetting,
@@ -215,8 +268,8 @@ public class Main {
                 System.exit(-1);
             }
             long tmpEndTime = System.currentTimeMillis();
-            long tmpDurationInMinutes = (tmpEndTime - tmpStartTime) / 60000;
-            System.out.println("Execution successful. Analysis took " + tmpDurationInMinutes + " minutes.");
+            double tmpDurationInMinutes = ((double)tmpEndTime - (double)tmpStartTime) / 60000;
+            System.out.println("Execution successful. Analysis took " + String.format("%.3f", tmpDurationInMinutes) + " minutes.");
             System.out.println("Application will now exit.");
             System.exit(0);
         } catch (Exception anException) {

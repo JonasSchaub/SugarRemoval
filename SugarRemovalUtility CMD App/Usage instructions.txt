@@ -3,7 +3,9 @@ Sugar Removal Utility Command Line Application Usage instructions
 ---------------------------------------------------------------------------------------------------
 
 This application can be used to remove sugar moieties from molecules in a given data set, according 
-to [insert publication reference here].
+to "Schaub J, Zielesny A, Steinbeck C, Sorokina M. Too sweet: cheminformatics for deglycosylation 
+in natural products, 02 August 2020, PREPRINT (Version 1)", available at Research Square 
+here: https://doi.org/10.21203/rs.3.rs-50194/v1.
 
 Accepted input formats: MDL Molfile, MDL Structure data file (SDF) and SMILES files (of 
 format: [SMILES string][space][name] in each line, see example file)

@@ -30,7 +30,7 @@ import org.openscience.cdk.cdkbook.SMILESFormatMatcher;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.ConnectivityChecker;
 import org.openscience.cdk.interfaces.IAtomContainer;
-import org.openscience.cdk.io.*;
+import org.openscience.cdk.io.FormatFactory;
 import org.openscience.cdk.io.formats.IChemFormat;
 import org.openscience.cdk.io.formats.IChemFormatMatcher;
 import org.openscience.cdk.io.iterator.IIteratingChemObjectReader;
@@ -39,15 +39,25 @@ import org.openscience.cdk.io.iterator.IteratingSMILESReader;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Objects;
-import java.util.logging.*;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 /**
  * TODO
  */
-public class SugarRemovalServiceApplication {
+public class SugarRemovalUtilityCmdApplication {
 
     /**
      * TODO
@@ -72,12 +82,12 @@ public class SugarRemovalServiceApplication {
     /**
      *
      */
-    private static final Logger LOGGER = Logger.getLogger(SugarRemovalServiceApplication.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(SugarRemovalUtilityCmdApplication.class.getName());
 
     /**
      * TODO
      */
-    public SugarRemovalServiceApplication(File aFile, int aTypeOfMoietiesToRemove) throws IllegalArgumentException {
+    public SugarRemovalUtilityCmdApplication(File aFile, int aTypeOfMoietiesToRemove) throws IllegalArgumentException {
         this(
                 aFile,
                 aTypeOfMoietiesToRemove,
@@ -98,19 +108,19 @@ public class SugarRemovalServiceApplication {
     /**
      * TODO
      */
-    public SugarRemovalServiceApplication(File aFile,
-                                          int aTypeOfMoietiesToRemove,
-                                          boolean aDetectCircularSugarsOnlyWithOGlycosidicBondSetting,
-                                          boolean aRemoveOnlyTerminalSugarsSetting,
-                                          int aStructureToKeepModeSetting,
-                                          int aStructureToKeepModeThresholdSetting,
-                                          boolean aDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting,
-                                          double anExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting,
-                                          boolean aDetectLinearSugarsInRingsSetting,
-                                          int aLinearSugarCandidateMinSizeSetting,
-                                          int aLinearSugarCandidateMaxSizeSetting,
-                                          boolean aDetectLinearAcidicSugarsSetting,
-                                          boolean aDetectSpiroRingsAsCircularSugarsSetting)
+    public SugarRemovalUtilityCmdApplication(File aFile,
+                                             int aTypeOfMoietiesToRemove,
+                                             boolean aDetectCircularSugarsOnlyWithOGlycosidicBondSetting,
+                                             boolean aRemoveOnlyTerminalSugarsSetting,
+                                             int aStructureToKeepModeSetting,
+                                             int aStructureToKeepModeThresholdSetting,
+                                             boolean aDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting,
+                                             double anExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting,
+                                             boolean aDetectLinearSugarsInRingsSetting,
+                                             int aLinearSugarCandidateMinSizeSetting,
+                                             int aLinearSugarCandidateMaxSizeSetting,
+                                             boolean aDetectLinearAcidicSugarsSetting,
+                                             boolean aDetectSpiroRingsAsCircularSugarsSetting)
             throws IllegalArgumentException {
         if (!aFile.exists() || !aFile.canRead() || !aFile.isFile()) {
             throw new IllegalArgumentException("Given path to SMILES, SD, or MOL file does not exist or " +
@@ -118,7 +128,7 @@ public class SugarRemovalServiceApplication {
         }
         this.inputFile = aFile;
         //determination of file type is done in execute(), might cause exceptions there!
-        if (!SugarRemovalServiceApplication.isLegalTypeOfMoietiesToRemove(aTypeOfMoietiesToRemove)) {
+        if (!SugarRemovalUtilityCmdApplication.isLegalTypeOfMoietiesToRemove(aTypeOfMoietiesToRemove)) {
             throw new IllegalArgumentException("Type of moieties to remove must be either 1 (circular sugar moieties), " +
                     "2 (linear sugar moieties), or 3 (both).");
         }
@@ -230,11 +240,11 @@ public class SugarRemovalServiceApplication {
         File tmpOutputFile = new File(tmpOutputFilePath);
         FileWriter tmpOutputFileWriter = new FileWriter(tmpOutputFile);
         PrintWriter tmpOutputFilePrintWriter = new PrintWriter(tmpOutputFileWriter, true);
-        String tmpOutputFileHeader = "Nr" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                + "ID" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                + "originalMoleculeSMILES" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                + "deglycosylatedMoleculeSMILES" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
-                + "hadOrHasSugars" + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
+        String tmpOutputFileHeader = "Nr" + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
+                + "ID" + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
+                + "originalMoleculeSMILES" + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
+                + "deglycosylatedMoleculeSMILES" + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
+                + "hadOrHasSugars" + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
                 + "SugarMoietySMILES";
         tmpOutputFilePrintWriter.println(tmpOutputFileHeader);
         tmpOutputFilePrintWriter.flush();
@@ -243,7 +253,7 @@ public class SugarRemovalServiceApplication {
         try {
             tmpLogFileHandler = new FileHandler(tmpOutputRootDirectoryPath + "Log.txt");
         } catch (IOException anIOException) {
-            SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE, anIOException.toString(), anIOException);
+            SugarRemovalUtilityCmdApplication.LOGGER.log(Level.SEVERE, anIOException.toString(), anIOException);
             System.out.println("An exception occurred while setting up the log file. Logging will be done in default configuration.");
         }
         tmpLogFileHandler.setLevel(Level.ALL);
@@ -300,11 +310,11 @@ public class SugarRemovalServiceApplication {
         String tmpOutput = "";
         while (tmpReader.hasNext()) {
             try {
-                tmpOutput = tmpMoleculeCounter + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR;
+                tmpOutput = tmpMoleculeCounter + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR;
                 try {
                     tmpMolecule = tmpReader.next();
                 } catch (Exception anException) {
-                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                    SugarRemovalUtilityCmdApplication.LOGGER.log(Level.SEVERE,
                             anException.toString() + " Molecule number: " + tmpMoleculeCounter,
                             anException);
                     tmpLogFileHandler.flush();
@@ -333,18 +343,18 @@ public class SugarRemovalServiceApplication {
                 if (tmpID.isEmpty() || tmpID.isBlank()) {
                     tmpID = "[No ID available]";
                 }
-                tmpOutput = tmpOutput.concat(tmpID + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR);
+                tmpOutput = tmpOutput.concat(tmpID + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR);
                 try {
                     tmpOriginalMoleculeSMILES = tmpSmiGen.create(tmpMolecule);
                 } catch (CDKException aCDKException) {
-                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                    SugarRemovalUtilityCmdApplication.LOGGER.log(Level.SEVERE,
                             aCDKException.toString() + " Molecule id: " + tmpID,
                             aCDKException);
                     tmpLogFileHandler.flush();
                     tmpOriginalMoleculeSMILES = "[SMILES code could not be generated]";
                     tmpMinorExceptionsCounter++;
                 }
-                tmpOutput = tmpOutput.concat(tmpOriginalMoleculeSMILES + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR);
+                tmpOutput = tmpOutput.concat(tmpOriginalMoleculeSMILES + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR);
                 if (this.sugarRemovalUtil.areOnlyTerminalSugarsRemoved()) {
                     boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpMolecule);
                     if (!tmpIsConnected) {
@@ -372,7 +382,7 @@ public class SugarRemovalServiceApplication {
                                     "2 (linear sugar moieties), or 3 (both).");
                     }
                 } catch (CloneNotSupportedException aCloneNotSupportedException) {
-                    SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                    SugarRemovalUtilityCmdApplication.LOGGER.log(Level.SEVERE,
                             aCloneNotSupportedException.toString() + " Molecule id: " + tmpID,
                             aCloneNotSupportedException);
                     tmpLogFileHandler.flush();
@@ -409,7 +419,7 @@ public class SugarRemovalServiceApplication {
                     try {
                         tmpDeglycosylatedMoleculeSMILES = tmpSmiGen.create(tmpDeglycosylatedCore);
                     } catch (CDKException aCDKException) {
-                        SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                        SugarRemovalUtilityCmdApplication.LOGGER.log(Level.SEVERE,
                                 aCDKException.toString() + " Molecule id: " + tmpID,
                                 aCDKException);
                         tmpLogFileHandler.flush();
@@ -417,7 +427,7 @@ public class SugarRemovalServiceApplication {
                         tmpMinorExceptionsCounter++;
                     }
                 }
-                tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES + SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR
+                tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
                         + tmpHadSugars);
                 if (!tmpSugarMoieties.isEmpty()) {
                     for (IAtomContainer tmpMoiety : tmpSugarMoieties) {
@@ -425,21 +435,21 @@ public class SugarRemovalServiceApplication {
                         try {
                             tmpSMILEScode = tmpSmiGen.create(tmpMoiety);
                         } catch (CDKException aCDKException) {
-                            SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                            SugarRemovalUtilityCmdApplication.LOGGER.log(Level.SEVERE,
                                     aCDKException.toString() + " Molecule id: " + tmpID,
                                     aCDKException);
                             tmpLogFileHandler.flush();
                             tmpSMILEScode = "[SMILES code could not be generated]";
                             tmpMinorExceptionsCounter++;
                         }
-                        tmpOutput = tmpOutput.concat(SugarRemovalServiceApplication.OUTPUT_FILE_SEPARATOR + tmpSMILEScode);
+                        tmpOutput = tmpOutput.concat(SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR + tmpSMILEScode);
                     }
                 }
                 tmpOutputFilePrintWriter.println(tmpOutput);
                 tmpOutputFilePrintWriter.flush();
                 tmpMoleculeCounter++;
             } catch (Exception anException) {
-                SugarRemovalServiceApplication.LOGGER.log(Level.SEVERE,
+                SugarRemovalUtilityCmdApplication.LOGGER.log(Level.SEVERE,
                         anException.toString() + " Molecule number: " + tmpMoleculeCounter,
                         anException);
                 tmpLogFileHandler.flush();
