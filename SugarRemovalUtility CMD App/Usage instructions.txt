@@ -7,7 +7,7 @@ to "Schaub J, Zielesny A, Steinbeck C, Sorokina M. Too sweet: cheminformatics fo
 in natural products, 02 August 2020, PREPRINT (Version 1)", available at Research Square 
 here: https://doi.org/10.21203/rs.3.rs-50194/v1.
 
-Accepted input formats: MDL Molfile, MDL Structure data file (SDF) and SMILES files (of 
+Accepted input formats: MDL Molfile, MDL Structure data file (SDF), and SMILES file (of 
 format: [SMILES string][space][name] in each line, see example file)
 
 The output is a comma-separated value (CSV) text file containing: 
@@ -94,11 +94,13 @@ Also, multiple command line arguments have to be given when executing the JAR fi
 - Position 9: An integer number indicating the minimum number of carbon atoms a linear sugar needs to have 
   to be detected as such.
 	- Default: "4"
-	- The integer number must be positive and higher than or equal to 1
+	- The integer number must be positive and higher than or equal to 1 and also smaller than the linear 
+	  sugar candidate maximum size (argument at position 10)
 - Position 10: An integer number indicating the maximum number of carbon atoms a linear sugar needs to 
   have to be detected as such.
 	- Default: "7"
-	- The integer number must be positive higher than or equal to 1
+	- The integer number must be positive and higher than or equal to 1 and also higher than the linear 
+	  sugar candidate minimum size (argument at position 9)
 - Position 11: Either "true" or "false", indicating whether linear acidic sugars should be included in the 
   set of linear sugar patterns for the initial detection.
 	- Any other value of this argument will be interpreted as "false"

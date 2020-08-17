@@ -16,4 +16,5 @@ buildNumber.properties
 .mvn/wrapper/maven-wrapper.jar
 
 SugarRemovalUtilityTest_Output/
-zinc-all-for-sale.sdf
+deglycosylation_results.txt
+Log.txt

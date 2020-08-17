@@ -81,6 +81,9 @@ import java.util.logging.SimpleFormatter;
  *     Identifiers starting with 'CHEMBL' refer to molecules in the <a href="https://www.ebi.ac.uk/chembl/">ChEMBL database</a>.
  *     <br>Identifiers starting with 'CNP' refer to molecules in the <a href="https://coconut.naturalproducts.net">COCONUT database</a>.
  * </p>
+ *
+ * @author Jonas Schaub
+ * @version 1.0.0.0
  */
 public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     //<editor-fold desc="Tests">

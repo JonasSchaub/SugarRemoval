@@ -31,11 +31,15 @@ package de.unijena.cheminf.deglycosylation;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
  * Main entry point for the SugarRemovalUtility command line application. The main() method parses the command line
  * arguments, instantiates, and starts the application.
+ *
+ * @author Jonas Schaub
+ * @version 1.0.0.0
  */
 public class Main {
     /**
@@ -93,9 +97,11 @@ public class Main {
      * <br>* args[8]: Either "true" or "false", indicating whether linear sugars in rings should be detected (and
      * removed). Any other value of this argument will be interpreted as "false". Default: "false".
      * <br>* args[9]: An integer number indicating the minimum number of carbon atoms a linear sugar needs to have
-     * to be detected as such. Default: "4". The integer number must be positive and higher than or equal to 1.
+     * to be detected as such. Default: "4". The integer number must be positive and higher than or equal to 1 and also
+     * smaller than the linear sugar candidate maximum size (argument at position 10).
      * <br>* args[10]: An integer number indicating the maximum number of carbon atoms a linear sugar needs to
-     * have to be detected as such. Default: "7". The integer number must be positive higher than or equal to 1.
+     * have to be detected as such. Default: "7". The integer number must be positive and higher than or equal to 1 and
+     * also higher than the linear sugar candidate minimum size (argument at previous position 9).
      * <br>* args[11]: Either "true" or "false", indicating whether linear acidic sugars should be included in the
      * set of linear sugar patterns for the initial detection. Any other value of this argument will be interpreted as
      * "false". Default: "false".
@@ -120,6 +126,7 @@ public class Main {
                 System.err.println("Number of command line arguments must be either 2 or 13.");
                 System.exit(-1);
             }
+            Locale.setDefault(Locale.US);
             SugarRemovalUtilityCmdApplication tmpSugarRemovalApp = null;
             String tmpPath = args[0].trim();
             if (Objects.isNull(tmpPath) || tmpPath.isBlank()) {
@@ -236,6 +243,11 @@ public class Main {
                 if (tmpLinearSugarCandidateMinSizeSetting < 1 || tmpLinearSugarCandidateMaxSizeSetting < 1) {
                     System.err.println("The linear sugar candidate minimum and maximum sizes must both be equal or " +
                             "higher than 1 (arguments at positions 9 and 10).");
+                    System.exit(-1);
+                }
+                if (tmpLinearSugarCandidateMinSizeSetting > tmpLinearSugarCandidateMaxSizeSetting) {
+                    System.err.println("The linear sugar candidate minimum size (argument at position 9) must be smaller " +
+                            "than the maximum size (argument at position 10).");
                     System.exit(-1);
                 }
                 boolean tmpDetectLinearAcidicSugarsSetting = Boolean.parseBoolean(args[11].trim());

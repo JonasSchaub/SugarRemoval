@@ -55,37 +55,61 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 /**
- * TODO
+ * Controller of the Sugar Removal Utility command line application. It can be used to remove sugar moieties from
+ * molecules in a given data set, according to "Schaub J, Zielesny A, Steinbeck C, Sorokina M.
+ * Too sweet: cheminformatics for deglycosylation in natural products, 02 August 2020, PREPRINT (Version 1)", available
+ * at Research Square [<a href="https://doi.org/10.21203/rs.3.rs-50194/v1">DOI:10.21203/rs.3.rs-50194/v1</a>]. This class
+ * basically instantiates the SugarRemovalUtility class with the settings specified in the command line arguments and
+ * uses it to iterate over all molecules found in the given file and remove their sugar moieties. Also, a file detailing
+ * the deglycosylated cores and removed sugar moieties for each molecule is written as output.
+ *
+ * @author Jonas Schaub
+ * @version 1.0.0.0
  */
 public class SugarRemovalUtilityCmdApplication {
-
+    //<editor-fold desc="Private variables">
     /**
-     * TODO
+     * SugarRemovalUtility instance used to detect and remove the sugar moieties.
      */
     private SugarRemovalUtility sugarRemovalUtil;
 
     /**
-     * TODO
+     * Setting that specifies whether to remove circular, linear, or both types of moieties from the molecules.
      */
     private int typeOfMoietiesToRemove;
 
     /**
-     * TODO
+     * Input file containing molecule set, either MDL Molfile, MDL Structure data file (SDF), or SMILES file
      */
     private File inputFile;
-
+    //</editor-fold>
+    //
+    //<editor-fold desc="Private static final constants">
     /**
-     *
+     * Character used to separate the values in the output CSV file.
      */
     private static final String OUTPUT_FILE_SEPARATOR = ";";
 
     /**
-     *
+     * Logger of this class.
      */
     private static final Logger LOGGER = Logger.getLogger(SugarRemovalUtilityCmdApplication.class.getName());
-
+    //</editor-fold>
+    //
+    //<editor-fold desc="Constructors">
     /**
-     * TODO
+     * Constructor that only needs the input file and the type of moieties to remove. All SugarRemovalUtility settings
+     * will be set to their default values. Instantiates this class and the SugarRemovalUtility.
+     *
+     * @param aFile input file containing a set of molecules, either MDL Molfile, MDL Structure data file (SDF), or
+     *              SMILES file (of format: [SMILES string][space][name] in each line, see example file); the given file
+     *              must exist and be accessible and readable; the file type extension is not important for the
+     *              determination of the file type; the final test for whether the file is suitable is done in execute()
+     * @param aTypeOfMoietiesToRemove an int of value ["1","2","3"] indicating which type of sugar moieties should be removed,
+     *                                "1" for circular sugar moieties, "2" for linear sugar moieties, or "3" for
+     *                                circular AND linear sugar moieties; check isLegalTypeOfMoietiesToRemove(int) for
+     *                                the correct mapping of value to option
+     * @throws IllegalArgumentException if any parameter does not meet the specified requirements
      */
     public SugarRemovalUtilityCmdApplication(File aFile, int aTypeOfMoietiesToRemove) throws IllegalArgumentException {
         this(
@@ -106,7 +130,72 @@ public class SugarRemovalUtilityCmdApplication {
     }
 
     /**
-     * TODO
+     * Constructor that needs all settings explicitly specified. Instantiates this class and the SugarRemovalUtility with
+     * the given settings.
+     *
+     * @param aFile input file containing a set of molecules, either MDL Molfile, MDL Structure data file (SDF), or
+     *              SMILES file (of format: [SMILES string][space][name] in each line, see example file); the given file
+     *              must exist and be accessible and readable; the file type extension is not important for the
+     *              determination of the file type; the final test for whether the file is suitable is done in execute()
+     * @param aTypeOfMoietiesToRemove an int of value ["1","2","3"] indicating which type of sugar moieties should be removed,
+     *                                "1" for circular sugar moieties, "2" for linear sugar moieties, or "3" for
+     *                                circular AND linear sugar moieties; check isLegalTypeOfMoietiesToRemove(int) for
+     *                                the correct mapping of value to option
+     * @param aDetectCircularSugarsOnlyWithOGlycosidicBondSetting true if circular sugars should be detected (and
+     *                                                            removed) only if they have an O-glycosidic bond to
+     *                                                            another moiety or the core of the molecule
+     * @param aRemoveOnlyTerminalSugarsSetting true if only terminal sugar moieties should be removed; if this setting
+     *                                         is set to "true", the input molecules must all consist of one connected
+     *                                         structure, respectively; if they already contain multiple, disconnected
+     *                                         structures (e.g. counter-ions), the respective molecules are ignored.
+     * @param aStructureToKeepModeSetting an int of value ["0","1","2"] indicating which preservation mode to use; This
+     *                                    specifies under what circumstances to discard structures that get disconnected
+     *                                    from the central core in the sugar removal process, "0" to preserve all
+     *                                    disconnected structures (note: this might lead to no circular sugar moieties
+     *                                    being detected, depending on the other settings), "1" to remove disconnected
+     *                                    structures that do not have enough heavy atoms, or "2" to remove disconnected
+     *                                    structures that do not have a sufficient molecular weight; check
+     *                                    SugarRemovalUtility.PreservationModeOption enum for the correct mapping of
+     *                                    value to option, it corresponds to the ordinal values of the enum constants
+     * @param aStructureToKeepModeThresholdSetting an int specifying the threshold of the preservation mode, i.e. how
+     *                                             many heavy atoms a disconnected structure needs to have at least to
+     *                                             be not removed or how heavy (in terms of its molecular weight) it
+     *                                             needs to be; the value must be positive; if aStructureToKeepModeSetting
+     *                                             was passed the value "0" (preserve all structures), this argument must
+     *                                             also be passed a zero value; in the opposite case, this argument must
+     *                                             be passed a non-zero value if aStructureToKeepModeSetting was given
+     *                                             the value 1 or 2
+     * @param aDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting true if circular sugars should be detected
+     *                                                                       (and removed) only if they have a sufficient
+     *                                                                       number of attached exocyclic oxygen atoms
+     * @param anExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting a double value giving the minimum attached
+     *                                                                 exocyclic oxygen atoms to atom number in the ring
+     *                                                                 ratio a circular sugar needs to have to be
+     *                                                                 detected as such, e.g 0.5 where a six-membered
+     *                                                                 ring needs to have at least 3 oxygen atoms
+     *                                                                 attached; if
+     *                                                                 aDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting
+     *                                                                 was passed the value "false" (detect circular sugars
+     *                                                                 neglecting their number of attached exocyclic oxygen
+     *                                                                 atoms), this argument must be passed a zero
+     *                                                                 value; in the opposite case, this argument must
+     *                                                                 be passed a non-zero value if the other
+     *                                                                 argument was given the value "true"; the number
+     *                                                                 must be positive.
+     * @param aDetectLinearSugarsInRingsSetting true if linear sugars in rings should be detected (and removed)
+     * @param aLinearSugarCandidateMinSizeSetting an int specifying the minimum number of carbon atoms a linear sugar
+     *                                            needs to have to be detected as such; the value must be positive and
+     *                                            higher than or equal to 1 and also smaller than the linear sugar
+     *                                            candidate maximum size
+     * @param aLinearSugarCandidateMaxSizeSetting an int specifying the maximum number of carbon atoms a linear sugar
+     *                                            needs to have to be detected as such; the integer number must be
+     *                                            positive and higher than or equal to 1 and also higher than the linear
+     *                                            sugar candidate minimum size
+     * @param aDetectLinearAcidicSugarsSetting true if linear acidic sugars should be included in the set of linear
+     *                                         sugar patterns for the initial detection
+     * @param aDetectSpiroRingsAsCircularSugarsSetting true if spiro rings (rings that share one atom with another cycle)
+     *                                                 should be included in the circular sugar detection
+     * @throws IllegalArgumentException if any parameter does not meet the specified requirements
      */
     public SugarRemovalUtilityCmdApplication(File aFile,
                                              int aTypeOfMoietiesToRemove,
@@ -185,26 +274,29 @@ public class SugarRemovalUtilityCmdApplication {
             throw new IllegalArgumentException("The linear sugar candidate minimum and maximum sizes must both be equal or " +
                     "higher than 1.");
         }
+        if (aLinearSugarCandidateMinSizeSetting > aLinearSugarCandidateMaxSizeSetting) {
+            throw new IllegalArgumentException("The linear sugar candidate minimum size must be smaller " +
+                    "than the maximum size.");
+        }
         this.sugarRemovalUtil.setLinearSugarCandidateMinSizeSetting(aLinearSugarCandidateMinSizeSetting);
         this.sugarRemovalUtil.setLinearSugarCandidateMaxSizeSetting(aLinearSugarCandidateMaxSizeSetting);
         this.sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(aDetectLinearAcidicSugarsSetting);
         this.sugarRemovalUtil.setDetectSpiroRingsAsCircularSugarsSetting(aDetectSpiroRingsAsCircularSugarsSetting);
         this.sugarRemovalUtil.setAddPropertyToSugarContainingMoleculesSetting(true);
     }
-
+    //</editor-fold>
+    //
+    //<editor-fold desc="Public methods">
     /**
-     * TODO
-     */
-    public static boolean isLegalTypeOfMoietiesToRemove(int aTypeOfMoietiesToRemove) {
-        if (aTypeOfMoietiesToRemove == 1 || aTypeOfMoietiesToRemove == 2 || aTypeOfMoietiesToRemove == 3) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
-     * TODO doc
+     * Executes the application. First, opens the given input file and determines its type. Then creates an output file
+     * and a log file in the same directory as the input file. All settings are printed to console. The molecule set is
+     * then iterated and all detected sugar moieties removed according to the given settings. All results are printed in
+     * the output file and a small summary is printed to console at the end.
+     *
+     * @throws IOException if there are problems with reading and writing files
+     * @throws SecurityException if the application is forbidden to access required files
+     * @throws IllegalArgumentException if the given input file cannot be used or another setting in this class is
+     * erroneous
      */
     public void execute() throws IOException, SecurityException, IllegalArgumentException {
         System.out.println("Trying to load file at " + this.inputFile.getAbsolutePath());
@@ -280,19 +372,27 @@ public class SugarRemovalUtilityCmdApplication {
                 throw new IllegalArgumentException("Type of moieties to remove must be either 1 (circular sugar moieties), " +
                         "2 (linear sugar moieties), or 3 (both).");
         }
-        System.out.println("Detect circular sugars only with O-glycosidic bond: " + this.sugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
+        System.out.println("Detect circular sugars only with O-glycosidic bond: "
+                + this.sugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
         System.out.println("Remove only terminal sugar moieties: " + this.sugarRemovalUtil.areOnlyTerminalSugarsRemoved());
         System.out.println("Structure to keep mode setting: " + this.sugarRemovalUtil.getPreservationModeSetting().name()
                 + " (" + this.sugarRemovalUtil.getPreservationModeSetting().ordinal() + ")");
-        System.out.println("Structure to keep mode threshold: " + this.sugarRemovalUtil.getPreservationModeThresholdSetting());
-        System.out.println("Detect circular sugars only with enough exocyclic oxygen atoms: " + this.sugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
-        System.out.println("Exocyclic oxygen atoms to atoms in ring ratio threshold: " + this.sugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
+        System.out.println("Structure to keep mode threshold: "
+                + this.sugarRemovalUtil.getPreservationModeThresholdSetting());
+        System.out.println("Detect circular sugars only with enough exocyclic oxygen atoms: "
+                + this.sugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
+        System.out.println("Exocyclic oxygen atoms to atoms in ring ratio threshold: "
+                + this.sugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
         System.out.println("Detect linear sugars in rings: " + this.sugarRemovalUtil.areLinearSugarsInRingsDetected());
-        System.out.println("Linear sugar candidate minimum size: " + this.sugarRemovalUtil.getLinearSugarCandidateMinSizeSetting() + " carbon atoms");
-        System.out.println("Linear sugar candidate maximum size: " + this.sugarRemovalUtil.getLinearSugarCandidateMaxSizeSetting() + " carbon atoms");
+        System.out.println("Linear sugar candidate minimum size: "
+                + this.sugarRemovalUtil.getLinearSugarCandidateMinSizeSetting() + " carbon atoms");
+        System.out.println("Linear sugar candidate maximum size: "
+                + this.sugarRemovalUtil.getLinearSugarCandidateMaxSizeSetting() + " carbon atoms");
         System.out.println("Detect linear acidic sugars: " + this.sugarRemovalUtil.areLinearAcidicSugarsDetected());
-        System.out.println("Detect spiro rings as circular sugars: " + this.sugarRemovalUtil.areSpiroRingsDetectedAsCircularSugars());
+        System.out.println("Detect spiro rings as circular sugars: "
+                + this.sugarRemovalUtil.areSpiroRingsDetectedAsCircularSugars());
         System.out.println("Entering iteration of molecules...");
+        this.sugarRemovalUtil.setAddPropertyToSugarContainingMoleculesSetting(true);
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Unique);
         int tmpMoleculeCounter = 1;
         int tmpFatalExceptionCounter = 0;
@@ -427,7 +527,8 @@ public class SugarRemovalUtilityCmdApplication {
                         tmpMinorExceptionsCounter++;
                     }
                 }
-                tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
+                tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES
+                        + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
                         + tmpHadSugars);
                 if (!tmpSugarMoieties.isEmpty()) {
                     for (IAtomContainer tmpMoiety : tmpSugarMoieties) {
@@ -477,4 +578,22 @@ public class SugarRemovalUtilityCmdApplication {
         tmpLogFileHandler.flush();
         tmpLogFileHandler.close();
     }
+    //</editor-fold>
+    //
+    //<editor-fold desc="Public static methods">
+    /**
+     * Checks whether the given integer number is mapped to a type of moieties to remove, i.e. whether it is an accepted
+     * input value for this parameter.
+     *
+     * @param aTypeOfMoietiesToRemove an integer that is supposed to be mapped to a type of moiety to remove
+     * @return true if the given value is valid for the respective parameter
+     */
+    public static boolean isLegalTypeOfMoietiesToRemove(int aTypeOfMoietiesToRemove) {
+        if (aTypeOfMoietiesToRemove == 1 || aTypeOfMoietiesToRemove == 2 || aTypeOfMoietiesToRemove == 3) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    //</editor-fold>
 }
