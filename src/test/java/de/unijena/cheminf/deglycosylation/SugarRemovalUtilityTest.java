@@ -1329,6 +1329,96 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                     .writeTo(tmpOutputFolderPath + File.separator + "Test_candidates_separately_" + i + ".png");
         }
     }
+
+    /**
+     * This test illustrates a known problem with the linear sugar detection using the SRU: In a few cases, the detection
+     * of a linear sugar candidate can fail if the circular sugars are removed from the molecule. The particular
+     * linear sugar is in most cases part of a ring and detected when the molecule still has its original structure.
+     * After removing the circular sugars, the linear sugar is not detected anymore. This is due to the linear sugar
+     * patterns not matching anymore without the adjunct circular sugar. The test illustrates this problem based on one
+     * molecule where this effect occurs. Image files of the detected linear sugars before and after the removal of
+     * circular sugars are created. The files will be written to
+     * .\SugarRemovalUtilityTest_Output\linear_sugar_bug_test\ in the repository's root directory.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    public void specificTest35WithDepiction() throws Exception {
+        String tmpOutputFolderPath = (new File("SugarRemovalUtilityTest_Output")).getAbsolutePath() + File.separator
+                + "linear_sugar_bug_test" + File.separator;
+        File tmpOutputFolderFile = new File(tmpOutputFolderPath);
+        if (!tmpOutputFolderFile.exists()) {
+            tmpOutputFolderFile.mkdirs();
+        }
+        System.out.println("Output directory: " + tmpOutputFolderPath);
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        DepictionGenerator tmpDepictionGenerator = new DepictionGenerator();
+        IAtomContainer tmpOriginalMolecule;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1000DefaultSettings();
+        tmpSugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
+        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
+        tmpSugarRemovalUtil.setPreservationModeSetting(PreservationModeOption.ALL);
+        //in this molecule, a small linear sugar inside a ring is detected; it is not detected anymore after removing
+        // all circular sugars from the molecule, even though the structure is still there
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles(
+                //CNP0102508
+                "O=C(O)C=1C(=N)C(=O)CC(O)(C1O)C2OC(COC(=O)C)C(OC(=O)C3NC(=S)SC3C)C(OC4OC(C)C(O)(C(OC(=O)C(C)C)C)C(OC)C4)C2O");
+                //CNP0154212 another example
+                //"O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2[O-])C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O");
+                //CNP0268646 another example
+                //"O=C(O)C=1C(=O)C(O)(CC(=O)C1N)C2OC(COC(=O)C)C(OC(=O)C(N=C(S)SCC(N=C(O)C)C(=O)O)C(SCC(N=C(O)C)C(=O)O)C)C(OC3OC(C)C(O)(C(OC(=O)C(C)CC)C)C(OC)C3)C2O");
+        tmpDepictionGenerator.withSize(2000, 2000)
+                .withFillToFit()
+                .depict(tmpOriginalMolecule)
+                .writeTo(tmpOutputFolderPath + File.separator + "Test_original_molecule.png");
+        List<IAtomContainer> tmpCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpOriginalMolecule);
+        List<IAtomContainer> tmpToHighlight = new ArrayList<>(tmpCandidates.size());
+        for (int i = 0; i < tmpCandidates.size(); i++) {
+            IAtomContainer tmpCandidate = tmpCandidates.get(i);
+            tmpToHighlight.add(tmpCandidate);
+        }
+        tmpDepictionGenerator.withHighlight(tmpToHighlight, Color.BLUE)
+                .withSize(2000, 2000)
+                .withFillToFit()
+                .depict(tmpOriginalMolecule)
+                .writeTo(tmpOutputFolderPath + File.separator + "Test_all_candidates" + ".png");
+        for (int i = 0; i < tmpCandidates.size(); i++) {
+            IAtomContainer tmpCandidate = tmpCandidates.get(i);
+            List<IAtomContainer> tmpCandidateList = new ArrayList<>(1);
+            tmpCandidateList.add(tmpCandidate);
+            tmpDepictionGenerator.withHighlight(tmpCandidateList, Color.BLUE)
+                    .withSize(2000, 2000)
+                    .withFillToFit()
+                    .depict(tmpOriginalMolecule)
+                    .writeTo(tmpOutputFolderPath + File.separator + "Test_candidates_separately_" + i + ".png");
+        }
+        tmpSugarRemovalUtil.removeCircularSugars(tmpOriginalMolecule, false);
+        tmpDepictionGenerator.withSize(2000, 2000)
+                .withFillToFit()
+                .depict(tmpOriginalMolecule)
+                .writeTo(tmpOutputFolderPath + File.separator + "Test_original_molecule_without_circSug.png");
+        tmpCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpOriginalMolecule);
+        tmpToHighlight = new ArrayList<>(tmpCandidates.size());
+        for (int i = 0; i < tmpCandidates.size(); i++) {
+            IAtomContainer tmpCandidate = tmpCandidates.get(i);
+            tmpToHighlight.add(tmpCandidate);
+        }
+        tmpDepictionGenerator.withHighlight(tmpToHighlight, Color.BLUE)
+                .withSize(2000, 2000)
+                .withFillToFit()
+                .depict(tmpOriginalMolecule)
+                .writeTo(tmpOutputFolderPath + File.separator + "Test_all_candidates_without_circSug" + ".png");
+        for (int i = 0; i < tmpCandidates.size(); i++) {
+            IAtomContainer tmpCandidate = tmpCandidates.get(i);
+            List<IAtomContainer> tmpCandidateList = new ArrayList<>(1);
+            tmpCandidateList.add(tmpCandidate);
+            tmpDepictionGenerator.withHighlight(tmpCandidateList, Color.BLUE)
+                    .withSize(2000, 2000)
+                    .withFillToFit()
+                    .depict(tmpOriginalMolecule)
+                    .writeTo(tmpOutputFolderPath + File.separator + "Test_candidates_separately_without_circSug_" + i + ".png");
+        }
+    }
     //</editor-fold>
     //
     //<editor-fold desc="Tests involving databases">

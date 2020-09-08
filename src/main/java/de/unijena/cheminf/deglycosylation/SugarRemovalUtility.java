@@ -36,6 +36,8 @@ package de.unijena.cheminf.deglycosylation;
  *   'getCircularAndLinearSugarCandidates()' method could be implemented and used safely and
  *   'removeAndReturnCircularAndLinearSugars()' could be revised
  * - include all connected oxygen atoms in the circular sugars? Or at least all hydroxy groups?
+ * - Known bug: Some linear sugars are not detected anymore if the circular sugars are removed from the molecule (even
+ *   with preservation mode 'all'); how to fix this? Add more small linear sugar patterns?
  */
 
 import org.openscience.cdk.AtomContainer;

@@ -24,6 +24,11 @@
 
 package de.unijena.cheminf.deglycosylation;
 
+/**
+ * TODO
+ * - Add empty lines in printout
+ */
+
 import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.cdkbook.SMILESFormatMatcher;
