@@ -31,7 +31,15 @@ This class represents the stand-alone implementation of the sugar removal algori
 circular and linear sugar moieties from molecules supplied as CDK IAtomContainer objects with many configurable options.
 Further documentation can be found in its JavaDoc comments.
 The other sources available in <i>/src/main/java/de/unijena/cheminf/deglycosylation/</i> belong to the command-line 
-application.
+application. It makes the various settings for fine-tuning the sugar detection and removal process available through the
+command-line arguments. But using the <i>SugarRemovalUtility</i> class directly in your own software project offers some
+additional configuration options and functionalities:
+* Adding and removing circular and linear sugar patterns for the initial detection steps
+* Sugar detection without removal
+* Detecting only the number of sugar moieties of a molecule
+* Extracting the detected or removed sugar moieties from a molecule
+* Selecting the biggest or heaviest fragment from an unconnected atom container (e.g. after removal of non-terminal sugars)
+* Partitioning and sorting unconnected fragments of an unconnected atom container
 
 The class <i>SugarRemovalUtilityTest</i> can be found in the directory 
 <i>/src/test/java/de/unijena/cheminf/deglycosylation/</i>. It is a JUnit test class that tests the performance of the 
@@ -73,5 +81,6 @@ care of installing all dependencies.
 * [Groovy Cheminformatics with the Chemistry Development Kit](https://github.com/egonw/cdkbook)
 
 **COlleCtion of Open NatUral producTs (COCONUT)**
-* [COCONUT home page](https://coconut.naturalproducts.net)
+* [COCONUT Online home page](https://coconut.naturalproducts.net)
+* [Sorokina, M., Merseburger, P., Rajan, K., Yirik, M. A., Steinbeck, C. Coconut Online: Collection of Open Natural Products Database, 16 September 2020, PREPRINT (Version 1) available at Research Square](https://doi.org/10.21203/rs.3.rs-75600/v1)
 * [Sorokina, M., Steinbeck, C. Review on natural products databases: where to find data in 2020. J Cheminform 12, 20 (2020).](https://doi.org/10.1186/s13321-020-00424-9)
