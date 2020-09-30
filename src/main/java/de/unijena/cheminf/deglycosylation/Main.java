@@ -26,13 +26,12 @@ package de.unijena.cheminf.deglycosylation;
 
 /**
  * TODO
- * - improve command line argument management
+ * - update doc
+ * - update version
  */
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Locale;
-import java.util.Objects;
 
 /**
  * Main entry point for the SugarRemovalUtility command line application. The main() method parses the command line
@@ -116,167 +115,33 @@ public class Main {
      */
     public static void main(String[] args) {
         try {
+            System.out.println();
             String tmpJavaVersion = System.getProperty("java.version");
             if (tmpJavaVersion.compareTo("11.0.5") < 0) {
                 System.err.println("The version of your Java installation has to be at least 11.0.5 for this application to run.");
                 System.exit(-1);
             }
-            System.out.println("Sugar Removal Service Application starting. Evaluating command line arguments...");
-            if (args.length != 2 && args.length != 13) {
-                System.err.println("Number of command line arguments must be either 2 or 13.");
-                System.exit(-1);
-            }
             Locale.setDefault(Locale.US);
+            System.out.println("Sugar Removal Service Application starting. Evaluating command line arguments...");
             SugarRemovalUtilityCmdApplication tmpSugarRemovalApp = null;
-            String tmpPath = args[0].trim();
-            if (Objects.isNull(tmpPath) || tmpPath.isBlank()) {
-                System.err.println("Given path to SMILES, SD, or MOL file (argument at position 0) is empty or blank.");
-                System.exit(-1);
-            }
-            File tmpFile = new File(tmpPath);
-            if (!tmpFile.exists() || !tmpFile.canRead() || !tmpFile.isFile()) {
-                System.err.println("Given path to SMILES, SD, or MOL file (argument at position 0) does not exist or " +
-                        "the file cannot be read.");
-                System.exit(-1);
-            }
-            int tmpTypeOfMoietiesToRemove = -1;
             try {
-                tmpTypeOfMoietiesToRemove = Integer.parseInt(args[1].trim());
-            } catch (NumberFormatException aNumberFormatException) {
-                System.err.println("Integer indicating which type of moieties is to remove (argument at position 1)" +
-                        "cannot be parsed.");
+                tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(args);
+            } catch (IllegalArgumentException anIllegalArgumentException) {
+                System.err.println("An error occurred while parsing the command-line arguments: " + anIllegalArgumentException.getMessage());
+                System.err.println("Use the -h or --help option to print usage and help information. Use -v or --version " +
+                        "to print the version of your SRU CMD App JAR.");
+                System.err.println("Application will now exit.");
                 System.exit(-1);
             }
-            if (!SugarRemovalUtilityCmdApplication.isLegalTypeOfMoietiesToRemove(tmpTypeOfMoietiesToRemove)) {
-                System.err.println("Argument at position 1 indicating which type of moieties is to remove must be " +
-                        "either 1 (circular sugar moieties), 2 (linear sugar moieties), or 3 (both).");
-                System.exit(-1);
+            if (tmpSugarRemovalApp.wasHelpOrVersionQueried()) {
+                System.exit(0);
             }
-            if (args.length == 2) {
-                tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpFile, tmpTypeOfMoietiesToRemove);
-            } else if (args.length == 13) {
-                //note: The boolean returned represents the value true if the string argument is not null and is equal,
-                // ignoring case, to the string "true". Otherwise, a false value is returned, including for a null argument.
-                // So, e.g. 'hugo' results in false and does not cause an exception
-                boolean tmpDetectCircularSugarsOnlyWithOGlycosidicBondSetting = Boolean.parseBoolean(args[2].trim());
-                boolean tmpRemoveOnlyTerminalSugarsSetting = Boolean.parseBoolean(args[3].trim());
-                int tmpStructureToKeepModeSetting = -1;
-                try {
-                    tmpStructureToKeepModeSetting = Integer.parseInt(args[4].trim());
-                } catch (NumberFormatException aNumberFormatException) {
-                    System.err.println("Integer indicating the structure to keep mode setting (argument at position 4)" +
-                            "cannot be parsed.");
-                    System.exit(-1);
-                }
-                //the given int is taken as ordinal value of the indicated enum object; ordinals start at 0
-                if (tmpStructureToKeepModeSetting >= SugarRemovalUtility.PreservationModeOption.values().length ||
-                        tmpStructureToKeepModeSetting < 0) {
-                    System.err.println("Argument at position 4 indicating the structure to keep mode setting must be " +
-                            "either 0 (keep all), 1 (judge by heavy atom count), or 2 (judge by molecular weight).");
-                    System.exit(-1);
-                }
-                int tmpStructureToKeepModeThresholdSetting = -1;
-                try {
-                    tmpStructureToKeepModeThresholdSetting = Integer.parseInt(args[5].trim());
-                } catch (NumberFormatException aNumberFormatException) {
-                    System.err.println("Integer indicating the structure to keep mode setting threshold (argument at position 5)" +
-                            "cannot be parsed.");
-                    System.exit(-1);
-                }
-                if (tmpStructureToKeepModeThresholdSetting < 0) {
-                    System.err.println("Integer indicating the structure to keep mode setting threshold (argument at position 5)" +
-                            "cannot be negative.");
-                    System.exit(-1);
-                }
-                //case 1: Structure to keep mode setting is 'all' (ordinal 0). Then, a 0 threshold should be passed.
-                // case 2: Structure to keep mode is not 'all' (ordinal nonzero). Then, a nonzero threshold should be passed.
-                if (tmpStructureToKeepModeSetting == 0 && tmpStructureToKeepModeThresholdSetting != 0) {
-                    System.err.println("Structure to keep mode 'all' was selected (argument at position 4 is '0'). " +
-                            "Therefore, passing a nonzero threshold (argument at position 5) makes no sense.");
-                    System.exit(-1);
-                } else if (tmpStructureToKeepModeSetting != 0 && tmpStructureToKeepModeThresholdSetting == 0) {
-                    System.err.println("Please select structure to keep mode 'all' (argument value 0 at position 4) if " +
-                            "the associated threshold should be 0 (argument at position 5.");
-                    System.exit(-1);
-                }
-                boolean tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting = Boolean.parseBoolean(args[6].trim());
-                double tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting = -1;
-                try {
-                    tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting = Double.parseDouble(args[7].trim());
-                } catch (NumberFormatException | NullPointerException anException) {
-                    System.err.println("Number indicating the exocyclic oxygen atoms to atoms in ring ratio threshold " +
-                            "(argument at position 7) cannot be parsed.");
-                    System.exit(-1);
-                }
-                boolean tmpIsFinite = Double.isFinite(tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting);
-                boolean tmpIsNegative = (tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting < 0);
-                if (!tmpIsFinite || tmpIsNegative) {
-                    System.err.println("Number indicating the exocyclic oxygen atoms to atoms in ring ratio threshold" +
-                            "(argument at position 7) is NaN, infinite or negative.");
-                    System.exit(-1);
-                }
-                //case 1: If the number of exocyclic oxygen atoms is neglected, a 0 threshold should be passed
-                // case 2: If it is detected, a nonzero threshold should be passed
-                if (!tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting
-                        && tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting != 0) {
-                    System.err.println("The number of exocyclic oxygen atoms of circular sugars is neglected at detection " +
-                            "(argument at position 6 is 'false'). " +
-                            "Therefore, passing a nonzero threshold (argument at position 7) makes no sense.");
-                    System.exit(-1);
-                } else if (tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting
-                        && tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting == 0) {
-                    System.err.println("Please select to neglect the number of exocyclic oxygen atoms (argument value " +
-                            "'false' at position 6) if the associated threshold should be 0 (argument at position 7).");
-                    System.exit(-1);
-                }
-                boolean tmpDetectLinearSugarsInRingsSetting = Boolean.parseBoolean(args[8].trim());
-                int tmpLinearSugarCandidateMinSizeSetting = -1;
-                int tmpLinearSugarCandidateMaxSizeSetting = -1;
-                try {
-                    tmpLinearSugarCandidateMinSizeSetting = Integer.parseInt(args[9].trim());
-                    tmpLinearSugarCandidateMaxSizeSetting = Integer.parseInt(args[10].trim());
-                } catch (NumberFormatException aNumberFormatException) {
-                    System.err.println("The linear sugar candidate minimum (argument at position 9) or maximum size " +
-                            "(argument at position 10) cannot be parsed.");
-                    System.exit(-1);
-                }
-                if (tmpLinearSugarCandidateMinSizeSetting < 1 || tmpLinearSugarCandidateMaxSizeSetting < 1) {
-                    System.err.println("The linear sugar candidate minimum and maximum sizes must both be equal or " +
-                            "higher than 1 (arguments at positions 9 and 10).");
-                    System.exit(-1);
-                }
-                if (tmpLinearSugarCandidateMinSizeSetting > tmpLinearSugarCandidateMaxSizeSetting) {
-                    System.err.println("The linear sugar candidate minimum size (argument at position 9) must be smaller " +
-                            "than the maximum size (argument at position 10).");
-                    System.exit(-1);
-                }
-                boolean tmpDetectLinearAcidicSugarsSetting = Boolean.parseBoolean(args[11].trim());
-                boolean tmpDetectSpiroRingsAsCircularSugarsSetting = Boolean.parseBoolean(args[12].trim());
-                //throws IllegalArgumentException but that should not happen since all arguments have been thoroughly tested.
-                tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpFile,
-                        tmpTypeOfMoietiesToRemove,
-                        tmpDetectCircularSugarsOnlyWithOGlycosidicBondSetting,
-                        tmpRemoveOnlyTerminalSugarsSetting,
-                        tmpStructureToKeepModeSetting,
-                        tmpStructureToKeepModeThresholdSetting,
-                        tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting,
-                        tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting,
-                        tmpDetectLinearSugarsInRingsSetting,
-                        tmpLinearSugarCandidateMinSizeSetting,
-                        tmpLinearSugarCandidateMaxSizeSetting,
-                        tmpDetectLinearAcidicSugarsSetting,
-                        tmpDetectSpiroRingsAsCircularSugarsSetting);
-                System.out.println("All command line arguments valid. Executing application...");
-            } else {
-                //redundant...
-                System.err.println("Number of command line arguments must be either 2 or 13.");
-                System.exit(-1);
-            }
+            System.out.println("All command line arguments valid. Executing application...");
             long tmpStartTime = System.currentTimeMillis();
             try {
                 tmpSugarRemovalApp.execute();
-            } catch (IOException | SecurityException | IllegalArgumentException anException) {
-                System.err.println("Problem at execution of application: " + anException.toString());
+            } catch (IOException | SecurityException | IllegalArgumentException | NullPointerException anException) {
+                System.err.println("Problem at execution of application: " + anException.getMessage());
                 System.exit(-1);
             }
             long tmpEndTime = System.currentTimeMillis();
@@ -285,7 +150,7 @@ public class Main {
             System.out.println("Application will now exit.");
             System.exit(0);
         } catch (Exception anException) {
-            System.err.println("An unexpected error occurred: ");
+            System.err.println("An unexpected error occurred: " + anException.getMessage());
             anException.printStackTrace(System.err);
             System.exit(-1);
         }

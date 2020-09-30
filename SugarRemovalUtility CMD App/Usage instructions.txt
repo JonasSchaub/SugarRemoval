@@ -2,6 +2,8 @@
 Sugar Removal Utility Command Line Application Usage instructions
 ---------------------------------------------------------------------------------------------------
 
+***TO BE UPDATED SOON!***
+
 This application can be used to remove sugar moieties from molecules in a given data set, according 
 to "Schaub J, Zielesny A, Steinbeck C, Sorokina M. Too sweet: cheminformatics for deglycosylation 
 in natural products, 02 August 2020, PREPRINT (Version 1)", available at Research Square 
@@ -58,7 +60,7 @@ Also, multiple command line arguments have to be given when executing the JAR fi
 	  of one connected structure, respectively. If they already contain multiple, disconnected 
 	  structures (e.g. counter-ions), the respective molecules are ignored.
 - Position 4: A number of ["0","1","2"] indicating which preservation mode to use. This 
-  specifies under what circumstances to discard structures that get disconnected from the central 
+  specifies under what circumstances to preserve or discard structures that get disconnected from the central 
   core in the sugar removal process.
 	- "0": Preserve all disconnected structures (note: this might lead to no circular sugar 
 	  moieties being detected, depending on the other settings)
@@ -68,7 +70,8 @@ Also, multiple command line arguments have to be given when executing the JAR fi
 - Position 5: An integer number giving the threshold of the preservation mode
 	- I.e. how many heavy atoms a disconnected structure needs to have at least to be not 
 	  removed or how heavy (in terms of its molecular weight) it needs to be
-	- Default: "5" (heavy atoms)
+	- Default: "5" (heavy atoms); if the preservation mode option is adjusted, this threshold is set to the
+	  default value of the respective option.
 	- The integer number must be positive
 	- If the previous argument at position 4 was passed the value "0" (preserve all structures), 
 	  this argument must also be passed a zero value

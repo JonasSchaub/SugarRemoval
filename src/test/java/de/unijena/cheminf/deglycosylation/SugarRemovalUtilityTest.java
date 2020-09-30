@@ -1618,15 +1618,22 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     public void testApplication() throws Exception {
         ClassLoader tmpClassLoader = this.getClass().getClassLoader();
         File tmpMolFile = new File(tmpClassLoader.getResource("CNP0083088.mol").getFile());
-        SugarRemovalUtilityCmdApplication tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpMolFile, 3);
+        String[] tmpArgs = new String[4];
+        tmpArgs[0] = "-i";
+        tmpArgs[1] = tmpMolFile.getAbsolutePath();
+        tmpArgs[2] = "-t";
+        tmpArgs[3] = "3";
+        SugarRemovalUtilityCmdApplication tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpArgs);
         tmpSugarRemovalApp.execute();
 
         File tmpSDFile = new File(tmpClassLoader.getResource("review_glycosylated_NPs_bacteria_data.sdf").getFile());
-        tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpSDFile, 3);
+        tmpArgs[1] =tmpSDFile.getAbsolutePath();
+        tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpArgs);
         tmpSugarRemovalApp.execute();
 
         File tmpSMILESFile = new File(tmpClassLoader.getResource("smiles_test_file.txt").getFile());
-        tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpSMILESFile, 3);
+        tmpArgs[1] = tmpSMILESFile.getAbsolutePath();
+        tmpSugarRemovalApp = new SugarRemovalUtilityCmdApplication(tmpArgs);
         tmpSugarRemovalApp.execute();
     }
     //</editor-fold>
