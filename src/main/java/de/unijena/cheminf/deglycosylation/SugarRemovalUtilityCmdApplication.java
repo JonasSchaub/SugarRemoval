@@ -24,12 +24,6 @@
 
 package de.unijena.cheminf.deglycosylation;
 
-/**
- * TODO
- * - Write doc of options etc.
- * - update version
- */
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -68,23 +62,23 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 /**
- * Controller of the Sugar Removal Utility command line application. It can be used to remove sugar moieties from
+ * Controller of the Sugar Removal Utility command-line application. It can be used to remove sugar moieties from
  * molecules in a given data set, according to "Schaub J, Zielesny A, Steinbeck C, Sorokina M.
- * Too sweet: cheminformatics for deglycosylation in natural products, 02 August 2020, PREPRINT (Version 1)", available
+ * Too sweet: cheminformatics for deglycosylation in natural products, 02 August 2020, PREPRINT (Version 2)", available
  * at Research Square [<a href="https://doi.org/10.21203/rs.3.rs-50194/v2">DOI:10.21203/rs.3.rs-50194/v2</a>]. This class
  * basically instantiates the SugarRemovalUtility class with the settings specified in the command line arguments and
- * uses it to iterate over all molecules found in the given file and remove their sugar moieties. Also, a file detailing
- * the deglycosylated cores and removed sugar moieties for each molecule is written as output.
+ * uses it to iterate over all molecules found in the given file and remove their sugar moieties. Also, a CSV file detailing
+ * the deglycosylated cores and removed sugar moieties for each molecule is created as output.
  *
  * @author Jonas Schaub
- * @version 1.0.0.0
+ * @version 1.1.0.0
  */
 public class SugarRemovalUtilityCmdApplication {
     //<editor-fold desc="Public static final constants">
     /**
-     *
+     * Version string of this class to print out if -v --version is queried from the command-line.
      */
-    public static final String VERSION = "1.0.0.0";
+    public static final String VERSION = "1.1.0.0";
     //</editor-fold>
     //
     //<editor-fold desc="Private static final constants">
@@ -100,40 +94,42 @@ public class SugarRemovalUtilityCmdApplication {
 
     //<editor-fold desc="Command-line options">
     /**
-     *
+     * Collection of options for first stage of CMD argument parsing. If the usage instructions (-h --help) or version
+     * of this class (-v --version) where queried, they have to be parsed without regarding the required options in
+     * the second stage.
      */
     private static final Options HELP_AND_VERSION_OPTIONS = new Options();
 
     /**
-     *
+     * Collection of options for second/main stage of CMD argument parsing. I.e. the 'true' CMD arguments of the
+     * application (excluding help or version query).
      */
     private static final Options CMD_OPTIONS = new Options();
 
     /**
-     *
+     * Command-line option to query usage information.
      */
     private static final Option HELP_OPTION = Option.builder("h")
             .longOpt("help")
             .hasArg(false)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .desc("Print options and descriptions")
             .build();
 
     /**
-     *
+     * Command-line option to query the version string of the application.
      */
     private static final Option VERSION_OPTION = Option.builder("v")
             .longOpt("version")
             .hasArg(false)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .desc("Print version of the application")
             .build();
 
     /**
-     *
-     *
+     * Required command-line option to pass the input file path.
      */
     private static final Option INPUT_FILE_PATH_OPTION = Option.builder("i")
             .argName("filePath")
@@ -146,8 +142,7 @@ public class SugarRemovalUtilityCmdApplication {
             .build();
 
     /**
-     *
-     *
+     * Required command-line option to specify the type of moieties to remove.
      */
     private static final Option TYPE_OF_MOIETIES_TO_REMOVE_OPTION = Option.builder("t")
             .argName("integer")
@@ -161,7 +156,7 @@ public class SugarRemovalUtilityCmdApplication {
             .build();
 
     /**
-     *
+     * Optional command-line option to specify whether to detect only circular sugars with an O-glycosidic bond.
      */
     private static final Option DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_OPTION = Option.builder("glyBond")
             .argName("boolean")
@@ -172,26 +167,25 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to specify whether to remove only terminal sugar moieties.
      */
     private static final Option REMOVE_ONLY_TERMINAL_SUGARS_OPTION = Option.builder("remTerm")
             .argName("boolean")
             .longOpt("removeOnlyTerminalSugars")
-            .desc("Either true or false, indicating whether only terminal sugar moieties should be " +
-                    "removed; " +
+            .desc("Either true or false, indicating whether only terminal sugar moieties should be removed; " +
                     "default: true")
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to set the preservation mode setting.
      */
     private static final Option PRESERVATION_MODE_OPTION = Option.builder("presMode")
             .argName("integer")
@@ -203,11 +197,11 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to set the preservation mode threshold.
      */
     private static final Option PRESERVATION_MODE_THRESHOLD_OPTION = Option.builder("presThres")
             .argName("integer")
@@ -219,11 +213,12 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to specify whether to detect only circular sugars with a sufficient number of
+     * exocyclic oxygen atoms attached to the central ring.
      */
     private static final Option DETECT_CIRCULAR_SUGARS_ONLY_WITH_ENOUGH_EXOCYCLIC_OXYGEN_ATOMS_OPTION = Option.builder("oxyAtoms")
             .argName("boolean")
@@ -234,11 +229,12 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to specify the minimum ratio of attached exocyclic oxygen atoms to the number of
+     * atoms in the possible sugar ring for circular sugars.
      */
     private static final Option EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_OPTION = Option.builder("oxyAtomsThres")
             .argName("number")
@@ -249,11 +245,11 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to specify whether to detect linear sugars in rings.
      */
     private static final Option DETECT_LINEAR_SUGARS_IN_RINGS_OPTION = Option.builder("linSugInRings")
             .argName("boolean")
@@ -264,11 +260,11 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to specify the minimum size (number of carbon atoms) of linear sugars.
      */
     private static final Option LINEAR_SUGAR_CANDIDATE_MIN_SIZE_OPTION = Option.builder("linSugMinSize")
             .argName("integer")
@@ -279,11 +275,11 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to specify the maximum size (number of carbon atoms) of linear sugars.
      */
     private static final Option LINEAR_SUGAR_CANDIDATE_MAX_SIZE_OPTION = Option.builder("linSugMaxSize")
             .argName("integer")
@@ -294,11 +290,12 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to specify whether to add the linear acidic sugars to the linear sugar pattern set
+     * for initial detection.
      */
     private static final Option DETECT_LINEAR_ACIDIC_SUGARS_OPTION = Option.builder("linAcSug")
             .argName("boolean")
@@ -309,11 +306,11 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
 
     /**
-     *
+     * Optional command-line option to specify whether to detect spiro rings as circular sugars.
      */
     private static final Option DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_OPTION = Option.builder("circSugSpiro")
             .argName("boolean")
@@ -324,14 +321,14 @@ public class SugarRemovalUtilityCmdApplication {
             .hasArg(true)
             .numberOfArgs(1)
             .required(false)
-            .optionalArg(true)
+            .optionalArg(false)
             .build();
     //</editor-fold>
     //</editor-fold>
     //
     //<editor-fold desc="Static initializer">
     /**
-     *
+     * Static initializer that adds all the command-line options to the respective Options containers.
      */
     static {
         SugarRemovalUtilityCmdApplication.HELP_AND_VERSION_OPTIONS.addOption(
@@ -370,7 +367,8 @@ public class SugarRemovalUtilityCmdApplication {
     //
     //<editor-fold desc="Private variables">
     /**
-     *
+     * Boolean property specifying whether the usage instructions or version string were queried in the command-line
+     * arguments. If this is the case, the application cannot be executed but should be exited.
      */
     private boolean wasHelpOrVersionQueried;
 
@@ -385,78 +383,96 @@ public class SugarRemovalUtilityCmdApplication {
     private int typeOfMoietiesToRemove;
 
     /**
-     * Input file containing molecule set, either MDL Molfile, MDL Structure data file (SDF), or SMILES file
+     * Input file containing molecule set, either MDL Molfile, MDL Structure data file (SDF), or SMILES file.
      */
     private File inputFile;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
     /**
-     * Constructor that needs all settings explicitly specified. Instantiates this class and the SugarRemovalUtility with
-     * the given settings.
+     * Constructor that parses the command-line arguments and instantiates this class and the SugarRemovalUtility with
+     * the given settings. If the -h --help or -v --version options are given, the remaining arguments are not parsed
+     * and the application should be exited.
+     * <br>The command line arguments 'args' must be constructed as follows:
+     * <p>
+     * * option -h --help: Print usage and help information regarding the required command-line arguments and options.
+     * If this option is used, the constructor is exited afterwards.
+     * <br>* option -v --version: Print version string of the Sugar Removal Utility Command-Line Application. If this
+     * option is used, the constructor is exited afterwards.
+     * <p>
+     * * option -i --inputFilePath <filePath>: Path to the input file, either absolute or relative to the current
+     * directory. Example: "D:\Project_Sugar_Removal\SugarRemovalUtility CMD App\smiles_test_file.txt" or
+     * "smiles_test_file.txt" if the console is already in the "SugarRemovalUtility CMD App"
+     * directory. The backslahes '\' are used in a Microsoft Windows operating system; it should be slash
+     * '/' in a Unix shell. Double quotes " are not mandatory but recommended to allow for spaces in the path. The
+     * path must not be empty and the given file must exist and be accessible and readable. The file type extension
+     * is not important for the determination of the file type but it must be specified in the path. Accepted input
+     * formats: MDL Molfile, MDL Structure data file (SDF) and SMILES files (of format: [SMILES string][space][name]
+     * in each line, see example file). The final test for whether the file is suitable is done in execute(). This option
+     * and its argument are always required.
+     * <br>* option -t --typeOfMoietiesToRemove <integer>: A number of ["1","2","3"] indicating which type of sugar
+     * moieties should be removed, "1" for circular sugar moieties, "2" for linear sugar moieties, or "3" for circular
+     * AND linear sugar moieties. Check isLegalTypeOfMoietiesToRemove(int) for the correct mapping of value to option.
+     * This option and its argument are always required.
+     * <p>
+     * * option -glyBond --detectCircSugOnlyWithGlyBond <boolean>: Either "true" or "false", indicating whether circular
+     * sugars should be detected (and removed) only if they have an O-glycosidic bond to another moiety or the core of
+     * the molecule. Any other value of this argument will be interpreted as "false". Default: "false". This option
+     * is optional.
+     * <br>* option -remTerm,--removeOnlyTerminalSugars <boolean>: Either "true" or "false", indicating whether only
+     * terminal sugar moieties should be removed. Any other value of this argument will be interpreted as "false".
+     * Default: "true". Important note: If this setting is set to "true", the input molecules must all consist of one
+     * connected structure, respectively. If they already contain multiple, disconnected structures (e.g. counter-ions),
+     * the respective molecules are ignored. This option is optional.
+     * <br>* option -presMode --preservationModeOption <integer>: A number of ["0","1","2"] indicating which preservation
+     * mode to use. This specifies under what circumstances to discard structures that get disconnected from the central
+     * core in the sugar removal process, "0" to preserve all disconnected structures (note: this might lead to no
+     * circular sugar moieties being detected, depending on the other settings), "1" to remove disconnected structures
+     * that do not have enough heavy atoms, or "2" to remove disconnected structures that do not have a sufficient
+     * molecular weight. Default: "1" (judge disconnected structures by their heavy atom count). check
+     * SugarRemovalUtility.PreservationModeOption enum for the correct mapping of value to option, it corresponds to the
+     * ordinal values of the enum constants. This option is optional.
+     * <br>* option -presThres --preservationModeThreshold <integer>: An integer number giving the threshold of the
+     * preservation mode, i.e. how many heavy atoms a disconnected structure needs to have at least to be not removed or
+     * how heavy (in terms of its molecular weight) it needs to be. Default: "5" (heavy atoms). The integer number must
+     * be positive. If the option -presMode --preservationModeOption was passed the value "0" (preserve all structures), this
+     * option must also be passed a zero value. In the opposite case, this option must be passed a non-zero value
+     * if the option -presMode --preservationModeOption was given the value 1 or 2. This option is optional.
+     * <br>* option -oxyAtoms --detectCircSugOnlyWithEnoughExocycOxyAtoms <boolean>: Either "true" or "false", indicating
+     * whether circular sugars should be detected (and removed) only if they have a sufficient number of attached
+     * exocyclic oxygen atoms. Any other value of this argument will be interpreted as "false". Default: "true".
+     * This option is optional.
+     * <br>* option -oxyAtomsThres --exocycOxyAtomsToAtomsInRingRatioThreshold <number>: A number giving the minimum
+     * attached exocyclic oxygen atoms to atom number in the ring ratio a circular sugar needs to have to be detected as such.
+     * Default: "0.5" (a 6-membered ring needs at least 3 attached exocyclic oxygen atoms).
+     * If the option -oxyAtoms --detectCircSugOnlyWithEnoughExocycOxyAtoms was passed the value "false" (detect circular sugars
+     * neglecting their number of attached exocyclic oxygen atoms), this option must be passed a zero
+     * value. In the opposite case, this option must be passed a non-zero value if the option -oxyAtoms
+     * --detectCircSugOnlyWithEnoughExocycOxyAtoms was given the value "true". The number must be positive. This option
+     * is optional.
+     * <br>* option -linSugInRings --detectLinSugInRings <boolean>: Either "true" or "false", indicating whether linear
+     * sugars in rings should be detected (and removed). Any other value of this argument will be interpreted as "false".
+     * Default: "false". This option is optional.
+     * <br>* option -linSugMinSize --linSugCandidateMinimumSize <integer>: An integer number indicating the minimum
+     * number of carbon atoms a linear sugar needs to have to be detected as such. Default: "4". The integer number must
+     * be positive and higher than or equal to 1 and also smaller than the linear sugar candidate maximum size
+     * (option -linSugMaxSize --linSugCandidateMaximumSize). This option is optional.
+     * <br>* option -linSugMaxSize --linSugCandidateMaximumSize <integer>: An integer number indicating the maximum
+     * number of carbon atoms a linear sugar needs to have to be detected as such. Default: "7". The integer number must
+     * be positive and higher than or equal to 1 and also higher than the linear sugar candidate minimum size
+     * (option -linSugMinSize --linSugCandidateMinimumSize). This option is optional.
+     * <br>* option -linAcSug --detectLinAcidicSug <boolean>: Either "true" or "false", indicating whether linear acidic
+     * sugars should be included in the set of linear sugar patterns for the initial detection. Any other value of this
+     * argument will be interpreted as "false". Default: "false". This option is optional.
+     * <br>* option -circSugSpiro --detectSpiroRingsAsCircSug <boolean>: Either "true" or "false", indicating whether
+     * spiro rings (rings that share one atom with another cycle) should be included in the circular sugar detection.
+     * Any other value of this argument will be interpreted as "false". Default: "false". This option is optional.
+     * <p>
+     * Example (all settings in default): String[] args = new String[] {"-i", "smiles_test_file.txt", "-t", "3",
+     * "-glyBond", "false", "-remTerm", "true", "-presMode", "1", "-presThres", "5", "-oxyAtoms", "true", "-oxyAtomsThres",
+     * "0.5", "-linSugInRings", "false", "-linSugMinSize", "4", "-linSugMaxSize", "7", "-linAcSug", "false",
+     * "-circSugSpiro", "false"};
      *
-     * param aFile input file containing a set of molecules, either MDL Molfile, MDL Structure data file (SDF), or
-     *              SMILES file (of format: [SMILES string][space][name] in each line, see example file); the given file
-     *              must exist and be accessible and readable; the file type extension is not important for the
-     *              determination of the file type; the final test for whether the file is suitable is done in execute()
-     * param aTypeOfMoietiesToRemove an int of value ["1","2","3"] indicating which type of sugar moieties should be removed,
-     *                                "1" for circular sugar moieties, "2" for linear sugar moieties, or "3" for
-     *                                circular AND linear sugar moieties; check isLegalTypeOfMoietiesToRemove(int) for
-     *                                the correct mapping of value to option
-     * param aDetectCircularSugarsOnlyWithOGlycosidicBondSetting true if circular sugars should be detected (and
-     *                                                            removed) only if they have an O-glycosidic bond to
-     *                                                            another moiety or the core of the molecule
-     * param aRemoveOnlyTerminalSugarsSetting true if only terminal sugar moieties should be removed; if this setting
-     *                                         is set to "true", the input molecules must all consist of one connected
-     *                                         structure, respectively; if they already contain multiple, disconnected
-     *                                         structures (e.g. counter-ions), the respective molecules are ignored.
-     * param aPreservationModeSetting an int of value ["0","1","2"] indicating which preservation mode to use; This
-     *                                    specifies under what circumstances to discard structures that get disconnected
-     *                                    from the central core in the sugar removal process, "0" to preserve all
-     *                                    disconnected structures (note: this might lead to no circular sugar moieties
-     *                                    being detected, depending on the other settings), "1" to remove disconnected
-     *                                    structures that do not have enough heavy atoms, or "2" to remove disconnected
-     *                                    structures that do not have a sufficient molecular weight; check
-     *                                    SugarRemovalUtility.PreservationModeOption enum for the correct mapping of
-     *                                    value to option, it corresponds to the ordinal values of the enum constants
-     * param aPreservationModeThresholdSetting an int specifying the threshold of the preservation mode, i.e. how
-     *                                             many heavy atoms a disconnected structure needs to have at least to
-     *                                             be not removed or how heavy (in terms of its molecular weight) it
-     *                                             needs to be; the value must be positive; if aPreservationModeSetting
-     *                                             was passed the value "0" (preserve all structures), this argument must
-     *                                             also be passed a zero value; in the opposite case, this argument must
-     *                                             be passed a non-zero value if aPreservationModeSetting was given
-     *                                             the value 1 or 2
-     * param aDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting true if circular sugars should be detected
-     *                                                                       (and removed) only if they have a sufficient
-     *                                                                       number of attached exocyclic oxygen atoms
-     * param anExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting a double value giving the minimum attached
-     *                                                                 exocyclic oxygen atoms to atom number in the ring
-     *                                                                 ratio a circular sugar needs to have to be
-     *                                                                 detected as such, e.g 0.5 where a six-membered
-     *                                                                 ring needs to have at least 3 oxygen atoms
-     *                                                                 attached; if
-     *                                                                 aDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting
-     *                                                                 was passed the value "false" (detect circular sugars
-     *                                                                 neglecting their number of attached exocyclic oxygen
-     *                                                                 atoms), this argument must be passed a zero
-     *                                                                 value; in the opposite case, this argument must
-     *                                                                 be passed a non-zero value if the other
-     *                                                                 argument was given the value "true"; the number
-     *                                                                 must be positive.
-     * param aDetectLinearSugarsInRingsSetting true if linear sugars in rings should be detected (and removed)
-     * param aLinearSugarCandidateMinSizeSetting an int specifying the minimum number of carbon atoms a linear sugar
-     *                                            needs to have to be detected as such; the value must be positive and
-     *                                            higher than or equal to 1 and also smaller than the linear sugar
-     *                                            candidate maximum size
-     * param aLinearSugarCandidateMaxSizeSetting an int specifying the maximum number of carbon atoms a linear sugar
-     *                                            needs to have to be detected as such; the integer number must be
-     *                                            positive and higher than or equal to 1 and also higher than the linear
-     *                                            sugar candidate minimum size
-     * param aDetectLinearAcidicSugarsSetting true if linear acidic sugars should be included in the set of linear
-     *                                         sugar patterns for the initial detection
-     * param aDetectSpiroRingsAsCircularSugarsSetting true if spiro rings (rings that share one atom with another cycle)
-     *                                                 should be included in the circular sugar detection
      * @throws IllegalArgumentException if any parameter does not meet the specified requirements
      */
     public SugarRemovalUtilityCmdApplication(String[] args) throws IllegalArgumentException {
@@ -805,7 +821,10 @@ public class SugarRemovalUtilityCmdApplication {
     //
     //<editor-fold desc="Public methods">
     /**
+     * Returns true if the -h --help or -v --version options were used at the command-line. In this case, the object
+     * is not properly instantiated and the application should be exited.
      *
+     * @return true if the application should be exited
      */
     public boolean wasHelpOrVersionQueried() {
         return this.wasHelpOrVersionQueried;
@@ -823,6 +842,10 @@ public class SugarRemovalUtilityCmdApplication {
      * erroneous
      */
     public void execute() throws IOException, SecurityException, IllegalArgumentException {
+        if (Objects.isNull(this.inputFile) || Objects.isNull(this.sugarRemovalUtil) || this.typeOfMoietiesToRemove == 0) {
+            throw new IllegalArgumentException("This object has not been properly instantiated because the usage " +
+                    "instructions or version were queried by the command-line. It therefore cannot be executed.");
+        }
         System.out.println();
         System.out.println("Trying to load file at " + this.inputFile.getAbsolutePath());
         FileInputStream tmpFileInputStream = new FileInputStream(this.inputFile);
@@ -1113,10 +1136,10 @@ public class SugarRemovalUtilityCmdApplication {
     //<editor-fold desc="Public static methods">
     /**
      * Checks whether the given integer number is mapped to a type of moieties to remove, i.e. whether it is an accepted
-     * input value for this parameter.
+     * input value for this option.
      *
      * @param aTypeOfMoietiesToRemove an integer that is supposed to be mapped to a type of moiety to remove
-     * @return true if the given value is valid for the respective parameter
+     * @return true if the given value is valid for the respective option
      */
     public static boolean isLegalTypeOfMoietiesToRemove(int aTypeOfMoietiesToRemove) {
         if (aTypeOfMoietiesToRemove == 1 || aTypeOfMoietiesToRemove == 2 || aTypeOfMoietiesToRemove == 3) {

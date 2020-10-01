@@ -65,6 +65,8 @@ care of installing all dependencies.
     * [Apache Maven](http://maven.apache.org)
 * JUnit version 4.12
     * [JUnit 4](https://junit.org/junit4/)
+* Apache Commons CLI version 1.4
+    * [Apache Commons CLI](https://commons.apache.org/proper/commons-cli/)
 
 ## References and useful links
 **Sugar Removal Utility**

@@ -1,13 +1,11 @@
 ---------------------------------------------------------------------------------------------------
-Sugar Removal Utility Command Line Application Usage instructions
+Sugar Removal Utility Command Line Application Usage instructions v. 1.1.0.0
 ---------------------------------------------------------------------------------------------------
-
-***TO BE UPDATED SOON!***
 
 This application can be used to remove sugar moieties from molecules in a given data set, according 
 to "Schaub J, Zielesny A, Steinbeck C, Sorokina M. Too sweet: cheminformatics for deglycosylation 
-in natural products, 02 August 2020, PREPRINT (Version 1)", available at Research Square 
-here: https://doi.org/10.21203/rs.3.rs-50194/v1.
+in natural products, 02 August 2020, PREPRINT (Version 2)", available at Research Square 
+here: https://doi.org/10.21203/rs.3.rs-50194/v2.
 
 Accepted input formats: MDL Molfile, MDL Structure data file (SDF), and SMILES file (of 
 format: [SMILES string][space][name] in each line, see example file)
@@ -19,15 +17,27 @@ The output is a comma-separated value (CSV) text file containing:
 - SMILES strings of the deglycosylated molecules
 - SMILES strings of the removed sugar moieties
 
-The output file will be created in the same directory as the input file.
+The output file and a log file will be created in the same directory as the input file.
 
 To run the application, execute the supplied executable JAR file from the command line, using 
 the 'java -jar' command (see example usages at the end of this document). 
 
 Java version 11 or higher needs to be installed on your machine.
 
-Also, multiple command line arguments have to be given when executing the JAR file. These are:
-- Position 0: Path to the input file
+Also, multiple command line arguments/options are available (some optional, some required) when executing 
+the JAR file. These are (-[short name] --[long name] <argument>):
+
+java -jar SugarRemovalUtility-jar-with-dependencies.jar -i <filePath> -t <integer> 
+	[-glyBond <boolean>] [-remTerm <boolean>] [-presMode <integer>] [-presThres <integer>] 
+	[-oxyAtoms <boolean>] [-oxyAtomsThres <number>] [-linSugInRings <boolean>] [-linSugMinSize <integer>] 
+	[-linSugMaxSize <integer>][-linAcSug <boolean>] [-circSugSpiro <boolean>]
+
+- Option -h --help: Print usage and help information regarding the required command-line arguments and 
+  options. If this option is used, the application is exited afterwards.
+- Option -v --version: Print version of the Sugar Removal Utility Command-Line Application. If this 
+  option is used, the application is exited afterwards.
+
+- Option -i --inputFilePath <filePath>: Path to the input file
 	- Either absolute or relative to the current directory
 	- Example: "D:\Project_Sugar_Removal\SugarRemovalUtility CMD App\smiles_test_file.txt" or 
 	  "smiles_test_file.txt" if your console is already in the 'SugarRemovalUtility CMD App' 
@@ -39,85 +49,95 @@ Also, multiple command line arguments have to be given when executing the JAR fi
 	- The file type extension is not important for the determination of the file type but it 
 	  must be specified in the path
 	- See accepted input formats above
-- Position 1: A number of ["1","2","3"] indicating which type of sugar moieties should be removed
+	- This option and its argument are always required
+- Option -t --typeOfMoietiesToRemove <integer>: A number of ["1","2","3"] indicating which type 
+  of sugar moieties should be removed
 	- "1": Circular sugar moieties
 	- "2": Linear sugar moieties
 	- "3": Circular AND linear sugar moieties
+	- This option and its argument are always required
 
--> These two arguments must ALWAYS be given. The remaining arguments are optional. But either 
-   none of them or all of them must be given. If only these two arguments are given, the other 
-   settings will be in their default value.
+-> These two options must ALWAYS be given (except if --help or --version are used). The remaining 
+   arguments are optional. If they are not specified, they will be in their default value.
 
-- Position 2: Either "true" or "false", indicating whether circular sugars should be detected (and 
-  removed) only if they have an O-glycosidic bond to another moiety or the core of the molecule. 
+- Option -glyBond --detectCircSugOnlyWithGlyBond <boolean>: Either "true" or "false", indicating 
+  whether circular sugars should be detected (and removed) only if they have an O-glycosidic bond 
+  to another moiety or the core of the molecule. 
 	- Any other value of this argument will be interpreted as "false"
 	- Default: "false"
-- Position 3: Either "true" or "false", indicating whether only terminal sugar moieties should be 
-  removed.
+- Option -remTerm,--removeOnlyTerminalSugars <boolean>: Either "true" or "false", indicating whether 
+  only terminal sugar moieties should be removed.
 	- Any other value of this argument will be interpreted as "false"
 	- Default: "true"
 	- Important note: If this setting is set to "true", the input molecules must all consist 
 	  of one connected structure, respectively. If they already contain multiple, disconnected 
 	  structures (e.g. counter-ions), the respective molecules are ignored.
-- Position 4: A number of ["0","1","2"] indicating which preservation mode to use. This 
-  specifies under what circumstances to preserve or discard structures that get disconnected from the central 
-  core in the sugar removal process.
+- Option -presMode --preservationModeOption <integer>: A number of ["0","1","2"] indicating which 
+  preservation mode to use. This specifies under what circumstances to preserve or discard structures 
+  that get disconnected from the central core in the sugar removal process.
 	- "0": Preserve all disconnected structures (note: this might lead to no circular sugar 
 	  moieties being detected, depending on the other settings)
 	- "1": Remove disconnected structures that do not have enough heavy atoms
 	- "2": Remove disconnected structures that do not have a sufficient molecular weight
 	- Default: "1" (judge disconnected structures by their heavy atom count)
-- Position 5: An integer number giving the threshold of the preservation mode
+- Option -presThres --preservationModeThreshold <integer>: An integer number giving the threshold of 
+  the preservation mode
 	- I.e. how many heavy atoms a disconnected structure needs to have at least to be not 
 	  removed or how heavy (in terms of its molecular weight) it needs to be
-	- Default: "5" (heavy atoms); if the preservation mode option is adjusted, this threshold is set to the
-	  default value of the respective option.
+	- Default: "5" (heavy atoms); if the preservation mode option -presMode 
+	  --preservationModeOptionis adjusted, this threshold is set to the
+	  default value of the respective option (5 heavy atoms or 60 Da).
 	- The integer number must be positive
-	- If the previous argument at position 4 was passed the value "0" (preserve all structures), 
-	  this argument must also be passed a zero value
-	- In the opposite case, this argument must be passed a non-zero value if the previous 
-	  argument at position 4 was given the value 1 or 2
-- Position 6: Either "true" or "false", indicating whether circular sugars should be detected (and 
-  removed) only if they have a sufficient number of attached exocyclic oxygen atoms.
+	- If the option -presMode --preservationModeOption was passed the value "0" (preserve all 
+	  structures), this option must also be passed a zero value
+	- In the opposite case, this argument must be passed a non-zero value if the option -presMode 
+	  --preservationModeOption was given the value 1 or 2
+- Option -oxyAtoms --detectCircSugOnlyWithEnoughExocycOxyAtoms <boolean>: Either "true" or "false", 
+  indicating whether circular sugars should be detected (and removed) only if they have a sufficient 
+  number of attached exocyclic oxygen atoms.
 	- Any other value of this argument will be interpreted as "false"	
 	- Default: "true"
-- Position 7: A number giving the minimum attached exocyclic oxygen atoms to atom number in the ring 
-  ratio a circular sugar needs to have to be detected as such.
+- Option -oxyAtomsThres --exocycOxyAtomsToAtomsInRingRatioThreshold <number>: A number giving the minimum 
+  attached exocyclic oxygen atoms to atom number in the ring ratio a circular sugar needs to have to be 
+  detected as such.
 	- Default: "0.5" (a 6-membered ring needs at least 3 attached exocyclic oxygen atoms)
-	- If the previous argument at position 6 was passed the value "false" (detect circular sugars 
-	  neglecting their number of attached exocyclic oxygen atoms), this argument must be passed a zero
-	  value
-	- In the opposite case, this argument must be passed a non-zero value if the previous argument at 
-	  position 6 was given the value "true"
+	- If the option -oxyAtoms --detectCircSugOnlyWithEnoughExocycOxyAtoms was passed the value "false" 
+	  (detect circular sugars neglecting their number of attached exocyclic oxygen atoms), this argument 
+	  must be passed a zero value
+	- In the opposite case, this argument must be passed a non-zero value if the option -oxyAtoms 
+	  --detectCircSugOnlyWithEnoughExocycOxyAtoms was given the value "true"
 	- The number must be positive
-- Position 8: Either "true" or "false", indicating whether linear sugars in rings should be detected (and 
-  removed)
+- Option -linSugInRings --detectLinSugInRings <boolean>: Either "true" or "false", indicating whether linear 
+  sugars in rings should be detected (and removed)
 	- Any other value of this argument will be interpreted as "false"
 	- Default: "false"
-- Position 9: An integer number indicating the minimum number of carbon atoms a linear sugar needs to have 
-  to be detected as such.
+- Option -linSugMinSize --linSugCandidateMinimumSize <integer>: An integer number indicating the minimum number 
+  of carbon atoms a linear sugar needs to have to be detected as such.
 	- Default: "4"
 	- The integer number must be positive and higher than or equal to 1 and also smaller than the linear 
-	  sugar candidate maximum size (argument at position 10)
-- Position 10: An integer number indicating the maximum number of carbon atoms a linear sugar needs to 
-  have to be detected as such.
+	  sugar candidate maximum size (option -linSugMaxSize --linSugCandidateMaximumSize)
+- Option -linSugMaxSize --linSugCandidateMaximumSize <integer>: An integer number indicating the maximum 
+  number of carbon atoms a linear sugar needs to have to be detected as such.
 	- Default: "7"
 	- The integer number must be positive and higher than or equal to 1 and also higher than the linear 
-	  sugar candidate minimum size (argument at position 9)
-- Position 11: Either "true" or "false", indicating whether linear acidic sugars should be included in the 
-  set of linear sugar patterns for the initial detection.
+	  sugar candidate minimum size (option -linSugMinSize --linSugCandidateMinimumSize)
+- Option -linAcSug --detectLinAcidicSug <boolean>: Either "true" or "false", indicating whether linear acidic 
+  sugars should be included in the set of linear sugar patterns for the initial detection.
 	- Any other value of this argument will be interpreted as "false"
 	- Default: "false"
-- Position 12: Either "true" or "false", indicating whether spiro rings (rings that share one atom with 
-  another cycle) should be included in the circular sugar detection.
+- Option -circSugSpiro --detectSpiroRingsAsCircSug <boolean>: Either "true" or "false", indicating whether 
+  spiro rings (rings that share one atom with another cycle) should be included in the circular sugar detection.
 	- Any other value of this argument will be interpreted as "false"	
 	- Default: "false"
 
 Example usages: 
 - Removing circular AND linear sugars from all molecules in the given example file, using default settings 
   implicitly: 
-	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" "smiles_test_file.txt" "3"
-- Removing circular AND linear sugars from all molecules in the given example file, using default settings 
+	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -i "smiles_test_file.txt" -t "3"
+- Removing circular AND linear sugars from all molecules in the given example file, using all default settings 
   explicitly: 
-	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" "smiles_test_file.txt" "3" "false" "true" "1" "5" "true" "0.5" "false" "4" "7" "false" "false"
+	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -i "smiles_test_file.txt" -t "3" -glyBond "false" -remTerm "true" -presMode "1" -presThres "5" -oxyAtoms "true" -oxyAtomsThres "0.5" -linSugInRings "false" -linSugMinSize "4" -linSugMaxSize "7" -linAcSug "false" -circSugSpiro "false"
+- Printing usage and help information and the version of the application:
+	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -h -v
+
 -> Additional arguments can be passed to the 'java' command.
