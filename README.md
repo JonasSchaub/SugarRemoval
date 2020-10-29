@@ -4,7 +4,7 @@
 ## Description
 Here, we present source code and examples for the Sugar Removal Utility, an algorithmic approach for <i>in silico</i> 
 removal of circular and linear sugars from molecular structures, as described in [Schaub J, Zielesny A, Steinbeck C, 
-Sorokina M. Too sweet: cheminformatics for deglycosylation in natural products](https://doi.org/10.21203/rs.3.rs-50194/v2). 
+Sorokina M. Too sweet: cheminformatics for deglycosylation in natural products](https://doi.org/10.21203/rs.3.rs-50194/v3). 
 <br>The algorithm's implementation is available in three forms: As a web application, a command-line application, and
 as source code readily usable for other software development projects. Every form is open and free to use. The web 
 application is available at [https://sugar.naturalproducts.net](https://sugar.naturalproducts.net) and its source code 
@@ -23,7 +23,7 @@ from the command-line using Java version 11 or higher. A detailed explanation ho
 The text file "hand_picked_np.txt" contains a list of SMILES codes serving as a natural product test set for the 
 performance of the SugarRemovalUtility. They were hand-picked from public databases via the 
 [COlleCtion of Open NatUral producTs (COCONUT)](https://coconut.naturalproducts.net). More details can be found in the 
-test class (see below) and the [Sugar Removal Utility publication](https://doi.org/10.21203/rs.3.rs-50194/v2).
+test class (see below) and the [Sugar Removal Utility publication](https://doi.org/10.21203/rs.3.rs-50194/v3).
 
 ### Sources
 In the directory <i>/src/main/java/de/unijena/cheminf/deglycosylation/</i> the class <i>SugarRemovalUtility</i> can be found.
@@ -63,7 +63,7 @@ care of installing all dependencies.
     * [Chemistry Development Kit on GitHub](https://cdk.github.io/)
 * Apache Maven version 4
     * [Apache Maven](http://maven.apache.org)
-* JUnit version 4.12
+* JUnit version 4.13.1
     * [JUnit 4](https://junit.org/junit4/)
 * Apache Commons CLI version 1.4
     * [Apache Commons CLI](https://commons.apache.org/proper/commons-cli/)

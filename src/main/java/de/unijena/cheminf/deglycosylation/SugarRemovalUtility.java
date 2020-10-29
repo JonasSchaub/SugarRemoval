@@ -36,8 +36,11 @@ package de.unijena.cheminf.deglycosylation;
  *   'getCircularAndLinearSugarCandidates()' method could be implemented and used safely and
  *   'removeAndReturnCircularAndLinearSugars()' could be revised
  * - include all connected oxygen atoms in the circular sugars? Or at least all hydroxy groups?
- * - Known bug: Some linear sugars are not detected anymore if the circular sugars are removed from the molecule (even
- *   with preservation mode 'all'); how to fix this? Add more small linear sugar patterns?
+ * - Known bug: Some linear sugars (in rings) are not detected anymore if the circular sugars are removed from the molecule (even
+ *   with preservation mode 'all'); how to fix this? Add more small linear sugar patterns? Does it even need fixing?
+ * - Spiro sugars can be detected as linear sugars in rings since they are not regarded by the circular sugar detection
+ *   if the respective option is set accordingly, fix this.
+ * - Include option to also remove circular sugars with keto groups
  */
 
 import org.openscience.cdk.AtomContainer;
@@ -79,7 +82,7 @@ import java.util.logging.Logger;
  * The Sugar Removal Utility (SRU) implements a generalized algorithm for automated detection of circular and linear
  * sugars in molecular structures and their removal, as described in "Schaub J, Zielesny A, Steinbeck C, Sorokina M. 
  * Too sweet: cheminformatics for deglycosylation in natural products, 02 August 2020, PREPRINT (Version 1)", available
- * at Research Square [<a href="https://doi.org/10.21203/rs.3.rs-50194/v2">DOI:10.21203/rs.3.rs-50194/v2</a>].
+ * at Research Square [<a href="https://doi.org/10.21203/rs.3.rs-50194/v3">DOI:10.21203/rs.3.rs-50194/v3</a>].
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
