@@ -3,8 +3,9 @@
 
 ## Description
 Here, we present source code and examples for the Sugar Removal Utility, an algorithmic approach for <i>in silico</i> 
-removal of circular and linear sugars from molecular structures, as described in [Schaub J, Zielesny A, Steinbeck C, 
-Sorokina M. Too sweet: cheminformatics for deglycosylation in natural products](https://doi.org/10.21203/rs.3.rs-50194/v3). 
+removal of circular and linear sugars from molecular structures, as described in [Schaub, J., Zielesny, A., Steinbeck, 
+C. et al. Too sweet: cheminformatics for deglycosylation in natural products. J Cheminform 12, 67 (2020). 
+https://doi.org/10.1186/s13321-020-00467-y](https://doi.org/10.1186/s13321-020-00467-y). 
 <br>The algorithm's implementation is available in three forms: As a web application, a command-line application, and
 as source code readily usable for other software development projects. Every form is open and free to use. The web 
 application is available at [https://sugar.naturalproducts.net](https://sugar.naturalproducts.net) and its source code 
@@ -23,7 +24,7 @@ from the command-line using Java version 11 or higher. A detailed explanation ho
 The text file "hand_picked_np.txt" contains a list of SMILES codes serving as a natural product test set for the 
 performance of the SugarRemovalUtility. They were hand-picked from public databases via the 
 [COlleCtion of Open NatUral producTs (COCONUT)](https://coconut.naturalproducts.net). More details can be found in the 
-test class (see below) and the [Sugar Removal Utility publication](https://doi.org/10.21203/rs.3.rs-50194/v3).
+test class (see below) and the [Sugar Removal Utility publication](https://doi.org/10.1186/s13321-020-00467-y).
 
 ### Sources
 In the directory <i>/src/main/java/de/unijena/cheminf/deglycosylation/</i> the class <i>SugarRemovalUtility</i> can be found.
@@ -70,7 +71,7 @@ care of installing all dependencies.
 
 ## References and useful links
 **Sugar Removal Utility**
-* [Schaub J, Zielesny A, Steinbeck C, Sorokina M. Too sweet: cheminformatics for deglycosylation in natural products, 02 August 2020, PREPRINT (Version 2) available at Research Square](https://doi.org/10.21203/rs.3.rs-50194/v2)
+* [Schaub, J., Zielesny, A., Steinbeck, C. et al. Too sweet: cheminformatics for deglycosylation in natural products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y](https://doi.org/10.1186/s13321-020-00467-y)
 * [Sugar Removal Web Application](https://sugar.naturalproducts.net)
 * [Source Code of Web Application](https://github.com/mSorok/SugarRemovalWeb)
 

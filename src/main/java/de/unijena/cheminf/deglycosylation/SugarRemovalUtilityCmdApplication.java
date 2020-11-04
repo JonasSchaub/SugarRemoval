@@ -63,9 +63,9 @@ import java.util.logging.SimpleFormatter;
 
 /**
  * Controller of the Sugar Removal Utility command-line application. It can be used to remove sugar moieties from
- * molecules in a given data set, according to "Schaub J, Zielesny A, Steinbeck C, Sorokina M.
- * Too sweet: cheminformatics for deglycosylation in natural products, 02 August 2020, PREPRINT (Version 2)", available
- * at Research Square [<a href="https://doi.org/10.21203/rs.3.rs-50194/v2">DOI:10.21203/rs.3.rs-50194/v2</a>]. This class
+ * molecules in a given data set, according to <a href="https://doi.org/10.1186/s13321-020-00467-y"
+ * >"Schaub, J., Zielesny, A., Steinbeck, C., Sorokina, M. Too sweet: cheminformatics for deglycosylation in natural
+ * products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y"</a>. This class
  * basically instantiates the SugarRemovalUtility class with the settings specified in the command line arguments and
  * uses it to iterate over all molecules found in the given file and remove their sugar moieties. Also, a CSV file detailing
  * the deglycosylated cores and removed sugar moieties for each molecule is created as output.
