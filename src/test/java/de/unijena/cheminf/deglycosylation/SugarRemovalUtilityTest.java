@@ -83,7 +83,7 @@ import java.util.logging.SimpleFormatter;
  * </p>
  *
  * @author Jonas Schaub
- * @version 1.0.0.0
+ * @version 1.0.1.0
  */
 public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     //<editor-fold desc="Tests">
@@ -1418,6 +1418,65 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                     .depict(tmpOriginalMolecule)
                     .writeTo(tmpOutputFolderPath + File.separator + "Test_candidates_separately_without_circSug_" + i + ".png");
         }
+    }
+
+    /**
+     * The tested molecule contains a non-terminal spiro circular sugar. Using default settings, nothing should be
+     * detected and removed, since spiro sugars are not detected and non-terminal sugars not removed. It must also be
+     * noted that in a previous version of the algorithm implementation, a linear sugar was detected inside the spiro
+     * sugar ring. This should not happen. Now, potential circular sugar candidates filtered from the linear sugar
+     * candidates in linear sugar detection always include the spiro circular sugar candidates, regardless of the
+     * current setting regarding their detection in circular sugar detection.
+     *
+     *  @throws Exception if anything goes wrong
+     */
+    @Test
+    public void specificTest36() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1000DefaultSettings();
+        tmpSugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles(
+                //CNP0008636
+                "O=C(O)CC1C(=CC2CCC=CC1C2OC3OC(CO)C4(OC(=C5N=C([CH-]C5=C4)C(C)C)CCCO)C(O)C3(O)CC)C(=O)OC");
+        //spiro rings are excluded
+        Assert.assertFalse(tmpSugarRemovalUtil.hasCircularSugars(tmpOriginalMolecule));
+        //no linear sugar is detected inside the spiro ring
+        Assert.assertFalse(tmpSugarRemovalUtil.hasLinearSugars(tmpOriginalMolecule));
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //nothing is removed due to the above reasons and because the circular spiro sugar is non-terminal
+        Assert.assertEquals("O=C(O)CC1C(=CC2CCC=CC1C2OC3OC(CO)C4(OC(=C5N=C([CH-]C5=C4)C(C)C)CCCO)C(O)C3(O)CC)C(=O)OC", tmpSmilesCode);
+        tmpSugarRemovalUtil.setDetectSpiroRingsAsCircularSugarsSetting(true);
+        //still no linear sugar is detected inside the spiro ring
+        Assert.assertFalse(tmpSugarRemovalUtil.hasLinearSugars(tmpOriginalMolecule));
+        //now, spiro sugar rings are detected
+        Assert.assertTrue(tmpSugarRemovalUtil.hasCircularSugars(tmpOriginalMolecule));
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //still, nothing is removed because the circular spiro sugar is non-terminal
+        Assert.assertEquals("O=C(O)CC1C(=CC2CCC=CC1C2OC3OC(CO)C4(OC(=C5N=C([CH-]C5=C4)C(C)C)CCCO)C(O)C3(O)CC)C(=O)OC", tmpSmilesCode);
+        tmpSugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //now, the non-terminal spiro sugar ring is removed
+        Assert.assertEquals("O=C(O)CC1C(=CC2CCC=CC1C2O)C(=O)OC.OCCCC=1OCC=C2[CH-]C(=NC21)C(C)C", tmpSmilesCode);
+
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles(
+                //through manipulation of the SMILES string, the spiro sugar ring was turned into a pseudo sugar (O->C)
+                "O=C(O)CC1C(=CC2CCC=CC1C2OC3CC(CO)C4(OC(=C5N=C([CH-]C5=C4)C(C)C)CCCO)C(O)C3(O)CC)C(=O)OC");
+        //now, a linear sugar can be detected inside the spiro ring because as a pseudo sugar, the ring does not get
+        // filtered from the linear sugar candidates
+        Assert.assertTrue(tmpSugarRemovalUtil.hasLinearSugars(tmpOriginalMolecule));
+        tmpSmilesCode = tmpSmiGen.create(tmpSugarRemovalUtil.getLinearSugarCandidates(tmpOriginalMolecule).get(0));
+        System.out.println(tmpSmilesCode);
+        Assert.assertEquals("[O][C]C(O)[C](O)[CH][O]", tmpSmilesCode);
     }
     //</editor-fold>
     //

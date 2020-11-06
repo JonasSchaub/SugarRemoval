@@ -86,7 +86,7 @@ import java.util.logging.Logger;
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
- * @version 1.0.0.0
+ * @version 1.0.1.0
  */
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum PreservationModeOption">
@@ -654,6 +654,8 @@ public class SugarRemovalUtility {
     /**
      * Specifies whether linear sugar structures that are part of a ring should be detected according to the current
      * settings. This setting is important for e.g. macrocycles that contain sugars or pseudosugars.
+     * <br>Note that potential circular sugar candidates (here always including spiro sugar rings also) are filtered from
+     * linear sugar candidates, even with this setting turned on.
      *
      * @return true if linear sugars in rings are detected and removed with the current settings
      */
@@ -704,6 +706,8 @@ public class SugarRemovalUtility {
     /**
      * Specifies whether spiro rings are included in the initial set of detected rings considered for circular
      * sugar detection.
+     * <br>Note for linear sugar detection: Here, the spiro rings will always be filtered along with the potential
+     * circular sugar candidates.
      *
      * @return true if spiro rings can be detected as circular sugars with the current settings
      */
@@ -1225,6 +1229,8 @@ public class SugarRemovalUtility {
     /**
      * Sets the option to detect linear sugar structures that are part of a ring. This setting is important for e.g.
      * macrocycles that contain sugars or pseudosugars.
+     * <br>Note that potential circular sugar candidates (here always including spiro sugar rings also) are filtered from
+     * linear sugar candidates, even with this setting turned on.
      *
      * @param aBoolean true, if linear sugar structures that are part of a ring should be detected (and removed)
      */
@@ -1315,6 +1321,8 @@ public class SugarRemovalUtility {
      * sugar detection. If the option is turned on, spiro atoms connected two spiro rings will be protected if a spiro
      * sugar ring is removed. In the opposite case, spiro rings will be filtered from the set of isolated cycles detected
      * in the given molecule.
+     * <br>Note for linear sugar detection: Here, the spiro rings will always be filtered along with the potential
+     * circular sugar candidates.
      *
      * @param aBoolean true, if spiro rings should be detectable as circular sugars
      */
@@ -1494,7 +1502,7 @@ public class SugarRemovalUtility {
             return false;
         }
         this.addUniqueIndicesToAtoms(aMolecule);
-        List<IAtomContainer> tmpPotentialSugarRings = this.detectPotentialSugarCycles(aMolecule);
+        List<IAtomContainer> tmpPotentialSugarRings = this.detectPotentialSugarCycles(aMolecule, this.detectSpiroRingsAsCircularSugarsSetting);
         if (tmpPotentialSugarRings.size() != 1) {
             return false;
         }
@@ -2231,7 +2239,7 @@ public class SugarRemovalUtility {
         if (!tmpIndicesAreSet) {
             this.addUniqueIndicesToAtoms(aMolecule);
         }
-        List<IAtomContainer> tmpPotentialSugarRings = this.detectPotentialSugarCycles(aMolecule);
+        List<IAtomContainer> tmpPotentialSugarRings = this.detectPotentialSugarCycles(aMolecule, this.detectSpiroRingsAsCircularSugarsSetting);
         if (tmpPotentialSugarRings.isEmpty()) {
             return new ArrayList<IAtomContainer>(0);
         }
@@ -2996,15 +3004,19 @@ public class SugarRemovalUtility {
     //<editor-fold desc="Methods for circular sugars">
     /**
      * Detects and returns cycles of the given molecule that are isolated (spiro rings included or not according to the
-     * current settings), isomorph to the circular sugar patterns, and only have exocyclic single bonds. These cycles are
+     * boolean parameter), isomorph to the circular sugar patterns, and only have exocyclic single bonds. These cycles are
      * the general candidates for circular sugars that are filtered according to the other settings in the following steps.
      * Spiro atoms are marked by a property.
      *
      * @param aMolecule the molecule to extract potential circular sugars from
+     * @param aIncludeSpiroRings specification whether spiro rings should be included in the detected potential sugar
+     *                           cycles or filtered out; for circular sugar detection this should be set according to the
+     *                           current 'detect spiro rings as circular sugars' setting; for filtering circular sugar
+     *                           candidates or their atoms during linear sugar detection, this should be set to 'true'
      * @return a list of the potential sugar cycles
      * @throws NullPointerException if the given molecule is 'null'
      */
-    protected List<IAtomContainer> detectPotentialSugarCycles(IAtomContainer aMolecule) throws NullPointerException {
+    protected List<IAtomContainer> detectPotentialSugarCycles(IAtomContainer aMolecule, boolean aIncludeSpiroRings) throws NullPointerException {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
@@ -3068,7 +3080,7 @@ public class SugarRemovalUtility {
             if (Objects.isNull(tmpIsolatedRing) || tmpIsolatedRing.isEmpty()) {
                 continue;
             }
-            if (!this.detectSpiroRingsAsCircularSugarsSetting) {
+            if (!aIncludeSpiroRings) {
                 //Filtering spiro rings if they should not be detected as sugars
                 String tmpRingID = this.generateSubstructureIdentifier(tmpIsolatedRing);
                 //if true, the ring is fused or spiro according to the map; but since only isolated cycles are queried,
@@ -3648,7 +3660,7 @@ public class SugarRemovalUtility {
         }
         //</editor-fold>
         //generating set of atom ids of atoms that are part of the circular sugars in the molecule
-        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule);
+        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule, true);
         //nothing to process
         if (tmpPotentialSugarRingsParent.isEmpty()) {
             return;
@@ -3735,7 +3747,7 @@ public class SugarRemovalUtility {
         }
         //</editor-fold>
         //generating ids for the isolated potential sugar circles in the parent molecule
-        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule);
+        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule, true);
         //nothing to process
         if (tmpPotentialSugarRingsParent.isEmpty()) {
             return;
@@ -3754,7 +3766,7 @@ public class SugarRemovalUtility {
             if (!tmpAreIndicesSetInCandidate) {
                 this.addUniqueIndicesToAtoms(tmpCandidate);
             }
-            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.detectPotentialSugarCycles(tmpCandidate);
+            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.detectPotentialSugarCycles(tmpCandidate, true);
             if (!tmpPotentialSugarRingsCandidate.isEmpty()) {
                 //iterating over potential sugar rings in candidate
                 for(IAtomContainer tmpRing : tmpPotentialSugarRingsCandidate) {
@@ -3823,7 +3835,7 @@ public class SugarRemovalUtility {
         }
         //</editor-fold>
         //generating ids for the isolated potential sugar circles in the parent molecule
-        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule);
+        List<IAtomContainer> tmpPotentialSugarRingsParent = this.detectPotentialSugarCycles(aParentMolecule, true);
         //nothing to process
         if (tmpPotentialSugarRingsParent.isEmpty()) {
             return;
@@ -3842,7 +3854,7 @@ public class SugarRemovalUtility {
             if (!tmpAreIndicesSetInCandidate) {
                 this.addUniqueIndicesToAtoms(tmpCandidate);
             }
-            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.detectPotentialSugarCycles(tmpCandidate);
+            List<IAtomContainer> tmpPotentialSugarRingsCandidate = this.detectPotentialSugarCycles(tmpCandidate, true);
             boolean tmpIsAlsoIsolatedInParent = false;
             if (!tmpPotentialSugarRingsCandidate.isEmpty()) {
                 //iterating over potential sugar rings in candidate
