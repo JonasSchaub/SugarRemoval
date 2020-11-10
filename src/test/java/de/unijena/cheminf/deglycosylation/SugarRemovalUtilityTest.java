@@ -1478,6 +1478,51 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSmilesCode);
         Assert.assertEquals("[O][C]C(O)[C](O)[CH][O]", tmpSmilesCode);
     }
+
+    /**
+     * This test illustrates the option to allow the detection of sugar-like circular moieties with keto groups, that was
+     * added in the Sugar Removal Utility version 1.1
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    public void specificTest37() throws Exception {
+        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer tmpOriginalMolecule;
+        IAtomContainer tmpMoleculeWithoutSugars;
+        String tmpSmilesCode;
+        SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1000DefaultSettings();
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles(
+                //CNP0310964
+                "O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=O)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C");
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Nothing is removed because the terminal sugar-like moiety has a keto group and the option to detect those is turned off
+        Assert.assertEquals("O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=O)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C", tmpSmilesCode);
+        tmpSugarRemovalUtil.setDetectCircularSugarsWithKetoGroupsSetting(true);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Now, two sugar moieties are removed; the third sugar-like moiety does not have enough exocyclic oxygen atoms
+        Assert.assertEquals("O=C1C=2C=CC=C(O)C2C(=O)C=3C(O)=C4C(=C(O)C13)C(OC(=O)C)C(O)(CC)CC4OC5OC(C)C(O)C(N(C)C)C5", tmpSmilesCode);
+        tmpSugarRemovalUtil.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(0.3);
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Now, with the exocyclic oxygen ratio threshold lowered, this moiety is also removed
+        Assert.assertEquals("O=C1C=2C=CC=C(O)C2C(=O)C=3C(O)=C4C(=C(O)C13)C(OC(=O)C)C(O)(CC)CC4O", tmpSmilesCode);
+
+        tmpOriginalMolecule = tmpSmiPar.parseSmiles(
+                //through manipulation of the SMILES string, the keto group was transformed into a double bound carbon atom (O -> C)
+                "O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=C)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C");
+        tmpMoleculeWithoutSugars = tmpSugarRemovalUtil.removeCircularAndLinearSugars(tmpOriginalMolecule, true);
+        tmpSmilesCode = tmpSmiGen.create(tmpMoleculeWithoutSugars);
+        System.out.println(tmpSmilesCode);
+        //Nothing should be removed because the double bound carbon atom does not qualify as a keto group
+        Assert.assertEquals("O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=C)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C", tmpSmilesCode);
+    }
     //</editor-fold>
     //
     //<editor-fold desc="Tests involving databases">
@@ -1821,6 +1866,8 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      * Returns a SugarRemovalUtility class object whose sugar removal settings correspond to the default values in
      * version 1.0.0.0 of the class. Should the default settings change, the tests do not have to be re-written,
      * because of this method.
+     * <br>Since it was added in version 1.1, there is no specific value configured here for the 'detect circular sugars
+     * with keto groups' setting.
      *
      * @return a SugarRemovalUtility object with version 1.0.0.0 default settings
      */
