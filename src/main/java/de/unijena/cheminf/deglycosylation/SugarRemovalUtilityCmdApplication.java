@@ -71,14 +71,14 @@ import java.util.logging.SimpleFormatter;
  * the deglycosylated cores and removed sugar moieties for each molecule is created as output.
  *
  * @author Jonas Schaub
- * @version 1.1.0.0
+ * @version 1.2.0.0
  */
 public class SugarRemovalUtilityCmdApplication {
     //<editor-fold desc="Public static final constants">
     /**
      * Version string of this class to print out if -v --version is queried from the command-line.
      */
-    public static final String VERSION = "1.1.0.0";
+    public static final String VERSION = "1.2.0.0";
     //</editor-fold>
     //
     //<editor-fold desc="Private static final constants">
@@ -323,6 +323,20 @@ public class SugarRemovalUtilityCmdApplication {
             .required(false)
             .optionalArg(false)
             .build();
+
+    /**
+     * Optional command-line option to specify whether to detect circular sugar-like moieties having keto groups.
+     */
+    private static final Option DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION = Option.builder("circSugKetoGroups")
+            .argName("boolean")
+            .longOpt("detectCircularSugarsWithKetoGroups")
+            .desc("Either true or false, indicating whether circular sugar-like moieties with keto groups should be " +
+                    "detected; default: false")
+            .hasArg(true)
+            .numberOfArgs(1)
+            .required(false)
+            .optionalArg(false)
+            .build();
     //</editor-fold>
     //</editor-fold>
     //
@@ -362,6 +376,8 @@ public class SugarRemovalUtilityCmdApplication {
                 SugarRemovalUtilityCmdApplication.DETECT_LINEAR_ACIDIC_SUGARS_OPTION);
         SugarRemovalUtilityCmdApplication.CMD_OPTIONS.addOption(
                 SugarRemovalUtilityCmdApplication.DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_OPTION);
+        SugarRemovalUtilityCmdApplication.CMD_OPTIONS.addOption(
+                SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION);
     }
     //</editor-fold>
     //
@@ -467,11 +483,14 @@ public class SugarRemovalUtilityCmdApplication {
      * <br>* option -circSugSpiro --detectSpiroRingsAsCircSug <boolean>: Either "true" or "false", indicating whether
      * spiro rings (rings that share one atom with another cycle) should be included in the circular sugar detection.
      * Any other value of this argument will be interpreted as "false". Default: "false". This option is optional.
+     * <br>* option -circSugKetoGroups --detectCircularSugarsWithKetoGroups <boolean>: Either "true" or "false",
+     * indicating whether circular sugar-like moieties with keto groups should be detected. Any other value of this
+     * argument will be interpreted as "false". Default: "false". This option is optional.
      * <p>
      * Example (all settings in default): String[] args = new String[] {"-i", "smiles_test_file.txt", "-t", "3",
      * "-glyBond", "false", "-remTerm", "true", "-presMode", "1", "-presThres", "5", "-oxyAtoms", "true", "-oxyAtomsThres",
      * "0.5", "-linSugInRings", "false", "-linSugMinSize", "4", "-linSugMaxSize", "7", "-linAcSug", "false",
-     * "-circSugSpiro", "false"};
+     * "-circSugSpiro", "false", "-circSugKetoGroups", "false"};
      *
      * @throws IllegalArgumentException if any parameter does not meet the specified requirements
      */
@@ -815,6 +834,20 @@ public class SugarRemovalUtilityCmdApplication {
             this.sugarRemovalUtil.setDetectSpiroRingsAsCircularSugarsSetting(
                     tmpDetectSpiroRingsAsCircularSugarsSetting);
         }
+        if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION.getOpt())) {
+            if (Objects.isNull(tmpCommandLine.getOptionValue(
+                    SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION.getOpt()))) {
+                throw new IllegalArgumentException("Boolean value indicating whether to detect circular sugars with keto groups (option -"
+                        + SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION.getOpt() + " or --"
+                        + SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION.getLongOpt()
+                        + ") is empty (null).");
+            }
+            boolean tmpDetectCircularSugarsWithKetoGroupsSetting = Boolean.parseBoolean(
+                    tmpCommandLine.getOptionValue(
+                            SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION.getOpt()).trim());
+            this.sugarRemovalUtil.setDetectCircularSugarsWithKetoGroupsSetting(
+                    tmpDetectCircularSugarsWithKetoGroupsSetting);
+        }
         this.sugarRemovalUtil.setAddPropertyToSugarContainingMoleculesSetting(true);
     }
     //</editor-fold>
@@ -940,6 +973,8 @@ public class SugarRemovalUtilityCmdApplication {
         System.out.println("\tDetect linear acidic sugars: " + this.sugarRemovalUtil.areLinearAcidicSugarsDetected());
         System.out.println("\tDetect spiro rings as circular sugars: "
                 + this.sugarRemovalUtil.areSpiroRingsDetectedAsCircularSugars());
+        System.out.println("\tDetect circular sugars with keto groups: "
+                + this.sugarRemovalUtil.areCircularSugarsWithKetoGroupsDetected());
         System.out.println();
         System.out.println("Entering iteration of molecules...");
         System.out.println();

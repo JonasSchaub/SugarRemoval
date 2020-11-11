@@ -29,7 +29,7 @@ the JAR file. These are (-[short name] --[long name] <argument>):
 java -jar SugarRemovalUtility-jar-with-dependencies.jar -i <filePath> -t <integer> 
 	[-glyBond <boolean>] [-remTerm <boolean>] [-presMode <integer>] [-presThres <integer>] 
 	[-oxyAtoms <boolean>] [-oxyAtomsThres <number>] [-linSugInRings <boolean>] [-linSugMinSize <integer>] 
-	[-linSugMaxSize <integer>][-linAcSug <boolean>] [-circSugSpiro <boolean>]
+	[-linSugMaxSize <integer>][-linAcSug <boolean>] [-circSugSpiro <boolean>] [-circSugKetoGroups <boolean>]
 
 - Option -h --help: Print usage and help information regarding the required command-line arguments and 
   options. If this option is used, the application is exited afterwards.
@@ -128,6 +128,10 @@ java -jar SugarRemovalUtility-jar-with-dependencies.jar -i <filePath> -t <intege
   spiro rings (rings that share one atom with another cycle) should be included in the circular sugar detection.
 	- Any other value of this argument will be interpreted as "false"	
 	- Default: "false"
+- Option -circSugKetoGroups --detectCircularSugarsWithKetoGroups <boolean>: Either "true" or "false", indicating 
+  whether circular sugar-like moieties with keto groups should be detected.
+	- Any other value of this argument will be interpreted as "false"	
+	- Default: "false"
 
 Example usages: 
 - Removing circular AND linear sugars from all molecules in the given example file, using default settings 
@@ -135,7 +139,7 @@ Example usages:
 	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -i "smiles_test_file.txt" -t "3"
 - Removing circular AND linear sugars from all molecules in the given example file, using all default settings 
   explicitly: 
-	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -i "smiles_test_file.txt" -t "3" -glyBond "false" -remTerm "true" -presMode "1" -presThres "5" -oxyAtoms "true" -oxyAtomsThres "0.5" -linSugInRings "false" -linSugMinSize "4" -linSugMaxSize "7" -linAcSug "false" -circSugSpiro "false"
+	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -i "smiles_test_file.txt" -t "3" -glyBond "false" -remTerm "true" -presMode "1" -presThres "5" -oxyAtoms "true" -oxyAtomsThres "0.5" -linSugInRings "false" -linSugMinSize "4" -linSugMaxSize "7" -linAcSug "false" -circSugSpiro "false" -circSugKetoGroups "false"
 - Printing usage and help information and the version of the application:
 	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -h -v
 

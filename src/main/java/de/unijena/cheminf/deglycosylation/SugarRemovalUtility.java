@@ -83,7 +83,7 @@ import java.util.logging.Logger;
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
- * @version 1.1.0.0
+ * @version 1.2.0.0
  */
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum PreservationModeOption">
@@ -741,7 +741,7 @@ public class SugarRemovalUtility {
      *
      * @return true if potential sugar cycles having keto groups are detected in circular sugar detection
      */
-    public boolean areCircularSugarsWitkKetoGroupsDetected() {
+    public boolean areCircularSugarsWithKetoGroupsDetected() {
         return this.detectCircularSugarsWithKetoGroupsSetting;
     }
     //</editor-fold>
