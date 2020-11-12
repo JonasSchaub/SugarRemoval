@@ -3181,7 +3181,7 @@ public class SugarRemovalUtility {
 
     /**
      * Checks whether all exocyclic bonds connected to a given ring fragment of a parent atom container are of single
-     * order. If the option to allow potential sugar cycles having keto groups is activated, this method also returns
+     * order. IMPORTANT note: If the option to allow potential sugar cycles having keto groups is activated, this method also returns
      * true if a cycle having a keto group is processed.
      * <br>The method iterates over all cyclic atoms and all of their bonds. So the runtime scales linear with the number
      * of cyclic atoms and their connected bonds. In principle, this method can be used also for non-cyclic substructures.
