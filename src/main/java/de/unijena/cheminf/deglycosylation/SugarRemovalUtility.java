@@ -83,7 +83,7 @@ import java.util.logging.Logger;
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
- * @version 1.2.1.0
+ * @version 1.2.1.1
  */
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum PreservationModeOption">
@@ -1789,7 +1789,9 @@ public class SugarRemovalUtility {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
-            return new ArrayList<IAtomContainer>(0);
+            List<IAtomContainer> tmpReturnList = new ArrayList<IAtomContainer>(1);
+            tmpReturnList.add(0, aMolecule);
+            return tmpReturnList;
         }
         if (this.removeOnlyTerminalSugarsSetting) {
             boolean tmpIsConnected = ConnectivityChecker.isConnected(aMolecule);
@@ -1971,7 +1973,9 @@ public class SugarRemovalUtility {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
-            return new ArrayList<IAtomContainer>(0);
+            List<IAtomContainer> tmpReturnList = new ArrayList<IAtomContainer>(1);
+            tmpReturnList.add(0, aMolecule);
+            return tmpReturnList;
         }
         if (this.removeOnlyTerminalSugarsSetting) {
             boolean tmpIsConnected = ConnectivityChecker.isConnected(aMolecule);
@@ -2174,7 +2178,9 @@ public class SugarRemovalUtility {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
-            return new ArrayList<IAtomContainer>(0);
+            List<IAtomContainer> tmpReturnList = new ArrayList<IAtomContainer>(1);
+            tmpReturnList.add(0, aMolecule);
+            return tmpReturnList;
         }
         if (this.removeOnlyTerminalSugarsSetting) {
             boolean tmpIsConnected = ConnectivityChecker.isConnected(aMolecule);
