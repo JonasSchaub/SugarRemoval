@@ -83,7 +83,7 @@ import java.util.logging.Logger;
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
- * @version 1.2.1.1
+ * @version 1.2.1.2
  */
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum PreservationModeOption">
@@ -1702,19 +1702,16 @@ public class SugarRemovalUtility {
      * keep according to the set preservation mode option and the set threshold and is cleared away.
      * <br>If all the circular sugar moieties are to be removed from the query molecule (including non-terminal
      * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
-     * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures when
-     * returned, whereas in the former case, the returned structure always consists of one connected structure.
-     * <br>If the given molecule consists only of circular sugars, an empty atom container is returned.
+     * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures after
+     * deglycosylation, whereas in the former case, the processed structure always consists of one connected structure.
+     * <br>If the given molecule consists only of circular sugars, an empty atom container is left after processing.
      * <br>Spiro atoms connecting a removed circular sugar moiety to another cycle are preserved (if labelled by the
      * respective property).
      * <br>If the respective option is set, a property will be added to the given atom container specifying whether
      * it contains (or contained before removal) circular sugar moieties or not.
      *
      * @param aMolecule the molecule to remove circular sugar moieties from
-     * @return the same given atom container after the
-     * sugar removal; the returned molecule may be unconnected if also non-terminal sugars are removed according to
-     * the settings and it may be empty if the resulting structure after sugar removal was too small to preserve due to the
-     * set preservation mode and the associated threshold (i.e. the molecule basically was a sugar)
+     * @return true if sugar moieties were detected and removed
      * @throws NullPointerException if the given atom container is 'null'
      * @throws CloneNotSupportedException if the given atom container does not allow cloning (this function is needed in
      * some steps of the algorithm)
@@ -1890,17 +1887,14 @@ public class SugarRemovalUtility {
      * keep according to the set preservation mode option and the set threshold and is cleared away.
      * <br>If all the linear sugar moieties are to be removed from the query molecule (including non-terminal
      * ones), those disconnected structures that are too small are only cleared once at the end of the routine.
-     * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures when
-     * returned, whereas in the former case, the returned structure always consists of one connected structure.
-     * <br>If the given molecule consists only of linear sugars, an empty atom container is returned.
+     * <br>In the latter case, the deglycosylated molecule may consist of two or more disconnected structures after
+     * deglycosylation, whereas in the former case, the processed structure always consists of one connected structure.
+     * <br>If the given molecule consists only of linear sugars, an empty atom container is left after processing.
      * <br>If the respective option is set, a property will be added to the given atom container specifying whether
      * it contains (or contained before removal) linear sugar moieties or not.
      *
      * @param aMolecule the molecule to remove linear sugar moieties from
-     * @return the same given atom container after the
-     * sugar removal; the returned molecule may be unconnected if also non-terminal sugars are removed according to
-     * the settings and it may be empty if the resulting structure after sugar removal was too small to preserve due to the
-     * set preservation mode and the associated threshold (i.e. the molecule basically was a sugar)
+     * @return true if sugar moieties were detected and removed
      * @throws NullPointerException if the given atom container is 'null'
      * @throws CloneNotSupportedException if the given atom container does not allow cloning (this function is needed in
      * some steps of the algorithm)
