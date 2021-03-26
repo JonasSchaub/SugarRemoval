@@ -85,5 +85,5 @@ care of installing all dependencies.
 
 **COlleCtion of Open NatUral producTs (COCONUT)**
 * [COCONUT Online home page](https://coconut.naturalproducts.net)
-* [Sorokina, M., Merseburger, P., Rajan, K., Yirik, M. A., Steinbeck, C. Coconut Online: Collection of Open Natural Products Database, 16 September 2020, PREPRINT (Version 1) available at Research Square](https://doi.org/10.21203/rs.3.rs-75600/v1)
+* [Sorokina, M., Merseburger, P., Rajan, K. et al. COCONUT online: Collection of Open Natural Products database. J Cheminform 13, 2 (2021). https://doi.org/10.1186/s13321-020-00478-9](https://doi.org/10.1186/s13321-020-00478-9)
 * [Sorokina, M., Steinbeck, C. Review on natural products databases: where to find data in 2020. J Cheminform 12, 20 (2020).](https://doi.org/10.1186/s13321-020-00424-9)
