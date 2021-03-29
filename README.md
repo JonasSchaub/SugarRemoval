@@ -10,8 +10,9 @@ https://doi.org/10.1186/s13321-020-00467-y](https://doi.org/10.1186/s13321-020-0
 as source code readily usable for other software development projects. Every form is open and free to use. The web 
 application is available at [https://sugar.naturalproducts.net](https://sugar.naturalproducts.net) and its source code 
 can be found [here](https://github.com/mSorok/SugarRemovalWeb). The command-line application along with its source code 
-and the sugar removal algorithm's main implementation are part of this repository.
-<p>Further description on the implemented sugar removal algorithm and its various configurations will be added soon.
+and the sugar removal algorithm's main implementation are part of this repository.<p>
+Further description on the implemented sugar removal algorithm and its various configurations can be found in the article
+named above.
 
 ## Contents
 ### SugarRemovalUtility CMD App
