@@ -1,6 +1,22 @@
 # Sugar Removal Utility (SRU)
 ##### An algorithmic approach for <i>in silico</i> removal of circular and linear sugars from molecular structures
 
+## Contents of this document
+* [Description](#Description)
+* [Additional notes on deglycosylation and the SRU](#Additional notes on deglycosylation and the SRU)
+  * [New option for keto groups on circular sugars](#New option for keto groups on circular sugars)
+  * [What is a sugar and what is not a sugar?](#What is a sugar and what is not a sugar?)
+  * [One known pitfall of the algorithm](#One known pitfall of the algorithm)
+* [Contents of this repository](#Contents of this repository)
+  * [SugarRemovalUtility CMD App](#SugarRemovalUtility CMD App)
+  * [Natural product test set](#Natural product test set)
+  * [Sources](#Sources)
+* [Installation](#Installation)
+  * [Command line application JAR](#Command line application JAR)
+  * [Source code](#Source code)
+* [Dependencies](#Dependencies)
+* [References and useful links](#References and useful links)
+
 ## Description
 Here, we present source code and examples for the Sugar Removal Utility, an algorithmic approach for <i>in silico</i> 
 removal of circular and linear sugars from molecular structures, as described in [Schaub, J., Zielesny, A., Steinbeck, 
@@ -14,7 +30,47 @@ and the sugar removal algorithm's main implementation are part of this repositor
 Further description on the implemented sugar removal algorithm and its various configurations can be found in the article
 named above.
 
-## Contents
+## Additional notes on deglycosylation and the SRU
+### New option for keto groups on circular sugars
+In version 1.2, a new option has been added to allow the detection (and subsequent removal) of potential circular sugar 
+moieties with keto groups. It can be used via the command-line application and the Sugar Removal Utility source code.
+<br>The general rule specified in the original algorithm description (see article) is that every potential sugar cycle 
+with an exocyclic double or triple bond is excluded from circular sugar detection. If this option is turned on, an 
+exemption to this rule is made for potential sugar cycles having keto groups. Also, the double-bound oxygen atoms will 
+then count for the number of connected oxygen atoms and the algorithm will not regard how many keto groups are attached 
+to the cycle (might be only one, might be that all connected oxygen atoms are double-bound). If this option is turned 
+off, every sugar-like cycle with an exocyclic double or triple bond will be excluded from the detected circular sugars, 
+as it is specified in the original algorithm description.
+<br>Per default, this option is turned off. Therefore, nothing changes compared to prior versions when using the default 
+settings. In the command-line application, this new option can be configured by using '-circSugKetoGroups' or 
+'--detectCircularSugarsWithKetoGroups' as parameter key with a boolean argument. See usage instructions for the 
+application for more information.
+
+### What is a sugar and what is not a sugar?
+[todo]
+
+### One known pitfall of the algorithm
+In a few cases, the detection of a linear sugar candidate can fail after the circular sugars are removed from the molecule. 
+The particular linear sugar is in most cases part of a ring and detected when the molecule still has its original structure.
+After removing the circular sugars, the linear sugar is not detected anymore. This is due to the linear sugar patterns 
+not matching anymore without the adjunct circular sugar.
+<br>One example for this is the COCONUT NP CNP0154212 (see Figure 1). Here, a linear sugar (in blue) can be detected, 
+when the option to detect linear sugars in cycles is turned on (per default, it is turned off). After the circular sugar 
+moieties are removed, the structure that was detected as a linear sugar before is not detected anymore, although it is 
+still intact (see Figure 2).
+<br>More examples are documented in the test method SugarRemovalUtilityTest.specificTest35WithDepiction(). 
+
+![Figure1](./figures/CNP0427619_all_candidates.png)
+**Figure 1.** In the COCONUT NP CNP0154212, a linear sugar (in blue) can be detected, when the option to detect linear 
+sugars in cycles is turned on (per default, it is turned off).
+
+![Figure2](./figures/CNP0427619_all_candidates_without_circSug.png)
+**Figure 2.** After the circular sugar moieties are removed from CNP0154212 in Figure 1, the structure that was detected 
+as a linear sugar before is not detected anymore, although it is still intact. In this figure, the disconnected small 
+fragments resulting from the circular sugar removal are not cleared away as they would be with the default options, to
+show the whole picture of the remaining structure. 
+
+## Contents of this repository
 ### SugarRemovalUtility CMD App
 The sub-folder "SugarRemovalUtility CMD App" contains the sugar removal command-line application downloadable as 
 compressed archive. After decompression, the JAR file "SugarRemovalUtility-jar-with-dependencies.jar" can be executed
@@ -49,11 +105,11 @@ Sugar Removal Utility on multiple specific molecular structures of natural produ
 (see above). Code examples of how to use and configure the <i>SugarRemovalUtility</i> class can be found here.
 
 ## Installation
-### Command-line application JAR
+### Command line application JAR 
 The command-line application JAR has to be downloaded and decompressed. After that, it can be executed from the command-line
 as described in the usage instructions. Java version 11 or higher has to be installed on your machine.
 
-### Sources
+### Source code
 This is a Maven project. In order to use the source code for your own software, download or clone the repository and 
 open it in a Maven-supporting IDE (e.g. IntelliJ) as a Maven project and execute the pom.xml file. Maven will then take
 care of installing all dependencies.
@@ -72,9 +128,12 @@ care of installing all dependencies.
 
 ## References and useful links
 **Sugar Removal Utility**
-* [Schaub, J., Zielesny, A., Steinbeck, C. et al. Too sweet: cheminformatics for deglycosylation in natural products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y](https://doi.org/10.1186/s13321-020-00467-y)
+* [Schaub, J., Zielesny, A., Steinbeck, C., Sorokina, M. Too sweet: cheminformatics for deglycosylation in natural products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y](https://doi.org/10.1186/s13321-020-00467-y)
 * [Sugar Removal Web Application](https://sugar.naturalproducts.net)
 * [Source Code of Web Application](https://github.com/mSorok/SugarRemovalWeb)
+
+**Glycosylation statistics of COCONUT publication (Using the SRU)**
+* [Schaub, J., Zielesny, A., Steinbeck, C., Sorokina, M. Description and Analysis of Glycosidic Residues in the Largest Open Natural Products Database. Biomolecules 2021, 11, 486. https://doi.org/10.3390/biom11040486](https://doi.org/10.3390/biom11040486)
 
 **Chemistry Development Kit (CDK)**
 * [Chemistry Development Kit on GitHub](https://cdk.github.io/)
