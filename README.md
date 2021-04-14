@@ -3,19 +3,19 @@
 
 ## Contents of this document
 * [Description](#Description)
-* [Additional notes on deglycosylation and the SRU](#Additional notes on deglycosylation and the SRU)
-  * [New option for keto groups on circular sugars](#New option for keto groups on circular sugars)
-  * [What is a sugar and what is not a sugar?](#What is a sugar and what is not a sugar?)
-  * [One known pitfall of the algorithm](#One known pitfall of the algorithm)
-* [Contents of this repository](#Contents of this repository)
-  * [SugarRemovalUtility CMD App](#SugarRemovalUtility CMD App)
-  * [Natural product test set](#Natural product test set)
+* [Additional notes on deglycosylation and the SRU](#Additional-notes-on-deglycosylation-and-the-SRU)
+  * [New option for keto groups on circular sugars](#New-option-for-keto-groups-on-circular-sugars)
+  * [What is a sugar and what is not a sugar?](#What-is-a-sugar-and-what-is-not-a-sugar?)
+  * [One known pitfall of the algorithm](#One-known-pitfall-of-the-algorithm)
+* [Contents of this repository](#Contents-of-this-repository)
+  * [SugarRemovalUtility CMD App](#SugarRemovalUtility-CMD-App)
+  * [Natural product test set](#Natural-product-test-set)
   * [Sources](#Sources)
 * [Installation](#Installation)
-  * [Command line application JAR](#Command line application JAR)
-  * [Source code](#Source code)
+  * [Command line application JAR](#Command-line-application-JAR)
+  * [Source code](#Source-code)
 * [Dependencies](#Dependencies)
-* [References and useful links](#References and useful links)
+* [References and useful links](#References-and-useful-links)
 
 ## Description
 Here, we present source code and examples for the Sugar Removal Utility, an algorithmic approach for <i>in silico</i> 
