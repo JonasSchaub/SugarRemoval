@@ -47,7 +47,43 @@ settings. In the command-line application, this new option can be configured by 
 application for more information.
 
 ### What is a sugar and what is not a sugar?
-[todo]
+The structural space of sugar moieties and sugar-like moieties is large and diverse, as we show and discuss in our 
+second SRU article where we use the tool to identify and analyse glycosidic residues in the NP database COCONUT 
+([Description and Analysis of Glycosidic Residues in the Largest Open Natural Products Database. Biomolecules 2021, 11, 486.](https://doi.org/10.3390/biom11040486)).
+The SRU with its default configuration is able to detect a large proportion of this diversity. However, since these parameters 
+are designed to identify redundant structures potentially obstructing analysis of the NP aglycon for <i>in silico</i> 
+removal, they are deliberately limited to not include the whole diversity of glycosidic structures.
+On the other hand, already with its default settings, the SRU may detect structures as sugar moieties that may have a different
+biosynthetic origin or may be derived from sugars but have been reduced/oxidized. This appears to be more prevalent in the
+case of linear sugar detection. Examples can be found in the [first SRU article](https://doi.org/10.1186/s13321-020-00467-y) *:
+
+* Figure 1 d: The detected linear sugar in bengamide B highlighted in the figure is most likely derived from glycerol.
+  ![Figure3](./figures/BengamideB.png)
+  
+
+* Figure 9 a: The detected linear sugar in ossamycin highlighted in the figure is most likely derived from a polyketide 
+  pathway. Note that to detect this moiety, the default settings have to be altered, i.e. the detection of linear sugars 
+  in rings has to be activated. 
+  ![Figure4](./figures/Ossamycin.png)
+  
+
+* Figure 17 c: The detected linear sugars in cryptoporic acid F highlighted in the figure are most likely derived from
+  isocitric acid.
+  ![Figure5](./figures/cryptoporic_acid_F.png)
+  
+This raises the question of what should be defined as a “true” sugar moiety that was likely added 
+during a glycosylation event, and what would rather be a “sugar-like” moiety that more likely comes from a metabolic 
+pathway unrelated to carbohydrates. The SRU algorithm with its sugar detection functions is not intended to answer this 
+question but, as stated above, was designed to identify redundant structures potentially obstructing analysis of the NP 
+aglycon for <i>in silico</i> removal. However, one important feature of the SRU is its configurability, which allows the 
+adaption of it for various applications and queries. Depending on what you, the user, want to achieve, the SRU configurations
+can be altered to (hopefully) best apply it to your problem. To help with that, the two named articles about the SRU provide
+details about the different configuration options of the SRU and example structures that are or are not detected, depending 
+on the chosen settings. And should you have more questions, do not hesitate to contact us. 
+<br>
+<br>* The authors would like to thank 
+[Dr. Christine Beemelmanns](https://www.leibniz-hki.de/en/institut-staff-details.html?member=87)
+for pointing out these examples and discussing them with us. 
 
 ### One known pitfall of the algorithm
 In a few cases, the detection of a linear sugar candidate can fail after the circular sugars are removed from the molecule. 
