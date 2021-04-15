@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
+ * Copyright (c) 2021 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@
 package de.unijena.cheminf.deglycosylation;
 
 /**
- * TODO (if there are bugs):
+ * TODO (if there are bugs to investigate):
  * - test more of the non-default settings, especially for linear sugar detection
  * - test the static methods
  * - test the protected routines
