@@ -81,7 +81,7 @@ java -jar SugarRemovalUtility-jar-with-dependencies.jar -i <filePath> -t <intege
 	- Default: "1" (judge disconnected structures by their heavy atom count)
 - Option -presThres --preservationModeThreshold <integer>: An integer number giving the threshold of 
   the preservation mode
-	- I.e. how many heavy atoms a disconnected structure needs to have at least to be not 
+	- E.g. how many heavy atoms a disconnected structure needs to have at least to be not 
 	  removed or how heavy (in terms of its molecular weight) it needs to be
 	- Default: "5" (heavy atoms); if the preservation mode option -presMode 
 	  --preservationModeOptionis adjusted, this threshold is set to the
