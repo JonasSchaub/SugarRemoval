@@ -38,7 +38,7 @@
         <project.build.source>11</project.build.source>
         <project.build.target>1.11</project.build.target>
         <java.version>1.11</java.version>
-        <cdk.version>2.5</cdk.version>
+        <cdk.version>2.6</cdk.version>
     </properties>
 
     <dependencies>
