@@ -32,7 +32,7 @@ import java.util.Locale;
  * SugarRemovalUtilityCmdApplication class, calls its execute() function and measures the time it takes for execution.
  *
  * @author Jonas Schaub
- * @version 1.2.0.0
+ * @version 1.3.0.0
  */
 public class Main {
     /**

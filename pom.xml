@@ -30,7 +30,7 @@
 
     <groupId>de.unijena.cheminf</groupId>
     <artifactId>deglycosylation</artifactId>
-    <version>1.2.1.0</version>
+    <version>1.3.0.0</version>
     <name>SugarRemoval</name>
 
     <properties>
