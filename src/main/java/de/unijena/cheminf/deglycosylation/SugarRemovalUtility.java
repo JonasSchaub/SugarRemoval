@@ -3558,7 +3558,7 @@ public class SugarRemovalUtility {
     /**
      * Alternative method to combining overlapping substructures after the initial detection: Splitting them pseudo-randomly.
      * The method iterates the given substructures and notes the indices of atoms already visited. If an already visited
-     * atom appears again in another substructure (-> overlap), it is removed from the respective candidate. In the end,
+     * atom appears again in another substructure (- {@literal >} overlap), it is removed from the respective candidate. In the end,
      * all candidates that got disconnected by this, are separated into distinct atom container objects. The result
      * are distinct, non-overlapping, connected substructures. Note: The returned substructures can be very small, even
      * single-atom candidates can result. Another problem is that this method is practically an unpredictable black-box
