@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2021 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
+ * Copyright (c) 2022 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -86,6 +86,14 @@ import java.util.logging.SimpleFormatter;
  * @version 1.3.0.0
  */
 public class SugarRemovalUtilityTest extends SugarRemovalUtility {
+    //<editor-fold desc="Constructors">
+    /**
+     * Constructor that uses DefaultChemObjectBuilder as parameter for the SugarRemovalUtility constructor.
+     */
+    public SugarRemovalUtilityTest() {
+        super(DefaultChemObjectBuilder.getInstance());
+    }
+    //</editor-fold>
     //<editor-fold desc="Tests">
     //<editor-fold desc="Tests on specific molecules">
     /**
@@ -1683,7 +1691,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void classPropertiesTest() throws Exception {
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility(DefaultChemObjectBuilder.getInstance());
         //to check whether the addition and removal of the patterns work
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true); //default would be false
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(false);
@@ -1873,7 +1881,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      * @return a SugarRemovalUtility object with version 1.2.0.0 default settings
      */
     protected SugarRemovalUtility getSugarRemovalUtilityV1200DefaultSettings() {
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility();
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility(DefaultChemObjectBuilder.getInstance());
         tmpSugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(false);
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(true);
         tmpSugarRemovalUtil.setPreservationModeSetting(PreservationModeOption.HEAVY_ATOM_COUNT);

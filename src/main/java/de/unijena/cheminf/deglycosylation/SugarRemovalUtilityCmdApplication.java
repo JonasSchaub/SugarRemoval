@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2021 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
+ * Copyright (c) 2022 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -569,7 +569,7 @@ public class SugarRemovalUtilityCmdApplication {
                     + "either 1 (circular sugar moieties), 2 (linear sugar moieties), or 3 (both).");
         }
         this.typeOfMoietiesToRemove = tmpTypeOfMoietiesToRemove;
-        this.sugarRemovalUtil = new SugarRemovalUtility();
+        this.sugarRemovalUtil = new SugarRemovalUtility(DefaultChemObjectBuilder.getInstance());
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_OPTION.getOpt())) {
             if (Objects.isNull(tmpCommandLine.getOptionValue(
                     SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_OPTION.getOpt()))) {

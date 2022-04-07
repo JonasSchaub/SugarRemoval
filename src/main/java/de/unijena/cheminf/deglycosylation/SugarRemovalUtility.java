@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2021 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
+ * Copyright (c) 2022 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,8 +40,6 @@ package de.unijena.cheminf.deglycosylation;
  *   with preservation mode 'all'); how to fix this? Add more small linear sugar patterns? Does it even need fixing?
  */
 
-import org.openscience.cdk.AtomContainer;
-import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.InvalidSmilesException;
 import org.openscience.cdk.graph.ConnectivityChecker;
@@ -50,6 +48,7 @@ import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IBond;
+import org.openscience.cdk.interfaces.IChemObjectBuilder;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
@@ -362,6 +361,11 @@ public class SugarRemovalUtility {
     //
     //<editor-fold desc="Private variables">
     /**
+     * Chem object builder for parsing SMILES strings etc.
+     */
+    private final IChemObjectBuilder builder;
+
+    /**
      * Linear sugar structures parsed into atom containers. Not used for detection but parsed into patterns after sorting.
      */
     private List<IAtomContainer> linearSugarStructuresList;
@@ -454,7 +458,9 @@ public class SugarRemovalUtility {
      * Sole constructor of this class. All settings are set to their default values (see public static constants or
      * enquire via get/is methods). To change these settings, use the respective 'setXY()' methods.
      */
-    public SugarRemovalUtility() {
+    public SugarRemovalUtility(IChemObjectBuilder aBuilder) throws NullPointerException {
+        Objects.requireNonNull(aBuilder, "Given chem object builder is null.");
+        this.builder = aBuilder;
         /*method setDetectLinearAcidicSugarsSetting() called in restoreDefaultSettings() checks whether the setting has
         changed, so an initial value must be provided; If the default is true, the initial value must be false in order
         to add the linear acidic sugar patterns to the linear sugar patterns. If the default is false, nothing must be done.*/
@@ -833,7 +839,7 @@ public class SugarRemovalUtility {
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
         }
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(this.builder);
         IAtomContainer tmpRingSugar = null;
         try {
             tmpRingSugar = tmpSmiPar.parseSmiles(aSmilesCode);
@@ -931,7 +937,7 @@ public class SugarRemovalUtility {
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
         }
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(this.builder);
         IAtomContainer tmpLinearSugar = null;
         try {
             tmpLinearSugar = tmpSmiPar.parseSmiles(aSmilesCode);
@@ -960,7 +966,7 @@ public class SugarRemovalUtility {
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
         }
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(this.builder);
         IAtomContainer tmpCircularSugar = null;
         try {
             tmpCircularSugar = tmpSmiPar.parseSmiles(aSmilesCode);
@@ -1042,7 +1048,7 @@ public class SugarRemovalUtility {
         if (aSmilesCode.isEmpty()) {
             throw new IllegalArgumentException("Given SMILES code is empty");
         }
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(this.builder);
         IAtomContainer tmpLinearSugar = null;
         try {
             tmpLinearSugar = tmpSmiPar.parseSmiles(aSmilesCode);
@@ -1386,7 +1392,7 @@ public class SugarRemovalUtility {
         this.circularSugarStructuresList = new ArrayList<>(SugarRemovalUtility.CIRCULAR_SUGARS_SMILES.length);
         this.linearAcidicSugarStructuresList = new ArrayList<>(SugarRemovalUtility.LINEAR_ACIDIC_SUGARS_SMILES.length);
         this.linearSugarPatternsList = new ArrayList<>(SugarRemovalUtility.LINEAR_SUGARS_SMILES.length);
-        SmilesParser tmpSmilesParser = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmilesParser = new SmilesParser(this.builder);
         //adding linear sugars to list
         for (String tmpSmiles : SugarRemovalUtility.LINEAR_SUGARS_SMILES) {
             try {
@@ -2763,7 +2769,7 @@ public class SugarRemovalUtility {
         if (!aMolecule.isEmpty()) {
             try {
                 AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);
-                CDKHydrogenAdder.getInstance(DefaultChemObjectBuilder.getInstance()).addImplicitHydrogens(aMolecule);
+                CDKHydrogenAdder.getInstance(this.builder).addImplicitHydrogens(aMolecule);
             } catch (CDKException aCDKException) {
                 SugarRemovalUtility.LOGGER.log(Level.WARNING, aCDKException.toString(), aCDKException);
             }
@@ -3536,7 +3542,7 @@ public class SugarRemovalUtility {
         }
         int tmpListSize = aCandidateList.size();
         List<IAtomContainer> tmpNonOverlappingSugarCandidates = new ArrayList<>(tmpListSize);
-        IAtomContainer tmpMatchesContainer = new AtomContainer();
+        IAtomContainer tmpMatchesContainer = aCandidateList.get(0).getBuilder().newInstance(IAtomContainer.class);
         for (int i = 0; i < tmpListSize; i++) {
             IAtomContainer tmpCandidate = aCandidateList.get(i);
             Objects.requireNonNull(tmpCandidate, "A substructure in the list is 'null'.");
