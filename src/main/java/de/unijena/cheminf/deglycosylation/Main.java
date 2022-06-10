@@ -26,13 +26,14 @@ package de.unijena.cheminf.deglycosylation;
 
 import java.io.IOException;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Main entry point for the Sugar Removal Utility command-line application. The main() method instantiates the
  * SugarRemovalUtilityCmdApplication class, calls its execute() function and measures the time it takes for execution.
  *
  * @author Jonas Schaub
- * @version 1.3.0.0
+ * @version 1.3.1.0
  */
 public class Main {
     /**
@@ -49,7 +50,7 @@ public class Main {
         try {
             System.out.println();
             String tmpJavaVersion = System.getProperty("java.version");
-            if (tmpJavaVersion.compareTo("11.0.5") < 0) {
+            if (Main.compareVersions(tmpJavaVersion, "11.0.5") < 0) {
                 System.err.println("The version of your Java installation has to be at least 11.0.5 for this application to run.");
                 System.exit(-1);
             }
@@ -86,5 +87,36 @@ public class Main {
             anException.printStackTrace(System.err);
             System.exit(-1);
         }
+    }
+    //
+    /**
+     * Compares two version strings of the form "x.y.z" of variable length position by position after splitting at each
+     * "." and parsing to integers. The result is analogous to what Integer.compare(int a, int b) returns for the
+     * first position that differs between the two version strings. If they are of different size and the shorter
+     * one is a substring of the longer one starting at position 0, their lengths are compared.
+     *
+     * @param aVersionString1 one version string v1
+     * @param aVersionString2 another version string v2
+     * @return the value 0 if v1 == v2; a value less than 0 if v1 smaller than v2; and a value greater than 0 if v1 greater than v2
+     * @throws IllegalArgumentException if one of the parameters is null, empty, or blank
+     * @author Jonas Schaub
+     */
+    public static int compareVersions(String aVersionString1, String aVersionString2) throws IllegalArgumentException {
+        if (Objects.isNull(aVersionString1) || aVersionString1.isEmpty() || aVersionString1.isBlank()
+                || Objects.isNull(aVersionString2) || aVersionString2.isEmpty() || aVersionString2.isBlank()) {
+            throw new IllegalArgumentException("One of the arguments is null, empty or blank.");
+        }
+        String[] tmpSeparateNumbersV1 = aVersionString1.split("\\.");
+        String[] tmpSeparateNumbersV2 = aVersionString2.split("\\.");
+        int tmpIterations = tmpSeparateNumbersV1.length < tmpSeparateNumbersV2.length ? tmpSeparateNumbersV1.length : tmpSeparateNumbersV2.length;
+        for (int i = 0; i < tmpIterations; i++) {
+            int tmpV1Int = Integer.parseInt(tmpSeparateNumbersV1[i]);
+            int tmpV2Int = Integer.parseInt(tmpSeparateNumbersV2[i]);
+            int tmpResult = Integer.compare(tmpV1Int, tmpV2Int);
+            if (tmpResult != 0) {
+                return tmpResult;
+            }
+        }
+        return Integer.compare(tmpSeparateNumbersV1.length, tmpSeparateNumbersV2.length);
     }
 }
