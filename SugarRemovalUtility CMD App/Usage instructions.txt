@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------
-Sugar Removal Utility Command Line Application Usage instructions v. 1.3.1.1
+Sugar Removal Utility Command Line Application Usage instructions v. 1.3.2.0
 ---------------------------------------------------------------------------------------------------
 
 This application can be used to remove sugar moieties from molecules in a given data set, according 
