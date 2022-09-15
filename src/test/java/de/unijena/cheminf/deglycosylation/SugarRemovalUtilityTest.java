@@ -83,7 +83,7 @@ import java.util.logging.SimpleFormatter;
  * </p>
  *
  * @author Jonas Schaub
- * @version 1.3.1.0
+ * @version 1.3.2.0
  */
 public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     //<editor-fold desc="Constructors">

@@ -71,14 +71,14 @@ import java.util.logging.SimpleFormatter;
  * the deglycosylated cores and removed sugar moieties for each molecule is created as output.
  *
  * @author Jonas Schaub
- * @version 1.3.1.1
+ * @version 1.3.2.0
  */
 public class SugarRemovalUtilityCmdApplication {
     //<editor-fold desc="Public static final constants">
     /**
      * Version string of this class to print out if -v --version is queried from the command-line.
      */
-    public static final String VERSION = "1.3.1.1";
+    public static final String VERSION = "1.3.2.0";
     //</editor-fold>
     //
     //<editor-fold desc="Private static final constants">

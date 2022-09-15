@@ -82,7 +82,7 @@ import java.util.logging.Logger;
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
- * @version 1.3.1.1
+ * @version 1.3.2.0
  */
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum PreservationModeOption">
