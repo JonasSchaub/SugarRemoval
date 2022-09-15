@@ -82,7 +82,7 @@ import java.util.logging.Logger;
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
- * @version 1.3.1.0
+ * @version 1.3.1.1
  */
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum PreservationModeOption">
@@ -2550,7 +2550,7 @@ public class SugarRemovalUtility {
         IAtomContainer tmpSubstructureClone = aSubstructure.clone();
         HashMap<Integer, IAtom> tmpIndexToAtomMap = new HashMap<>(tmpMoleculeClone.getAtomCount() + 1, 1);
         for (IAtom tmpAtom : tmpMoleculeClone.atoms()) {
-            tmpIndexToAtomMap.put(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY), tmpAtom);
+            tmpIndexToAtomMap.put((Integer)tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY), tmpAtom);
         }
         for (IAtom tmpAtom : tmpSubstructureClone.atoms()) {
             tmpMoleculeClone.removeAtom(tmpIndexToAtomMap.get(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY)));
@@ -3378,7 +3378,7 @@ public class SugarRemovalUtility {
         IAtomContainer tmpSubstructureClone = aRing.clone();
         HashMap<Integer, IAtom> tmpIndexToAtomMap = new HashMap<>(tmpMoleculeClone.getAtomCount() + 1, 1.0f);
         for (IAtom tmpAtom : tmpMoleculeClone.atoms()) {
-            tmpIndexToAtomMap.put(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY), tmpAtom);
+            tmpIndexToAtomMap.put((Integer)tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY), tmpAtom);
         }
         for (IAtom tmpAtom : tmpSubstructureClone.atoms()) {
             tmpMoleculeClone.removeAtom(tmpIndexToAtomMap.get(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY)));

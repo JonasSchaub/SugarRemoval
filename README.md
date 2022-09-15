@@ -51,7 +51,7 @@ The structural space of sugar moieties and sugar-like moieties is large and dive
 second SRU article where we use the tool to identify and analyse glycosidic residues in the NP database COCONUT 
 ([Description and Analysis of Glycosidic Residues in the Largest Open Natural Products Database. Biomolecules 2021, 11, 486.](https://doi.org/10.3390/biom11040486)).
 The SRU with its default configuration is able to detect a large proportion of this diversity. However, since these parameters 
-are designed to identify redundant structures potentially obstructing analysis of the NP aglycon for <i>in silico</i> 
+are designed to identify redundant structures potentially obstructing analysis of the NP aglycone for <i>in silico</i> 
 removal, they are deliberately limited to not include the whole diversity of glycosidic structures.
 On the other hand, already with its default settings, the SRU may detect structures as sugar moieties that may have a different
 biosynthetic origin or may be derived from sugars but have been reduced/oxidized. This appears to be more prevalent in the
@@ -143,7 +143,7 @@ Sugar Removal Utility on multiple specific molecular structures of natural produ
 ## Installation
 ### Command line application JAR 
 The command-line application JAR has to be downloaded and decompressed. After that, it can be executed from the command-line
-as described in the usage instructions. Java version 11 or higher has to be installed on your machine.
+as described in the usage instructions. Java version 17 or higher has to be installed on your machine.
 
 ### Source code
 This is a Maven project. In order to use the source code for your own software, download or clone the repository and 
@@ -151,13 +151,13 @@ open it in a Maven-supporting IDE (e.g. IntelliJ) as a Maven project and execute
 care of installing all dependencies.
 
 ## Dependencies
-* Java Development Kit (JDK) version 11
+* Java Development Kit (JDK) version 17
     * [AdoptOpenJDK](https://adoptopenjdk.net) (as one possible source of the JDK)
-* Chemistry Development Kit (CDK) version 2.6
+* Chemistry Development Kit (CDK) version 2.8
     * [Chemistry Development Kit on GitHub](https://cdk.github.io/)
 * Apache Maven version 4
     * [Apache Maven](http://maven.apache.org)
-* JUnit version 4.13.1
+* JUnit version 4.13.2
     * [JUnit 4](https://junit.org/junit4/)
 * Apache Commons CLI version 1.4
     * [Apache Commons CLI](https://commons.apache.org/proper/commons-cli/)
