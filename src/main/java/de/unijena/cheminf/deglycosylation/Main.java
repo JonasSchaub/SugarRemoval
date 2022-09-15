@@ -33,7 +33,7 @@ import java.util.Objects;
  * SugarRemovalUtilityCmdApplication class, calls its execute() function and measures the time it takes for execution.
  *
  * @author Jonas Schaub
- * @version 1.3.1.0
+ * @version 1.3.1.1
  */
 public class Main {
     /**
@@ -50,8 +50,8 @@ public class Main {
         try {
             System.out.println();
             String tmpJavaVersion = System.getProperty("java.version");
-            if (Main.compareVersions(tmpJavaVersion, "11.0.5") < 0) {
-                System.err.println("The version of your Java installation has to be at least 11.0.5 for this application to run.");
+            if (Main.compareVersions(tmpJavaVersion, "17.0.4") < 0) {
+                System.err.println("The version of your Java installation has to be at least 17.0.4 for this application to run.");
                 System.exit(-1);
             }
             Locale.setDefault(Locale.US);
