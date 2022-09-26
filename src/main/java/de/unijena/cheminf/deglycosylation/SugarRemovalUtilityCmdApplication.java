@@ -32,7 +32,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.openscience.cdk.CDKConstants;
-import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.cdkbook.SMILESFormatMatcher;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.ConnectivityChecker;
@@ -43,6 +42,7 @@ import org.openscience.cdk.io.formats.IChemFormatMatcher;
 import org.openscience.cdk.io.iterator.IIteratingChemObjectReader;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.io.iterator.IteratingSMILESReader;
+import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 
@@ -71,7 +71,7 @@ import java.util.logging.SimpleFormatter;
  * the deglycosylated cores and removed sugar moieties for each molecule is created as output.
  *
  * @author Jonas Schaub
- * @version 1.3.2.0
+ * @version 1.3.2.1
  */
 public class SugarRemovalUtilityCmdApplication {
     //<editor-fold desc="Public static final constants">
@@ -569,7 +569,7 @@ public class SugarRemovalUtilityCmdApplication {
                     + "either 1 (circular sugar moieties), 2 (linear sugar moieties), or 3 (both).");
         }
         this.typeOfMoietiesToRemove = tmpTypeOfMoietiesToRemove;
-        this.sugarRemovalUtil = new SugarRemovalUtility(DefaultChemObjectBuilder.getInstance());
+        this.sugarRemovalUtil = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_OPTION.getOpt())) {
             if (Objects.isNull(tmpCommandLine.getOptionValue(
                     SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_OPTION.getOpt()))) {
@@ -898,11 +898,11 @@ public class SugarRemovalUtilityCmdApplication {
             case "MDL Molfile":
             case "MDL Molfile V2000":
             case "MDL Mol/SDF V3000":
-                tmpReader = new IteratingSDFReader(tmpFileReader, DefaultChemObjectBuilder.getInstance(), true);
+                tmpReader = new IteratingSDFReader(tmpFileReader, SilentChemObjectBuilder.getInstance(), true);
                 System.out.println("Found MDL molfile / structure data file.");
                 break;
             case "SMILES":
-                tmpReader = new IteratingSMILESReader(tmpFileReader, DefaultChemObjectBuilder.getInstance());
+                tmpReader = new IteratingSMILESReader(tmpFileReader, SilentChemObjectBuilder.getInstance());
                 System.out.println("Found SMILES file.");
                 break;
             default:

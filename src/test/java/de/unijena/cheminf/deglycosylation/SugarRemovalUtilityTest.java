@@ -36,7 +36,6 @@ import org.junit.Test;
 import org.openscience.cdk.Atom;
 import org.openscience.cdk.AtomContainer;
 import org.openscience.cdk.Bond;
-import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.cdkbook.SMILESFormatMatcher;
 import org.openscience.cdk.depict.DepictionGenerator;
 import org.openscience.cdk.graph.ConnectivityChecker;
@@ -52,6 +51,7 @@ import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
 import org.openscience.cdk.ringsearch.RingSearch;
+import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
@@ -83,7 +83,7 @@ import java.util.logging.SimpleFormatter;
  * </p>
  *
  * @author Jonas Schaub
- * @version 1.3.2.0
+ * @version 1.3.2.1
  */
 public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     //<editor-fold desc="Constructors">
@@ -91,7 +91,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      * Constructor that uses DefaultChemObjectBuilder as parameter for the SugarRemovalUtility constructor.
      */
     public SugarRemovalUtilityTest() {
-        super(DefaultChemObjectBuilder.getInstance());
+        super(SilentChemObjectBuilder.getInstance());
     }
     //</editor-fold>
     //<editor-fold desc="Tests">
@@ -120,7 +120,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "OC1OC(O)C(O)C1OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1OC1C(O)C(O)C(O)OC(O)C1O",
                 //the terminal heptose and the terminal furanose are removed, the non-terminal pyranose remains
                 "OC1C(OCCCCCCCCCCC)OC(OCCCCCCCCCCCCCCCCC)C(O)C1O");
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Canonical);
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         tmpSugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(true);
@@ -143,7 +143,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest1() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -169,7 +169,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest2() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -200,7 +200,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest3() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -253,7 +253,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest4() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -292,7 +292,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest5() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -316,7 +316,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest6() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -357,7 +357,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest7() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -394,7 +394,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest8() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -416,7 +416,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest9() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -441,7 +441,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest10() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -473,7 +473,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest11() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -498,7 +498,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest12() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -523,7 +523,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest13() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -554,7 +554,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest14() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -637,7 +637,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest15() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -665,7 +665,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest16() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -697,7 +697,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest17() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -722,7 +722,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest18() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -774,7 +774,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest19() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -799,7 +799,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest20() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -826,7 +826,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest21() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -856,7 +856,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest22() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -892,7 +892,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest23() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -920,7 +920,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest24() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -979,7 +979,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest25() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1040,7 +1040,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest26() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1100,7 +1100,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest27() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1138,7 +1138,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest28() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1160,7 +1160,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest29() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1185,7 +1185,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest30() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1215,7 +1215,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest31() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1245,7 +1245,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest32() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1269,7 +1269,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest33() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1302,7 +1302,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
             tmpOutputFolderFile.mkdirs();
         }
         System.out.println("Output directory: " + tmpOutputFolderPath);
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         DepictionGenerator tmpDepictionGenerator = new DepictionGenerator();
         IAtomContainer tmpOriginalMolecule;
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
@@ -1359,7 +1359,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
             tmpOutputFolderFile.mkdirs();
         }
         System.out.println("Output directory: " + tmpOutputFolderPath);
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         DepictionGenerator tmpDepictionGenerator = new DepictionGenerator();
         IAtomContainer tmpOriginalMolecule;
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
@@ -1443,7 +1443,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest36() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1498,7 +1498,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest37() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         IAtomContainer tmpMoleculeWithoutSugars;
@@ -1585,7 +1585,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMinSizeSetting());
         System.out.println(tmpSugarRemovalUtil.getLinearSugarCandidateMaxSizeSetting());
         System.out.println(tmpSugarRemovalUtil.areLinearAcidicSugarsDetected());
-        IteratingSDFReader tmpReader = new IteratingSDFReader(new FileInputStream(tmpSDFile), DefaultChemObjectBuilder.getInstance(), true);
+        IteratingSDFReader tmpReader = new IteratingSDFReader(new FileInputStream(tmpSDFile), SilentChemObjectBuilder.getInstance(), true);
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Canonical);
         int tmpMoleculesCounter = 0;
         int tmpExceptionsCounter = 0;
@@ -1657,7 +1657,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void testEtherEsterPeroxideSplitting() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer tmpOriginalMolecule;
         SugarRemovalUtility tmpSugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
@@ -1691,7 +1691,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void classPropertiesTest() throws Exception {
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility(DefaultChemObjectBuilder.getInstance());
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
         //to check whether the addition and removal of the patterns work
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true); //default would be false
         tmpSugarRemovalUtil.setDetectLinearAcidicSugarsSetting(false);
@@ -1761,7 +1761,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void dfPatternExperiment() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer target = tmpSmiPar.parseSmiles("CCCCC");
         IAtomContainer query = tmpSmiPar.parseSmiles("CC");
@@ -1811,7 +1811,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void smartsExperiment() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator tmpSmiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer target = tmpSmiPar.parseSmiles("CCOCC");
         SmartsPattern tmpEtherPattern = SmartsPattern.create("[CD2]-[OX2]-[CD2]");
@@ -1859,7 +1859,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void isomorphismDependencyOnValencesExperiment() throws Exception {
-        SmilesParser tmpSmiPar = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+        SmilesParser tmpSmiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         IAtomContainer tmpMissingValenceRing = tmpSmiPar.parseSmiles("O=C(O)C1OC([O])[C](O)C(O)C1O");
         RingSearch tmpRingSearch = new RingSearch(tmpMissingValenceRing);
         IAtomContainer tmpReferenceRing = tmpSmiPar.parseSmiles("C1CCOCC1");
@@ -1881,7 +1881,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      * @return a SugarRemovalUtility object with version 1.2.0.0 default settings
      */
     protected SugarRemovalUtility getSugarRemovalUtilityV1200DefaultSettings() {
-        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility(DefaultChemObjectBuilder.getInstance());
+        SugarRemovalUtility tmpSugarRemovalUtil = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
         tmpSugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(false);
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(true);
         tmpSugarRemovalUtil.setPreservationModeSetting(PreservationModeOption.HEAVY_ATOM_COUNT);
