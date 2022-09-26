@@ -457,6 +457,8 @@ public class SugarRemovalUtility {
     /**
      * Sole constructor of this class. All settings are set to their default values (see public static constants or
      * enquire via get/is methods). To change these settings, use the respective 'setXY()' methods.
+     *
+     * @param aBuilder IChemObjectBuilder for i.a. parsing SMILES strings into atom containers
      */
     public SugarRemovalUtility(IChemObjectBuilder aBuilder) throws NullPointerException {
         Objects.requireNonNull(aBuilder, "Given chem object builder is null.");
