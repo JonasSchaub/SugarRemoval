@@ -88,7 +88,7 @@ import java.util.logging.SimpleFormatter;
 public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     //<editor-fold desc="Constructors">
     /**
-     * Constructor that uses DefaultChemObjectBuilder as parameter for the SugarRemovalUtility constructor.
+     * Constructor that uses SilentChemObjectBuilder as parameter for the SugarRemovalUtility constructor.
      */
     public SugarRemovalUtilityTest() {
         super(SilentChemObjectBuilder.getInstance());
