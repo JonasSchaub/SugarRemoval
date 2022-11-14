@@ -29,6 +29,9 @@ can be found [here](https://github.com/mSorok/SugarRemovalWeb). The command-line
 and the sugar removal algorithm's main implementation are part of this repository.<p>
 Further description on the implemented sugar removal algorithm and its various configurations can be found in the article
 named above.
+<br>The Sugar Removal Utility is also available in the open Java rich client application MORTAR ('MOlecule fRagmenTation fRamework')
+where <i>in silico</i> molecule fragmentation can be easily conducted on a given data set and the results visualised
+([MORTAR GitHub repository](https://github.com/FelixBaensch/MORTAR), [MORTAR article preprint](https://doi.org/10.26434/chemrxiv-2022-zgg8s)).
 
 ## Additional notes on deglycosylation and the SRU
 ### New option for keto groups on circular sugars
