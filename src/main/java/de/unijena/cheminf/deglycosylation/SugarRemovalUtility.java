@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2022 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
+ * Copyright (c) 2023 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -82,7 +82,7 @@ import java.util.logging.Logger;
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
- * @version 1.3.2.0
+ * @version 1.3.2.1
  */
 public class SugarRemovalUtility {
     //<editor-fold desc="Enum PreservationModeOption">
@@ -1794,7 +1794,7 @@ public class SugarRemovalUtility {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
-            List<IAtomContainer> tmpReturnList = new ArrayList<IAtomContainer>(1);
+            List<IAtomContainer> tmpReturnList = new ArrayList<>(1);
             tmpReturnList.add(0, aMolecule);
             return tmpReturnList;
         }
@@ -1975,7 +1975,7 @@ public class SugarRemovalUtility {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
-            List<IAtomContainer> tmpReturnList = new ArrayList<IAtomContainer>(1);
+            List<IAtomContainer> tmpReturnList = new ArrayList<>(1);
             tmpReturnList.add(0, aMolecule);
             return tmpReturnList;
         }
@@ -2180,7 +2180,7 @@ public class SugarRemovalUtility {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
-            List<IAtomContainer> tmpReturnList = new ArrayList<IAtomContainer>(1);
+            List<IAtomContainer> tmpReturnList = new ArrayList<>(1);
             tmpReturnList.add(0, aMolecule);
             return tmpReturnList;
         }
@@ -2289,7 +2289,7 @@ public class SugarRemovalUtility {
     public List<IAtomContainer> getCircularSugarCandidates(IAtomContainer aMolecule) throws NullPointerException {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'");
         if (aMolecule.isEmpty()) {
-            return new ArrayList<IAtomContainer>(0);
+            return new ArrayList<>(0);
         }
         boolean tmpIndicesAreSet = this.checkUniqueIndicesOfAtoms(aMolecule);
         if (!tmpIndicesAreSet) {
@@ -2298,7 +2298,7 @@ public class SugarRemovalUtility {
         List<IAtomContainer> tmpPotentialSugarRings = this.detectPotentialSugarCycles(aMolecule,
                 this.detectSpiroRingsAsCircularSugarsSetting, this.detectCircularSugarsWithKetoGroupsSetting);
         if (tmpPotentialSugarRings.isEmpty()) {
-            return new ArrayList<IAtomContainer>(0);
+            return new ArrayList<>(0);
         }
         List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpPotentialSugarRings.size());
         for(IAtomContainer tmpPotentialSugarRing : tmpPotentialSugarRings) {
@@ -2550,7 +2550,9 @@ public class SugarRemovalUtility {
         boolean tmpIsTerminal;
         IAtomContainer tmpMoleculeClone = aParentMolecule.clone();
         IAtomContainer tmpSubstructureClone = aSubstructure.clone();
-        HashMap<Integer, IAtom> tmpIndexToAtomMap = new HashMap<>(tmpMoleculeClone.getAtomCount() + 1, 1);
+        float tmpLoadFactor = 0.75f;
+        int tmpIndexToAtomMapInitCapacity = (int)((float) tmpMoleculeClone.getAtomCount() * (1.0f / tmpLoadFactor) + 2.0f);
+        HashMap<Integer, IAtom> tmpIndexToAtomMap = new HashMap<>(tmpIndexToAtomMapInitCapacity, tmpLoadFactor);
         for (IAtom tmpAtom : tmpMoleculeClone.atoms()) {
             tmpIndexToAtomMap.put((Integer)tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY), tmpAtom);
         }
@@ -2565,11 +2567,14 @@ public class SugarRemovalUtility {
                 tmpIsTerminal = true;
             } else {
                 IAtomContainerSet tmpComponents = ConnectivityChecker.partitionIntoMolecules(tmpMoleculeClone);
-                HashSet<Integer> tmpAtomIndicesThatArePartOfSugarCandidates = new HashSet<>(aParentMolecule.getAtomCount(), 0.8f);
+                int tmpAtomIndicesThatArePartOfSugarCandidatesSetInitCapacity = (int)((float) aParentMolecule.getAtomCount() * (1.0f / tmpLoadFactor) + 2.0f);
+                HashSet<Integer> tmpAtomIndicesThatArePartOfSugarCandidatesSet = new HashSet<>(
+                        tmpAtomIndicesThatArePartOfSugarCandidatesSetInitCapacity,
+                        tmpLoadFactor);
                 for (IAtomContainer tmpCandidate : aCandidateList) {
                     for (IAtom tmpAtom : tmpCandidate.atoms()) {
                         int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                        tmpAtomIndicesThatArePartOfSugarCandidates.add(tmpIndex);
+                        tmpAtomIndicesThatArePartOfSugarCandidatesSet.add(tmpIndex);
                     }
                 }
                 for (IAtomContainer tmpComponent : tmpComponents.atomContainers()) {
@@ -2583,7 +2588,7 @@ public class SugarRemovalUtility {
                     boolean tmpIsPartOfSugarCandidate = false;
                     for (IAtom tmpAtom : tmpComponent.atoms()) {
                         int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                        if (tmpAtomIndicesThatArePartOfSugarCandidates.contains(tmpIndex)) {
+                        if (tmpAtomIndicesThatArePartOfSugarCandidatesSet.contains(tmpIndex)) {
                             tmpIsPartOfSugarCandidate = true;
                             break;
                         }
@@ -2898,7 +2903,7 @@ public class SugarRemovalUtility {
             Compare bond count
             Compare sum of bond orders (heavy atoms only)
         If no difference can be found with the above criteria, the IAtomContainers are considered equal.*/
-        Comparator tmpComparator = new AtomContainerComparator().reversed();
+        Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
         //note: this can throw various exceptions but they should not appear here
         tmpSortedList.sort(tmpComparator);
         return tmpSortedList;
@@ -2953,7 +2958,9 @@ public class SugarRemovalUtility {
                 throw new IllegalArgumentException("This method requires that every atom has a unique index.");
             }
         }
-        HashSet<String> tmpIdentifierSet = new HashSet(aSubstructureList.size(), 1.0f);
+        float tmpLoadFactor = 0.75f;
+        int tmpIdentifierSetInitCapacity = (int)((float) aSubstructureList.size() * (1.0f / tmpLoadFactor) + 2.0f);
+        HashSet<String> tmpIdentifierSet = new HashSet<>(tmpIdentifierSetInitCapacity, tmpLoadFactor);
         for (IAtomContainer tmpSubstructure: aSubstructureList) {
             if (Objects.isNull(tmpSubstructure)) {
                 continue;
@@ -2991,7 +2998,7 @@ public class SugarRemovalUtility {
         Collections.sort(tmpIndicesList);
         String tmpSubstructureIdentifier = "";
         for (int tmpAtomIndex : tmpIndicesList) {
-            tmpSubstructureIdentifier += (Integer.toString(tmpAtomIndex).concat(":"));
+            tmpSubstructureIdentifier = tmpSubstructureIdentifier.concat(Integer.toString(tmpAtomIndex)).concat(":");
         }
         return tmpSubstructureIdentifier;
     }
@@ -3011,16 +3018,18 @@ public class SugarRemovalUtility {
         if (aMolecule.isEmpty()) {
             throw new IllegalArgumentException("Given molecule is empty.");
         }
-        HashSet<Integer> tmpAtomIndices = new HashSet<>(aMolecule.getAtomCount() + 4, 1.0f);
+        float tmpLoadFactor = 0.75f;
+        int tmpAtomIndicesSetInitCapacity = (int)((float) aMolecule.getAtomCount() * (1.0f / tmpLoadFactor) + 2.0f);
+        HashSet<Integer> tmpAtomIndicesSet = new HashSet<>(tmpAtomIndicesSetInitCapacity, tmpLoadFactor);
         for (IAtom tmpAtom : aMolecule.atoms()) {
             if (Objects.isNull(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY))) {
                 return false;
             } else {
                 int tmpIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
-                if (tmpAtomIndices.contains(tmpIndex)) {
+                if (tmpAtomIndicesSet.contains(tmpIndex)) {
                     return false;
                 } else {
-                    tmpAtomIndices.add(tmpIndex);
+                    tmpAtomIndicesSet.add(tmpIndex);
                 }
             }
         }
@@ -3084,7 +3093,7 @@ public class SugarRemovalUtility {
         //<editor-fold desc="Checks">
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'.");
         if (aMolecule.isEmpty()) {
-            return new ArrayList<IAtomContainer>(0);
+            return new ArrayList<>(0);
         }
         boolean tmpIndicesAreSet = this.checkUniqueIndicesOfAtoms(aMolecule);
         if (!tmpIndicesAreSet) {
@@ -3095,7 +3104,7 @@ public class SugarRemovalUtility {
         RingSearch tmpRingSearch = new RingSearch(aMolecule, tmpAdjList);
         List<IAtomContainer> tmpIsolatedRings = tmpRingSearch.isolatedRingFragments();
         if (tmpIsolatedRings.isEmpty()) {
-            return new ArrayList<IAtomContainer>(0);
+            return new ArrayList<>(0);
         }
         //</editor-fold>
         //<editor-fold desc="Identification of spiro rings / atoms">
@@ -3104,9 +3113,12 @@ public class SugarRemovalUtility {
         tmpRingFragments.addAll(tmpRingSearch.fusedRingFragments());
         //Mapping identifiers of all the rings in the molecule to whether they are fused OR spiro (true) or isolated
         // AND non-spiro (false)
-        HashMap<String, Boolean> tmpRingIdentifierToIsFusedOrSpiroMap = new HashMap(tmpRingFragments.size(), 1.0f);
+        float tmpLoadFactor = 0.75f;
+        int tmpRingIdentifierToIsFusedOrSpiroMapInitCapacity = (int)((float) tmpRingFragments.size() * (1.0f / tmpLoadFactor) + 2.0f);
+        HashMap<String, Boolean> tmpRingIdentifierToIsFusedOrSpiroMap = new HashMap<>(tmpRingIdentifierToIsFusedOrSpiroMapInitCapacity, tmpLoadFactor);
         //Mapping atom identifiers to identifiers of the rings they are part of
-        HashMap<Integer, Set<String>> tmpAtomIDToRingIDMap = new HashMap(tmpRingFragments.size() * 6, 0.9f);
+        int tmpAtomIDToRingIDMapInitCapacity = 6 * (int)((float) tmpRingFragments.size() * (1.0f / tmpLoadFactor) + 2.0f);
+        HashMap<Integer, Set<String>> tmpAtomIDToRingIDMap = new HashMap<>(tmpAtomIDToRingIDMapInitCapacity, tmpLoadFactor);
         /* Every atom of every ring is visited; If one atom is visited multiple times, it is in a fused ring or a spiro
          * atom connecting two spiro rings */
         for (IAtomContainer tmpRing : tmpRingFragments) {
@@ -3118,7 +3130,8 @@ public class SugarRemovalUtility {
                 //case 1: atom is not present in the map yet, so it is not shared by another ring that was already visited
                 if (!tmpAtomIDToRingIDMap.containsKey(tmpAtomID)) {
                     //the atom (id) is added to the map with a set that for now only contains the id of the current ring
-                    HashSet<String> tmpRingIDSet = new HashSet<>(5, 0.9f);
+                    int tmpRingIDSetInitCapacity = (int)((float) 5.0f * (1.0f / tmpLoadFactor) + 2.0f);
+                    HashSet<String> tmpRingIDSet = new HashSet<>(tmpRingIDSetInitCapacity, tmpLoadFactor);
                     tmpRingIDSet.add(tmpRingID);
                     tmpAtomIDToRingIDMap.put(tmpAtomID, tmpRingIDSet);
                 //case 2: atom was already visited, so it is part of at least one other ring
@@ -3254,7 +3267,7 @@ public class SugarRemovalUtility {
                             }
                         }
                         //if the bond contains oxygen, it is a keto group, because it double-bound
-                        // note: it is not checked whether the oxygen is outside of the ring, not inside, which is
+                        // note: it is not checked whether the oxygen is outside the ring, not inside, which is
                         // hardly possible because the bond is exocyclic, the oxygen would be four-bound in total.
                         // note 2: it is also not checked whether the oxygen has more bonds in addition to this double
                         // bond, but this would also be not chemically intuitive.
@@ -3378,12 +3391,14 @@ public class SugarRemovalUtility {
         boolean tmpMoleculeIsEmptyAfterRemoval = false;
         IAtomContainer tmpMoleculeClone = aMolecule.clone();
         IAtomContainer tmpSubstructureClone = aRing.clone();
-        HashMap<Integer, IAtom> tmpIndexToAtomMap = new HashMap<>(tmpMoleculeClone.getAtomCount() + 1, 1.0f);
+        float tmpLoadFactor = 0.75f;
+        int tmpIndexToAtomMapInitCapacity = (int)((float) tmpMoleculeClone.getAtomCount() * (1.0f / tmpLoadFactor) + 2.0f);
+        HashMap<Integer, IAtom> tmpIndexToAtomMap = new HashMap<>(tmpIndexToAtomMapInitCapacity, tmpLoadFactor);
         for (IAtom tmpAtom : tmpMoleculeClone.atoms()) {
-            tmpIndexToAtomMap.put((Integer)tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY), tmpAtom);
+            tmpIndexToAtomMap.put(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY), tmpAtom);
         }
         for (IAtom tmpAtom : tmpSubstructureClone.atoms()) {
-            tmpMoleculeClone.removeAtom(tmpIndexToAtomMap.get(tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY)));
+            tmpMoleculeClone.removeAtom(tmpIndexToAtomMap.get((int)tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY)));
         }
         if (tmpMoleculeClone.isEmpty()) {
             tmpMoleculeIsEmptyAfterRemoval = true;
@@ -3441,7 +3456,7 @@ public class SugarRemovalUtility {
     }
 
     /**
-     * Simple decision making function for deciding whether a candidate sugar ring has enough attached, single-bonded
+     * Simple decision-making function for deciding whether a candidate sugar ring has enough attached, single-bonded
      * exocyclic oxygen atoms according to the set threshold. The given number of oxygen atoms
      * is divided by the given number of atoms in the ring (should also contain the usually present oxygen atom in
      * a sugar ring) and the resulting ratio is checked for being equal or higher than the currently set
@@ -3476,7 +3491,7 @@ public class SugarRemovalUtility {
      */
     protected void updateLinearSugarPatterns() {
         Comparator<IAtomContainer> tmpComparator = new AtomContainerComparator().reversed();
-        //note: this can throw various exceptions but they should not appear here
+        //note: this can throw various exceptions, but they should not appear here
         this.linearSugarStructuresList.sort(tmpComparator);
         //parsing linear sugars into patterns; this has to be re-done completely because the patterns cannot be sorted
         for (IAtomContainer tmpSugarAC : this.linearSugarStructuresList){
@@ -3502,7 +3517,7 @@ public class SugarRemovalUtility {
         Objects.requireNonNull(aMolecule, "Given molecule is 'null'");
         IAtomContainer tmpNewMolecule = aMolecule;
         if (tmpNewMolecule.isEmpty()) {
-            return new ArrayList<IAtomContainer>(0);
+            return new ArrayList<>(0);
         }
         List<IAtomContainer> tmpSugarCandidates = new ArrayList<>(tmpNewMolecule.getAtomCount() / 2);
         int tmpListSize = this.linearSugarPatternsList.size();
@@ -3512,7 +3527,7 @@ public class SugarRemovalUtility {
             if (Objects.isNull(tmpLinearSugarPattern)) {
                 continue;
             }
-            /*unique in this case means that the same match cannot be in this collection multiple times but they can
+            /*unique in this case means that the same match cannot be in this collection multiple times, but they can
             still overlap!*/
             Mappings tmpMappings = tmpLinearSugarPattern.matchAll(tmpNewMolecule);
             Mappings tmpUniqueMappings = tmpMappings.uniqueAtoms();
@@ -3545,8 +3560,7 @@ public class SugarRemovalUtility {
         int tmpListSize = aCandidateList.size();
         List<IAtomContainer> tmpNonOverlappingSugarCandidates = new ArrayList<>(tmpListSize);
         IAtomContainer tmpMatchesContainer = aCandidateList.get(0).getBuilder().newInstance(IAtomContainer.class);
-        for (int i = 0; i < tmpListSize; i++) {
-            IAtomContainer tmpCandidate = aCandidateList.get(i);
+        for (IAtomContainer tmpCandidate : aCandidateList) {
             Objects.requireNonNull(tmpCandidate, "A substructure in the list is 'null'.");
             tmpMatchesContainer.add(tmpCandidate);
         }
@@ -3582,7 +3596,9 @@ public class SugarRemovalUtility {
         if (aCandidateList.isEmpty()) {
             return;
         }
-        HashSet<Integer> tmpSugarCandidateAtomsSet = new HashSet<>(aCandidateList.size() * 8, 0.8f);
+        float tmpLoadFactor = 0.75f;
+        int tmpSugarCandidateAtomsSetInitCapacity = (int)(8.0f * (float) aCandidateList.size() * (1.0f / tmpLoadFactor) + 2.0f);
+        HashSet<Integer> tmpSugarCandidateAtomsSet = new HashSet<>(tmpSugarCandidateAtomsSetInitCapacity, tmpLoadFactor);
         for (int i = 0; i < aCandidateList.size(); i++) {
             IAtomContainer tmpCandidate = aCandidateList.get(i);
             if (Objects.isNull(tmpCandidate)) {
@@ -3644,7 +3660,7 @@ public class SugarRemovalUtility {
     protected List<IAtomContainer> splitEtherEsterAndPeroxideBonds(List<IAtomContainer> aCandidateList) throws NullPointerException {
         Objects.requireNonNull(aCandidateList, "Given list is 'null'.");
         if (aCandidateList.isEmpty()) {
-            return new ArrayList<IAtomContainer>(0);
+            return new ArrayList<>(0);
         }
         List<IAtomContainer> tmpProcessedCandidates = new ArrayList<>(aCandidateList.size() * 2);
         for (IAtomContainer tmpCandidate : aCandidateList) {
@@ -3762,7 +3778,9 @@ public class SugarRemovalUtility {
         if (tmpPotentialSugarRingsParent.isEmpty()) {
             return;
         }
-        HashSet<Integer> tmpCircularSugarAtomIDSet = new HashSet<>(tmpPotentialSugarRingsParent.size() * 7, 0.9f);
+        float tmpLoadFactor = 0.75f;
+        int tmpCircularSugarAtomIDSetInitCapacity = (int)( 7.0f * (float) tmpPotentialSugarRingsParent.size() * (1.0f / tmpLoadFactor) + 2.0f);
+        HashSet<Integer> tmpCircularSugarAtomIDSet = new HashSet<>(tmpCircularSugarAtomIDSetInitCapacity, tmpLoadFactor);
         for (IAtomContainer tmpCircularSugarCandidate : tmpPotentialSugarRingsParent) {
             for (IAtom tmpAtom : tmpCircularSugarCandidate.atoms()) {
                 int tmpAtomIndex = tmpAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);

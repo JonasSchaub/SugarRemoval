@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2022 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
+ * Copyright (c) 2023 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -83,7 +83,7 @@ import java.util.logging.SimpleFormatter;
  * </p>
  *
  * @author Jonas Schaub
- * @version 1.3.2.1
+ * @version 1.3.2.2
  */
 public class SugarRemovalUtilityTest extends SugarRemovalUtility {
     //<editor-fold desc="Constructors">
@@ -104,7 +104,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
      */
     @Test
     public void specificTest0() throws Exception {
-        Map<String, String> tmpSmilesBeforeAndAfterDeglycosylationMap = new HashMap<>(3, 1.0f);
+        float tmpLoadFactor = 0.75f;
+        int tmpSmilesBeforeAndAfterDeglycosylationMapInitCapacity = (int)(3.0f * (1.0f / tmpLoadFactor) + 2.0f);
+        Map<String, String> tmpSmilesBeforeAndAfterDeglycosylationMap = new HashMap<>(tmpSmilesBeforeAndAfterDeglycosylationMapInitCapacity, tmpLoadFactor);
         tmpSmilesBeforeAndAfterDeglycosylationMap.put(
                 //CHEMBL56258
                 "CC(N)C(=O)NC(CCC(N)=O)C(=O)NOC1OC(O)C(O)C(O)C1O",
@@ -1317,8 +1319,7 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 .writeTo(tmpOutputFolderPath + File.separator + "Test_original_molecule.png");
         List<IAtomContainer> tmpCandidates = tmpSugarRemovalUtil.getLinearSugarCandidates(tmpOriginalMolecule);
         List<IAtomContainer> tmpToHighlight = new ArrayList<>(tmpCandidates.size());
-        for (int i = 0; i < tmpCandidates.size(); i++) {
-            IAtomContainer tmpCandidate = tmpCandidates.get(i);
+        for (IAtomContainer tmpCandidate : tmpCandidates) {
             tmpToHighlight.add(tmpCandidate);
         }
         tmpDepictionGenerator.withHighlight(tmpToHighlight, Color.BLUE)
@@ -1366,7 +1367,9 @@ public class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpSugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         tmpSugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         tmpSugarRemovalUtil.setPreservationModeSetting(PreservationModeOption.ALL);
-        HashMap<String, String> tmpTestMoleculesCNPtoSMILESMap = new HashMap<>(4, 1);
+        float tmpLoadFactor = 0.75f;
+        int tmpTestMoleculesCNPtoSMILESMapInitCapacity = (int)(4.0f * (1.0f / tmpLoadFactor) + 2.0f);
+        HashMap<String, String> tmpTestMoleculesCNPtoSMILESMap = new HashMap<>(tmpTestMoleculesCNPtoSMILESMapInitCapacity, tmpLoadFactor);
         //in these molecules, a small linear sugar inside a ring is detected, respectively; it is not detected anymore after removing
         // all circular sugars from the respective molecule, even though the structure is still there
         tmpTestMoleculesCNPtoSMILESMap.put("CNP0102508",

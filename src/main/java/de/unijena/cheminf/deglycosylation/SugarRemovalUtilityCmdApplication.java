@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2022 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
+ * Copyright (c) 2023 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -419,10 +419,10 @@ public class SugarRemovalUtilityCmdApplication {
      * * option -i --inputFilePath <filePath>: Path to the input file, either absolute or relative to the current
      * directory. Example: "D:\Project_Sugar_Removal\SugarRemovalUtility CMD App\smiles_test_file.txt" or
      * "smiles_test_file.txt" if the console is already in the "SugarRemovalUtility CMD App"
-     * directory. The backslahes '\' are used in a Microsoft Windows operating system; it should be slash
+     * directory. The backslashes '\' are used in a Microsoft Windows operating system; it should be slash
      * '/' in a Unix shell. Double quotes " are not mandatory but recommended to allow for spaces in the path. The
      * path must not be empty and the given file must exist and be accessible and readable. The file type extension
-     * is not important for the determination of the file type but it must be specified in the path. Accepted input
+     * is not important for the determination of the file type, but it must be specified in the path. Accepted input
      * formats: MDL Molfile, MDL Structure data file (SDF) and SMILES files (of format: [SMILES string][space][name]
      * in each line, see example file). The final test for whether the file is suitable is done in execute(). This option
      * and its argument are always required.
@@ -1177,11 +1177,7 @@ public class SugarRemovalUtilityCmdApplication {
      * @return true if the given value is valid for the respective option
      */
     public static boolean isLegalTypeOfMoietiesToRemove(int aTypeOfMoietiesToRemove) {
-        if (aTypeOfMoietiesToRemove == 1 || aTypeOfMoietiesToRemove == 2 || aTypeOfMoietiesToRemove == 3) {
-            return true;
-        } else {
-            return false;
-        }
+        return aTypeOfMoietiesToRemove == 1 || aTypeOfMoietiesToRemove == 2 || aTypeOfMoietiesToRemove == 3;
     }
     //</editor-fold>
 }
