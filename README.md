@@ -156,7 +156,7 @@ care of installing all dependencies.
 ## Dependencies
 * Java Development Kit (JDK) version 17
     * [AdoptOpenJDK](https://adoptopenjdk.net) (as one possible source of the JDK)
-* Chemistry Development Kit (CDK) version 2.8
+* Chemistry Development Kit (CDK) version 2.9
     * [Chemistry Development Kit on GitHub](https://cdk.github.io/)
 * Apache Maven version 4
     * [Apache Maven](http://maven.apache.org)
