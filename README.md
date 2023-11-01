@@ -154,16 +154,23 @@ open it in a Maven-supporting IDE (e.g. IntelliJ) as a Maven project and execute
 care of installing all dependencies.
 
 ## Dependencies
+**Needs to be pre-installed:**
 * Java Development Kit (JDK) version 17
-    * [AdoptOpenJDK](https://adoptopenjdk.net) (as one possible source of the JDK)
-* Chemistry Development Kit (CDK) version 2.9
-    * [Chemistry Development Kit on GitHub](https://cdk.github.io/)
+  * [Adoptium OpenJDK](https://adoptium.net) (as one possible source of the JDK)
 * Apache Maven version 4
-    * [Apache Maven](http://maven.apache.org)
+  * [Apache Maven](https://maven.apache.org/download.cgi#alpha-4-x-release)
+  * Apache License, version 2.0
+
+**Managed by Maven:**
+* Chemistry Development Kit (CDK) version 2.9
+  * [Chemistry Development Kit on GitHub](https://cdk.github.io/)
+  * License: GNU Lesser General Public License 2.1
 * JUnit version 4.13.2
-    * [JUnit 4](https://junit.org/junit4/)
+  * [JUnit 4](https://junit.org/junit4/)
+  * License: Eclipse Public License 1.0
 * Apache Commons CLI version 1.4
     * [Apache Commons CLI](https://commons.apache.org/proper/commons-cli/)
+    * Apache License, version 2.0
 
 ## References and useful links
 **Sugar Removal Utility**
