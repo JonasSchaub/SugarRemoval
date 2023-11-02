@@ -41,6 +41,8 @@
         <cdk.version>2.9</cdk.version>
         <junit.version>5.10.0</junit.version>
         <hamcrest.version>2.2</hamcrest.version>
+        <sonar.organization>jonasschaub</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
     <dependencies>
