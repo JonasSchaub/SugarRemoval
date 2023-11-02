@@ -41,6 +41,7 @@
         <cdk.version>2.9</cdk.version>
         <junit.version>5.10.0</junit.version>
         <hamcrest.version>2.2</hamcrest.version>
+        <spotless.version>2.40.0</spotless.version>
         <sonar.organization>jonasschaub</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
@@ -178,6 +179,53 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.1</version>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <!-- define a language-specific format -->
+                    <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                        </includes>
+                        <excludes>
+                            <exclude>src/main/java/org/openscience/cdk/cdkbook/SMILESFormatMatcher.java</exclude>
+                        </excludes>
+                        <encoding>UTF-8</encoding>
+                        <!-- Cleanthat will refactor your code, but it may break your style: apply it before your formatter -->
+                        <cleanthat />
+                        <importOrder>
+                            <order>de,org,com,java,javax</order>
+                        </importOrder>
+                        <removeUnusedImports>
+                            <engine>cleanthat-javaparser-unnecessaryimport</engine>
+                        </removeUnusedImports>
+                        <trimTrailingWhitespace/>
+                        <endWithNewline/>
+                        <indent>
+                            <tabs>false</tabs>
+                            <spaces>true</spaces>
+                            <spacesPerTab>4</spacesPerTab>
+                        </indent>
+                        <!-- make sure every file has the following copyright header.
+                          optionally, Spotless can set copyright years by digging
+                          through git history (see "license" section below) -->
+                        <licenseHeader>
+                            <file>${project.basedir}/License-header/License-header.txt</file>
+                        </licenseHeader>
+                    </java>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <phase>compile</phase>
+                        </execution>
+                    </executions>
+                </configuration>
             </plugin>
         </plugins>
     </build>
