@@ -1,0 +1,37 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+# GitHub recommends pinning actions to a commit SHA.
+# To get a newer version, you will need to update the SHA.
+# You can also reference a tag or branch, but the action may change without warning.
+
+#taken from: https://docs.github.com/en/actions/publishing-packages/publishing-java-packages-with-maven
+# and extended using https://selectfrom.dev/using-github-actions-to-automatically-publish-gradle-build-artifacts-d71c915cfa4
+name: Publish package to the Maven Central Repository
+on:
+  #push:
+    #branches: [ "main" ]
+  release:
+    types: [published]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Maven Central Repository
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+      - name: Publish package
+        run: mvn --batch-mode deploy
+        env:
+          MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
+          signingKey: ${{secrets.MAVEN_GPG_PRIVATE_KEY}}
+          signingPassword: ${{secrets.MAVEN_GPG_PASSPHRASE}}

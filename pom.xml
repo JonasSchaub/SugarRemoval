@@ -28,13 +28,21 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>de.unijena.cheminf</groupId>
-    <artifactId>sugarremovalutility</artifactId>
+    <groupId>io.github.jonasschaub</groupId>
+    <artifactId>sru</artifactId>
     <version>1.4.0.0</version>
     <name>Sugar Removal Utility</name>
+    <packaging>jar</packaging>
+    <url>https://github.com/JonasSchaub/SugarRemoval</url>
+    <description>
+        The Sugar Removal Utility - An algorithmic approach for in silico removal of circular and linear sugars from molecular structures.
+    </description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <sonar.organization>jonasschaub</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <project.build.source>17</project.build.source>
         <project.build.target>17</project.build.target>
         <java.version>17</java.version>
@@ -45,6 +53,68 @@
         <sonar.organization>jonasschaub</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
+
+    <licenses>
+        <license>
+            <name>MIT</name>
+            <url>https://opensource.org/license/mit/</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/JonasSchaub/SugarRemoval</url>
+        <connection>scm:git:git://github.com/JonasSchaub/SugarRemoval.git</connection>
+        <developerConnection>scm:git:git@github.com:JonasSchaub/SugarRemoval.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <url>https://github.com/JonasSchaub/SugarRemoval/issues</url>
+    </issueManagement>
+
+    <developers>
+        <developer>
+            <name>Jonas Schaub</name>
+            <email>jonas.schaub@uni-jena.de</email>
+            <organization>Friedrich Schiller University Jena</organization>
+            <organizationUrl>https://cheminf.uni-jena.de</organizationUrl>
+        </developer>
+        <developer>
+            <name>Achim Zielesny</name>
+            <email>achim.zielesny@w-hs.de</email>
+            <organization>Westphalian University of Applied Sciences</organization>
+            <organizationUrl>https://www.w-hs.de/service/informationen-zur-person/person/zielesny/</organizationUrl>
+        </developer>
+        <developer>
+            <name>Christoph Steinbeck</name>
+            <email>christoph.steinbeck@uni-jena.de</email>
+            <organization>Friedrich Schiller University Jena</organization>
+            <organizationUrl>https://cheminf.uni-jena.de</organizationUrl>
+        </developer>
+        <developer>
+            <name>Maria Sorokina</name>
+            <organization>Friedrich Schiller University Jena</organization>
+            <organizationUrl>https://cheminf.uni-jena.de</organizationUrl>
+        </developer>
+    </developers>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+    <repositories>
+        <repository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
+    </repositories>
 
     <dependencies>
         <!--
@@ -152,6 +222,32 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.2.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.4.2</version>
                 <configuration>
@@ -216,6 +312,11 @@
                         <licenseHeader>
                             <file>${project.basedir}/License-header/License-header.txt</file>
                         </licenseHeader>
+                        <replaceRegex>
+                            <name>Remove wildcard imports</name>
+                            <searchRegex>import\s+[^\*\s]+\*;(\r\n|\r|\n)</searchRegex>
+                            <replacement>$1</replacement>
+                        </replaceRegex>
                     </java>
                     <executions>
                         <execution>
@@ -226,6 +327,52 @@
                         </execution>
                     </executions>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.13</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5.3</version>
+                <configuration>
+                    <tagNameFormat>@{project.version}</tagNameFormat>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default</id>
+                        <goals>
+                            <goal>perform</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
