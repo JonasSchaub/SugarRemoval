@@ -29,9 +29,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>de.unijena.cheminf</groupId>
-    <artifactId>deglycosylation</artifactId>
+    <artifactId>sugarremovalutility</artifactId>
     <version>1.3.2.1</version>
-    <name>SugarRemoval</name>
+    <name>Sugar Removal Utility</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -173,6 +173,11 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.1</version>
             </plugin>
         </plugins>
     </build>
