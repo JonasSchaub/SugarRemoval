@@ -1,0 +1,25 @@
+name: Deploy Javadoc
+
+#Note: The Javadoc-publisher action only commits to javadoc branch and triggers the GitHub pages update action if there
+# are changes in the JavaDoc, i.e. it ignores the Readme.md that is used as main landing page of the GitHub pages!
+# And these need to be merged into the javadoc branch.
+
+on:
+  release:
+    types: [published] #alternatives: released, published, created
+  #push:
+    #branches:
+      #- main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy JavaDoc 🚀
+        uses: MathieuSoysal/Javadoc-publisher.yml@v2.4.0
+        with:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          javadoc-branch: javadoc
+          java-version: 17
+          target-folder: javadoc/1.4
+          project: maven

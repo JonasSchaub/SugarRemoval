@@ -38,7 +38,7 @@ import java.util.Objects;
 public class Main {
     /**
      * Instantiates the SugarRemovalUtilityCmdApplication class and calls its execute() method.
-     * This method also tests the Java version (must be version 11.0.5 or higher) and measures the time it takes to
+     * This method also tests the Java version (must be version 17.0.4 or higher) and measures the time it takes to
      * execute the application. The command-line arguments (args) are not parsed or tested here but passed on to the
      * SugarRemovalUtilityCmdApplication class constructor. Outputs are written to System.out and System.err if
      * anything goes wrong. Exceptions are not thrown. The system is exited if an error occurs or the application is
