@@ -76,9 +76,8 @@ import java.util.logging.Logger;
 
 /**
  * The Sugar Removal Utility (SRU) implements a generalized algorithm for automated detection of circular and linear
- * sugars in molecular structures and their removal, as described in <a href="https://doi.org/10.1186/s13321-020-00467-y"
- * >"Schaub, J., Zielesny, A., Steinbeck, C., Sorokina, M. Too sweet: cheminformatics for deglycosylation in natural
- * products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y"</a>.
+ * sugars in molecular structures and their removal, as described in
+ * <a href="https://doi.org/10.1186/s13321-020-00467-y">"Schaub, J., Zielesny, A., Steinbeck, C., Sorokina, M. Too sweet: cheminformatics for deglycosylation in natural products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y"</a>.
  * It offers various functions to detect and remove sugar moieties with different options.
  *
  * @author Jonas Schaub, Maria Sorokina
