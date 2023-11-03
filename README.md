@@ -6,7 +6,7 @@
 [![GitHub issues](https://img.shields.io/github/issues/JonasSchaub/SugarRemoval.svg)](https://GitHub.com/JonasSchaub/SugarRemoval/issues/)
 [![GitHub contributors](https://img.shields.io/github/contributors/JonasSchaub/SugarRemoval.svg)](https://GitHub.com/JonasSchaub/SugarRemoval/graphs/contributors/)
 [![GitHub release](https://img.shields.io/github/release/JonasSchaub/SugarRemoval.svg)](https://github.com/JonasSchaub/SugarRemoval/releases/)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.jonasschaub/SugarRemoval/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.jonasschaub/SugarRemoval)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.jonasschaub/sru/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.jonasschaub/sru)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=JonasSchaub_SugarRemoval&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=JonasSchaub_SugarRemoval)
 
 ![SRU_logo](./logo/SRU_logo.jpg)
@@ -83,7 +83,7 @@ test class (see below) and the [Sugar Removal Utility publication](https://doi.o
 
 ## Installation
 The Sugar Removal Utility is hosted as a package/artifact on the sonatype maven central repository. See the 
-[artifact page](https://central.sonatype.com/artifact/io.github.jonasschaub/SugarRemoval/) for installation guidelines 
+[artifact page](https://central.sonatype.com/artifact/io.github.jonasschaub/sru/) for installation guidelines 
 using build tools like maven or gradle.
 To install the SRU via its JAR archive, you can get it from the [releases](https://github.com/JonasSchaub/SugarRemoval/releases). 
 Note that other dependencies will need to be installed via JAR archives as well this way.
