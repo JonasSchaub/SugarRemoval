@@ -318,15 +318,15 @@
                             <replacement>$1</replacement>
                         </replaceRegex>
                     </java>
-                    <executions>
-                        <execution>
-                            <goals>
-                                <goal>check</goal>
-                            </goals>
-                            <phase>compile</phase>
-                        </execution>
-                    </executions>
                 </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>compile</phase>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
@@ -370,7 +370,11 @@
                             <gpgArguments>
                                 <arg>--pinentry-mode</arg>
                                 <arg>loopback</arg>
+                                <arg>--default-key</arg>
+                                <arg>${env.gpg_privateKey}</arg>
                             </gpgArguments>
+                            <passphrase>${env.gpg_passphrase}</passphrase>
+
                         </configuration>
                     </execution>
                 </executions>
