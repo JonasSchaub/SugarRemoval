@@ -12,6 +12,7 @@
 ![SRU_logo](./logo/SRU_logo.jpg)
 # Sugar Removal Utility (SRU)
 ##### An algorithmic approach for <i>in silico</i> removal of circular and linear sugars from molecular structures
+##### [GitHub Repository](https://github.com/JonasSchaub/SugarRemoval/)
 
 ## Contents of this document
 * [Description](#Description)
