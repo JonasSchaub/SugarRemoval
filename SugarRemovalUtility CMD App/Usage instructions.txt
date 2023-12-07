@@ -21,7 +21,7 @@ The output file and a log file will be created in the same directory as the inpu
 To run the application, execute the supplied executable JAR file from the command line, using 
 the 'java -jar' command (see example usages at the end of this document). 
 
-Java version 11 or higher needs to be installed on your machine.
+Java version 17 or higher needs to be installed on your machine.
 
 Also, multiple command line arguments/options are available (some optional, some required) when executing 
 the JAR file. These are (-[short name] --[long name] <argument>):

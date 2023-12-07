@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2022 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
+ * Copyright (c) 2023 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,8 +51,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.List;
 import java.util.Objects;
@@ -78,7 +78,7 @@ public class SugarRemovalUtilityCmdApplication {
     /**
      * Version string of this class to print out if -v --version is queried from the command-line.
      */
-    public static final String VERSION = "1.3.2.0";
+    public static final String VERSION = "1.4.0.0";
     //</editor-fold>
     //
     //<editor-fold desc="Private static final constants">
@@ -416,31 +416,31 @@ public class SugarRemovalUtilityCmdApplication {
      * <br>* option -v --version: Print version string of the Sugar Removal Utility Command-Line Application. If this
      * option is used, the constructor is exited afterwards.
      * <p>
-     * * option -i --inputFilePath <filePath>: Path to the input file, either absolute or relative to the current
+     * * option -i --inputFilePath {@literal <}filePath{@literal >}: Path to the input file, either absolute or relative to the current
      * directory. Example: "D:\Project_Sugar_Removal\SugarRemovalUtility CMD App\smiles_test_file.txt" or
      * "smiles_test_file.txt" if the console is already in the "SugarRemovalUtility CMD App"
-     * directory. The backslahes '\' are used in a Microsoft Windows operating system; it should be slash
+     * directory. The backslashes '\' are used in a Microsoft Windows operating system; it should be slash
      * '/' in a Unix shell. Double quotes " are not mandatory but recommended to allow for spaces in the path. The
      * path must not be empty and the given file must exist and be accessible and readable. The file type extension
-     * is not important for the determination of the file type but it must be specified in the path. Accepted input
+     * is not important for the determination of the file type, but it must be specified in the path. Accepted input
      * formats: MDL Molfile, MDL Structure data file (SDF) and SMILES files (of format: [SMILES string][space][name]
      * in each line, see example file). The final test for whether the file is suitable is done in execute(). This option
      * and its argument are always required.
-     * <br>* option -t --typeOfMoietiesToRemove <integer>: A number of ["1","2","3"] indicating which type of sugar
+     * <br>* option -t --typeOfMoietiesToRemove {@literal <}integer{@literal >}: A number of ["1","2","3"] indicating which type of sugar
      * moieties should be removed, "1" for circular sugar moieties, "2" for linear sugar moieties, or "3" for circular
      * AND linear sugar moieties. Check isLegalTypeOfMoietiesToRemove(int) for the correct mapping of value to option.
      * This option and its argument are always required.
      * <p>
-     * * option -glyBond --detectCircSugOnlyWithGlyBond <boolean>: Either "true" or "false", indicating whether circular
+     * * option -glyBond --detectCircSugOnlyWithGlyBond {@literal <}boolean{@literal >}: Either "true" or "false", indicating whether circular
      * sugars should be detected (and removed) only if they have an O-glycosidic bond to another moiety or the core of
      * the molecule. Any other value of this argument will be interpreted as "false". Default: "false". This option
      * is optional.
-     * <br>* option -remTerm,--removeOnlyTerminalSugars <boolean>: Either "true" or "false", indicating whether only
+     * <br>* option -remTerm,--removeOnlyTerminalSugars {@literal <}boolean{@literal >}: Either "true" or "false", indicating whether only
      * terminal sugar moieties should be removed. Any other value of this argument will be interpreted as "false".
      * Default: "true". Important note: If this setting is set to "true", the input molecules must all consist of one
      * connected structure, respectively. If they already contain multiple, disconnected structures (e.g. counter-ions),
      * the respective molecules are ignored. This option is optional.
-     * <br>* option -presMode --preservationModeOption <integer>: A number of ["0","1","2"] indicating which preservation
+     * <br>* option -presMode --preservationModeOption {@literal <}integer{@literal >}: A number of ["0","1","2"] indicating which preservation
      * mode to use. This specifies under what circumstances to discard structures that get disconnected from the central
      * core in the sugar removal process, "0" to preserve all disconnected structures (note: this might lead to no
      * circular sugar moieties being detected, depending on the other settings), "1" to remove disconnected structures
@@ -448,17 +448,17 @@ public class SugarRemovalUtilityCmdApplication {
      * molecular weight. Default: "1" (judge disconnected structures by their heavy atom count). check
      * SugarRemovalUtility.PreservationModeOption enum for the correct mapping of value to option, it corresponds to the
      * ordinal values of the enum constants. This option is optional.
-     * <br>* option -presThres --preservationModeThreshold <integer>: An integer number giving the threshold of the
+     * <br>* option -presThres --preservationModeThreshold {@literal <}integer{@literal >}: An integer number giving the threshold of the
      * preservation mode, i.e. how many heavy atoms a disconnected structure needs to have at least to be not removed or
      * how heavy (in terms of its molecular weight) it needs to be. Default: "5" (heavy atoms). The integer number must
      * be positive. If the option -presMode --preservationModeOption was passed the value "0" (preserve all structures), this
      * option must also be passed a zero value. In the opposite case, this option must be passed a non-zero value
      * if the option -presMode --preservationModeOption was given the value 1 or 2. This option is optional.
-     * <br>* option -oxyAtoms --detectCircSugOnlyWithEnoughExocycOxyAtoms <boolean>: Either "true" or "false", indicating
+     * <br>* option -oxyAtoms --detectCircSugOnlyWithEnoughExocycOxyAtoms {@literal <}boolean{@literal >}: Either "true" or "false", indicating
      * whether circular sugars should be detected (and removed) only if they have a sufficient number of attached
      * exocyclic oxygen atoms. Any other value of this argument will be interpreted as "false". Default: "true".
      * This option is optional.
-     * <br>* option -oxyAtomsThres --exocycOxyAtomsToAtomsInRingRatioThreshold <number>: A number giving the minimum
+     * <br>* option -oxyAtomsThres --exocycOxyAtomsToAtomsInRingRatioThreshold {@literal <}number{@literal >}: A number giving the minimum
      * attached exocyclic oxygen atoms to atom number in the ring ratio a circular sugar needs to have to be detected as such.
      * Default: "0.5" (a 6-membered ring needs at least 3 attached exocyclic oxygen atoms).
      * If the option -oxyAtoms --detectCircSugOnlyWithEnoughExocycOxyAtoms was passed the value "false" (detect circular sugars
@@ -466,24 +466,24 @@ public class SugarRemovalUtilityCmdApplication {
      * value. In the opposite case, this option must be passed a non-zero value if the option -oxyAtoms
      * --detectCircSugOnlyWithEnoughExocycOxyAtoms was given the value "true". The number must be positive. This option
      * is optional.
-     * <br>* option -linSugInRings --detectLinSugInRings <boolean>: Either "true" or "false", indicating whether linear
+     * <br>* option -linSugInRings --detectLinSugInRings {@literal <}boolean{@literal >}: Either "true" or "false", indicating whether linear
      * sugars in rings should be detected (and removed). Any other value of this argument will be interpreted as "false".
      * Default: "false". This option is optional.
-     * <br>* option -linSugMinSize --linSugCandidateMinimumSize <integer>: An integer number indicating the minimum
+     * <br>* option -linSugMinSize --linSugCandidateMinimumSize {@literal <}integer{@literal >}: An integer number indicating the minimum
      * number of carbon atoms a linear sugar needs to have to be detected as such. Default: "4". The integer number must
      * be positive and higher than or equal to 1 and also smaller than the linear sugar candidate maximum size
      * (option -linSugMaxSize --linSugCandidateMaximumSize). This option is optional.
-     * <br>* option -linSugMaxSize --linSugCandidateMaximumSize <integer>: An integer number indicating the maximum
+     * <br>* option -linSugMaxSize --linSugCandidateMaximumSize {@literal <}integer{@literal >}: An integer number indicating the maximum
      * number of carbon atoms a linear sugar needs to have to be detected as such. Default: "7". The integer number must
      * be positive and higher than or equal to 1 and also higher than the linear sugar candidate minimum size
      * (option -linSugMinSize --linSugCandidateMinimumSize). This option is optional.
-     * <br>* option -linAcSug --detectLinAcidicSug <boolean>: Either "true" or "false", indicating whether linear acidic
+     * <br>* option -linAcSug --detectLinAcidicSug {@literal <}boolean{@literal >}: Either "true" or "false", indicating whether linear acidic
      * sugars should be included in the set of linear sugar patterns for the initial detection. Any other value of this
      * argument will be interpreted as "false". Default: "false". This option is optional.
-     * <br>* option -circSugSpiro --detectSpiroRingsAsCircSug <boolean>: Either "true" or "false", indicating whether
+     * <br>* option -circSugSpiro --detectSpiroRingsAsCircSug {@literal <}boolean{@literal >}: Either "true" or "false", indicating whether
      * spiro rings (rings that share one atom with another cycle) should be included in the circular sugar detection.
      * Any other value of this argument will be interpreted as "false". Default: "false". This option is optional.
-     * <br>* option -circSugKetoGroups --detectCircularSugarsWithKetoGroups <boolean>: Either "true" or "false",
+     * <br>* option -circSugKetoGroups --detectCircularSugarsWithKetoGroups {@literal <}boolean{@literal >}: Either "true" or "false",
      * indicating whether circular sugar-like moieties with keto groups should be detected. Any other value of this
      * argument will be interpreted as "false". Default: "false". This option is optional.
      * <p>
@@ -1177,11 +1177,7 @@ public class SugarRemovalUtilityCmdApplication {
      * @return true if the given value is valid for the respective option
      */
     public static boolean isLegalTypeOfMoietiesToRemove(int aTypeOfMoietiesToRemove) {
-        if (aTypeOfMoietiesToRemove == 1 || aTypeOfMoietiesToRemove == 2 || aTypeOfMoietiesToRemove == 3) {
-            return true;
-        } else {
-            return false;
-        }
+        return aTypeOfMoietiesToRemove == 1 || aTypeOfMoietiesToRemove == 2 || aTypeOfMoietiesToRemove == 3;
     }
     //</editor-fold>
 }
