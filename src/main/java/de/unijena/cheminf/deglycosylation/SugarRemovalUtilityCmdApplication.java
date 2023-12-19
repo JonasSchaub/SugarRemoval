@@ -492,6 +492,7 @@ public class SugarRemovalUtilityCmdApplication {
      * "0.5", "-linSugInRings", "false", "-linSugMinSize", "4", "-linSugMaxSize", "7", "-linAcSug", "false",
      * "-circSugSpiro", "false", "-circSugKetoGroups", "false"};
      *
+     * @param args see doc above for description of possible command-line arguments
      * @throws IllegalArgumentException if any parameter does not meet the specified requirements
      */
     public SugarRemovalUtilityCmdApplication(String[] args) throws IllegalArgumentException {
