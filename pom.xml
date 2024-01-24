@@ -43,9 +43,9 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <sonar.organization>jonasschaub</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <project.build.source>17</project.build.source>
-        <project.build.target>17</project.build.target>
-        <java.version>17</java.version>
+        <project.build.source>11</project.build.source>
+        <project.build.target>11</project.build.target>
+        <java.version>11</java.version>
         <cdk.version>2.9</cdk.version>
         <junit.version>5.10.0</junit.version>
         <hamcrest.version>2.2</hamcrest.version>
@@ -204,7 +204,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.10.1</version>
                 <configuration>
-                    <release>17</release>
+                    <release>11</release>
                 </configuration>
             </plugin>
             <plugin>
