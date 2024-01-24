@@ -69,7 +69,7 @@ Sugar Removal Utility on multiple specific molecular structures of natural produ
 (see above). Code examples of how to use and configure the <i>SugarRemovalUtility</i> class can be found here.
 
 ### SugarRemovalUtility CMD App
-The sub-folder ["SugarRemovalUtility CMD App"](https://github.com/JonasSchaub/SugarRemoval/tree/master/SugarRemovalUtility%20CMD%20App) 
+The sub-folder ["SugarRemovalUtility CMD App"](https://github.com/JonasSchaub/SugarRemoval/tree/main/SugarRemovalUtility%20CMD%20App) 
 contains the sugar removal command-line application downloadable as 
 compressed archive. After decompression, the JAR file "SugarRemovalUtility-jar-with-dependencies.jar" can be executed
 from the command-line using Java version 17 or higher. A detailed explanation how to use the application can be found in
