@@ -82,6 +82,8 @@ performance of the Sugar Removal Utility. They were hand-picked from public data
 test class (see below) and the [Sugar Removal Utility publication](https://doi.org/10.1186/s13321-020-00467-y).
 
 ## Installation
+<b>Note that since version 2.10, the Sugar Removal Utility is now part of the <a href="https://github.com/cdk/cdk">Chemistry Development Kit</a>.</b> So, if you are alrady using CDK, you do not need to install the SRU externally.
+<br>
 The Sugar Removal Utility is hosted as a package/artifact on the sonatype maven central repository. See the 
 [artifact page](https://central.sonatype.com/artifact/io.github.jonasschaub/sru/) for installation guidelines 
 using build tools like maven or gradle.
