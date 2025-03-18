@@ -32,10 +32,12 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.openscience.cdk.CDKConstants;
+import org.openscience.cdk.atomtype.CDKAtomTypeMatcher;
 import org.openscience.cdk.cdkbook.SMILESFormatMatcher;
 import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.graph.ConnectivityChecker;
+import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.interfaces.IAtomType;
 import org.openscience.cdk.io.FormatFactory;
 import org.openscience.cdk.io.formats.IChemFormat;
 import org.openscience.cdk.io.formats.IChemFormatMatcher;
@@ -45,6 +47,9 @@ import org.openscience.cdk.io.iterator.IteratingSMILESReader;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
+import org.openscience.cdk.tools.CDKHydrogenAdder;
+import org.openscience.cdk.tools.SugarRemovalUtility;
+import org.openscience.cdk.tools.manipulator.AtomTypeManipulator;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -71,14 +76,14 @@ import java.util.logging.SimpleFormatter;
  * the deglycosylated cores and removed sugar moieties for each molecule is created as output.
  *
  * @author Jonas Schaub
- * @version 1.3.2.1
+ * @version 1.5
  */
 public class SugarRemovalUtilityCmdApplication {
     //<editor-fold desc="Public static final constants">
     /**
      * Version string of this class to print out if -v --version is queried from the command-line.
      */
-    public static final String VERSION = "1.4.0.0";
+    public static final String VERSION = "1.5.0.0";
     //</editor-fold>
     //
     //<editor-fold desc="Private static final constants">
@@ -437,16 +442,14 @@ public class SugarRemovalUtilityCmdApplication {
      * is optional.
      * <br>* option -remTerm,--removeOnlyTerminalSugars {@literal <}boolean{@literal >}: Either "true" or "false", indicating whether only
      * terminal sugar moieties should be removed. Any other value of this argument will be interpreted as "false".
-     * Default: "true". Important note: If this setting is set to "true", the input molecules must all consist of one
-     * connected structure, respectively. If they already contain multiple, disconnected structures (e.g. counter-ions),
-     * the respective molecules are ignored. This option is optional.
+     * Default: "true". This option is optional.
      * <br>* option -presMode --preservationModeOption {@literal <}integer{@literal >}: A number of ["0","1","2"] indicating which preservation
      * mode to use. This specifies under what circumstances to discard structures that get disconnected from the central
      * core in the sugar removal process, "0" to preserve all disconnected structures (note: this might lead to no
      * circular sugar moieties being detected, depending on the other settings), "1" to remove disconnected structures
      * that do not have enough heavy atoms, or "2" to remove disconnected structures that do not have a sufficient
      * molecular weight. Default: "1" (judge disconnected structures by their heavy atom count). check
-     * SugarRemovalUtility.PreservationModeOption enum for the correct mapping of value to option, it corresponds to the
+     * SugarRemovalUtility.PreservationMode enum for the correct mapping of value to option, it corresponds to the
      * ordinal values of the enum constants. This option is optional.
      * <br>* option -presThres --preservationModeThreshold {@literal <}integer{@literal >}: An integer number giving the threshold of the
      * preservation mode, i.e. how many heavy atoms a disconnected structure needs to have at least to be not removed or
@@ -612,15 +615,15 @@ public class SugarRemovalUtilityCmdApplication {
                         + ") cannot be parsed.");
             }
             //the given int is taken as ordinal value of the indicated enum object; ordinals start at 0
-            if (tmpPreservationModeSetting >= SugarRemovalUtility.PreservationModeOption.values().length ||
+            if (tmpPreservationModeSetting >= SugarRemovalUtility.PreservationMode.values().length ||
                     tmpPreservationModeSetting < 0) {
                 throw new IllegalArgumentException("Integer indicating the preservation mode setting (option -"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getOpt() + " or --"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getLongOpt()
                         + ") must be either 0 (keep all), 1 (judge by heavy atom count), or 2 (judge by molecular weight).");
             }
-            SugarRemovalUtility.PreservationModeOption tmpPreservationMode = null;
-            for (SugarRemovalUtility.PreservationModeOption tmpEnumConstant : SugarRemovalUtility.PreservationModeOption.values()) {
+            SugarRemovalUtility.PreservationMode tmpPreservationMode = null;
+            for (SugarRemovalUtility.PreservationMode tmpEnumConstant : SugarRemovalUtility.PreservationMode.values()) {
                 if (tmpPreservationModeSetting == tmpEnumConstant.ordinal()) {
                     tmpPreservationMode = tmpEnumConstant;
                 }
@@ -629,7 +632,7 @@ public class SugarRemovalUtilityCmdApplication {
                 throw new IllegalArgumentException("Given preservation mode setting (option -"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getOpt() + " or --"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getLongOpt()
-                        + ") does not correspond to an ordinal in the PreservationModeOption enumeration.");
+                        + ") does not correspond to an ordinal in the PreservationMode enumeration.");
             }
             this.sugarRemovalUtil.setPreservationModeSetting(tmpPreservationMode);
         }
@@ -652,8 +655,8 @@ public class SugarRemovalUtilityCmdApplication {
             }
             //case 1: Preservation mode setting is 'all' (ordinal 0). Then, a 0 threshold should be passed.
             // case 2: Preservation mode is not 'all' (ordinal nonzero). Then, a nonzero threshold should be passed.
-            SugarRemovalUtility.PreservationModeOption tmpPreservationModeSetting = this.sugarRemovalUtil.getPreservationModeSetting();
-            if (tmpPreservationModeSetting.equals(SugarRemovalUtility.PreservationModeOption.ALL) && tmpPreservationModeThresholdSetting != 0) {
+            SugarRemovalUtility.PreservationMode tmpPreservationModeSetting = this.sugarRemovalUtil.getPreservationModeSetting();
+            if (tmpPreservationModeSetting.equals(SugarRemovalUtility.PreservationMode.ALL) && tmpPreservationModeThresholdSetting != 0) {
                 throw new IllegalArgumentException("Preservation mode 'all' was selected or used as default (option -"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getOpt() + " or --"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getLongOpt()
@@ -661,7 +664,7 @@ public class SugarRemovalUtilityCmdApplication {
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_THRESHOLD_OPTION.getOpt() + " or --"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_THRESHOLD_OPTION.getLongOpt()
                         + ") makes no sense.");
-            } else if (!tmpPreservationModeSetting.equals(SugarRemovalUtility.PreservationModeOption.ALL) && tmpPreservationModeThresholdSetting == 0) {
+            } else if (!tmpPreservationModeSetting.equals(SugarRemovalUtility.PreservationMode.ALL) && tmpPreservationModeThresholdSetting == 0) {
                 throw new IllegalArgumentException("Please select preservation mode 'all' (set option -"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getOpt() + " or --"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getLongOpt()
@@ -849,7 +852,6 @@ public class SugarRemovalUtilityCmdApplication {
             this.sugarRemovalUtil.setDetectCircularSugarsWithKetoGroupsSetting(
                     tmpDetectCircularSugarsWithKetoGroupsSetting);
         }
-        this.sugarRemovalUtil.setAddPropertyToSugarContainingMoleculesSetting(true);
     }
     //</editor-fold>
     //
@@ -979,19 +981,17 @@ public class SugarRemovalUtilityCmdApplication {
         System.out.println();
         System.out.println("Entering iteration of molecules...");
         System.out.println();
-        this.sugarRemovalUtil.setAddPropertyToSugarContainingMoleculesSetting(true);
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Absolute);
+        CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(SilentChemObjectBuilder.getInstance());
+        CDKAtomTypeMatcher matcher = CDKAtomTypeMatcher.getInstance(SilentChemObjectBuilder.getInstance());
         int tmpMoleculeCounter = 1;
         int tmpFatalExceptionCounter = 0;
         int tmpMinorExceptionsCounter = 0;
         int tmpSugarContainingMoleculesCounter = 0;
-        int tmpContainsLinearSugarsCounter = 0;
-        int tmpContainsCircularSugarsCounter = 0;
         int tmpBasicallyASugarCounter = 0;
         IAtomContainer tmpMolecule;
         String tmpID;
         String tmpOriginalMoleculeSMILES;
-        boolean tmpHadSugars;
         String tmpDeglycosylatedMoleculeSMILES;
         List<IAtomContainer> tmpSugarMoieties;
         String tmpOutput = "";
@@ -1042,61 +1042,32 @@ public class SugarRemovalUtilityCmdApplication {
                     tmpMinorExceptionsCounter++;
                 }
                 tmpOutput = tmpOutput.concat(tmpOriginalMoleculeSMILES + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR);
-                if (this.sugarRemovalUtil.areOnlyTerminalSugarsRemoved()) {
-                    boolean tmpIsConnected = ConnectivityChecker.isConnected(tmpMolecule);
-                    if (!tmpIsConnected) {
-                        tmpDeglycosylatedMoleculeSMILES = "[Deglycosylation not possible because structure is unconnected]";
-                        tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES);
-                        tmpOutputFilePrintWriter.println(tmpOutput);
-                        tmpOutputFilePrintWriter.flush();
-                        tmpFatalExceptionCounter++;
-                        continue;
-                    }
+                switch (this.typeOfMoietiesToRemove) {
+                    case 1:
+                        tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularSugars(tmpMolecule);
+                        break;
+                    case 2:
+                        tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnLinearSugars(tmpMolecule);
+                        break;
+                    case 3:
+                        tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpMolecule);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Type of moieties to remove must be either 1 (circular sugar moieties), " +
+                                "2 (linear sugar moieties), or 3 (both).");
                 }
-                try {
-                    switch (this.typeOfMoietiesToRemove) {
-                        case 1:
-                            tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularSugars(tmpMolecule, false);
-                            break;
-                        case 2:
-                            tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnLinearSugars(tmpMolecule, false);
-                            break;
-                        case 3:
-                            tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpMolecule, false);
-                            break;
-                        default:
-                            throw new IllegalArgumentException("Type of moieties to remove must be either 1 (circular sugar moieties), " +
-                                    "2 (linear sugar moieties), or 3 (both).");
-                    }
-                } catch (CloneNotSupportedException aCloneNotSupportedException) {
-                    SugarRemovalUtilityCmdApplication.LOGGER.log(Level.SEVERE,
-                            aCloneNotSupportedException.toString() + " Molecule id: " + tmpID,
-                            aCloneNotSupportedException);
-                    tmpLogFileHandler.flush();
-                    tmpDeglycosylatedMoleculeSMILES = "[Deglycosylation not possible because structure could not be cloned]";
-                    tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES);
-                    tmpOutputFilePrintWriter.println(tmpOutput);
-                    tmpOutputFilePrintWriter.flush();
-                    tmpFatalExceptionCounter++;
-                    continue;
-                }
-                if (Objects.isNull(tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY))) {
-                    tmpHadSugars = false;
-                } else {
-                    tmpHadSugars = tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_SUGAR_PROPERTY_KEY);
-                }
-                if (tmpHadSugars) {
+                if (tmpSugarMoieties.size() > 1) {
                     tmpSugarContainingMoleculesCounter++;
                 }
-                if (!Objects.isNull(tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY))) {
-                    if (tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_LINEAR_SUGAR_PROPERTY_KEY)) {
-                        tmpContainsLinearSugarsCounter++;
+                for (IAtomContainer structureInList : tmpSugarMoieties) {
+                    if (structureInList.isEmpty()) {
+                        continue;
                     }
-                }
-                if (!Objects.isNull(tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY))) {
-                    if (tmpMolecule.getProperty(SugarRemovalUtility.CONTAINS_CIRCULAR_SUGAR_PROPERTY_KEY)) {
-                        tmpContainsCircularSugarsCounter++;
+                    for (IAtom atom : structureInList.atoms()) {
+                        IAtomType type = matcher.findMatchingAtomType(structureInList, atom);
+                        AtomTypeManipulator.configure(atom, type);
                     }
+                    hydrogenAdder.addImplicitHydrogens(structureInList);
                 }
                 IAtomContainer tmpDeglycosylatedCore = tmpSugarMoieties.remove(0);
                 if (tmpDeglycosylatedCore.isEmpty()) {
@@ -1116,7 +1087,7 @@ public class SugarRemovalUtilityCmdApplication {
                 }
                 tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES
                         + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
-                        + tmpHadSugars);
+                        + (tmpSugarMoieties.size() > 1));
                 if (!tmpSugarMoieties.isEmpty()) {
                     for (IAtomContainer tmpMoiety : tmpSugarMoieties) {
                         String tmpSMILEScode = null;
@@ -1154,8 +1125,6 @@ public class SugarRemovalUtilityCmdApplication {
                 "disconnected or could not be cloned).");
         System.out.println(tmpMinorExceptionsCounter + " minor exceptions occurred (SMILES codes could not be generated etc.).");
         System.out.println(tmpSugarContainingMoleculesCounter + " molecules contained sugar moieties.");
-        System.out.println(tmpContainsCircularSugarsCounter + " molecules contained circular sugar moieties.");
-        System.out.println(tmpContainsLinearSugarsCounter + " molecules contained linear sugar moieties.");
         System.out.println(tmpBasicallyASugarCounter + " molecules were basically sugars because they were completely removed.");
         System.out.println();
         tmpFileInputStream.close();

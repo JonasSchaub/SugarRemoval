@@ -33,7 +33,7 @@ import java.util.Objects;
  * SugarRemovalUtilityCmdApplication class, calls its execute() function and measures the time it takes for execution.
  *
  * @author Jonas Schaub
- * @version 1.3.2.0
+ * @version 1.5
  */
 public class Main {
     /**
@@ -108,7 +108,7 @@ public class Main {
         }
         String[] tmpSeparateNumbersV1 = aVersionString1.split("\\.");
         String[] tmpSeparateNumbersV2 = aVersionString2.split("\\.");
-        int tmpIterations = tmpSeparateNumbersV1.length < tmpSeparateNumbersV2.length ? tmpSeparateNumbersV1.length : tmpSeparateNumbersV2.length;
+        int tmpIterations = Math.min(tmpSeparateNumbersV1.length, tmpSeparateNumbersV2.length);
         for (int i = 0; i < tmpIterations; i++) {
             int tmpV1Int = Integer.parseInt(tmpSeparateNumbersV1[i]);
             int tmpV2Int = Integer.parseInt(tmpSeparateNumbersV2[i]);

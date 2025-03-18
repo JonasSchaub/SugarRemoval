@@ -43,10 +43,10 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <sonar.organization>jonasschaub</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <project.build.source>11</project.build.source>
-        <project.build.target>11</project.build.target>
-        <java.version>11</java.version>
-        <cdk.version>2.9</cdk.version>
+        <project.build.source>17</project.build.source>
+        <project.build.target>17</project.build.target>
+        <java.version>17</java.version>
+        <cdk.version>2.10</cdk.version>
         <junit.version>5.10.0</junit.version>
         <hamcrest.version>2.2</hamcrest.version>
         <spotless.version>2.40.0</spotless.version>
@@ -136,7 +136,7 @@
         </dependency>
         <dependency>
             <groupId>org.openscience.cdk</groupId>
-            <artifactId>cdk-model</artifactId>
+            <artifactId>cdk-extra</artifactId>
             <version>${cdk.version}</version>
         </dependency>
         <dependency>
