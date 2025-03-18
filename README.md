@@ -7,7 +7,9 @@
 [![GitHub contributors](https://img.shields.io/github/contributors/JonasSchaub/SugarRemoval.svg)](https://GitHub.com/JonasSchaub/SugarRemoval/graphs/contributors/)
 [![GitHub release](https://img.shields.io/github/release/JonasSchaub/SugarRemoval.svg)](https://github.com/JonasSchaub/SugarRemoval/releases/)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.jonasschaub/sru/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.jonasschaub/sru)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=JonasSchaub_SugarRemoval&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=JonasSchaub_SugarRemoval)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=JonasSchaub_SugarRemoval&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=JonasSchaub_SugarRemoval)[![Software article - JChemInf](https://img.shields.io/badge/Software_article-JChemInf-blue)](https://doi.org/10.1186/s13321-020-00467-y)
+[![GitHub wiki](https://img.shields.io/badge/Wiki-GitHub-green)](https://github.com/JonasSchaub/SugarRemoval/wiki)
+
 
 ![SRU_logo](./logo/SRU_logo.jpg)
 # Sugar Removal Utility (SRU)
@@ -40,6 +42,8 @@ referenced above.
 <br></br>The Sugar Removal Utility is also available in the open Java rich client application MORTAR ('MOlecule fRagmenTation fRamework')
 where <i>in silico</i> molecule fragmentation can be easily conducted on a given data set and the results visualised
 ([MORTAR GitHub repository](https://github.com/FelixBaensch/MORTAR) | [MORTAR article](https://doi.org/10.1186/s13321-022-00674-9)).
+<br></br>Since version 2.10, the Sugar Removal Utility is also part of the <a href="https://github.com/cdk/cdk">Chemistry Development Kit</a>.</b> 
+So, if you are already using CDK, you do not need to install the SRU externally.
 <p></p>
 
 The repository [wiki](https://github.com/JonasSchaub/SugarRemoval/wiki) contains code examples and some additional notes on sugar 
@@ -140,3 +144,4 @@ care of installing all dependencies.
 * [COCONUT Online home page](https://coconut.naturalproducts.net)
 * [Sorokina, M., Merseburger, P., Rajan, K. et al. COCONUT online: Collection of Open Natural Products database. J Cheminform 13, 2 (2021). https://doi.org/10.1186/s13321-020-00478-9](https://doi.org/10.1186/s13321-020-00478-9)
 * [Sorokina, M., Steinbeck, C. Review on natural products databases: where to find data in 2020. J Cheminform 12, 20 (2020).](https://doi.org/10.1186/s13321-020-00424-9)
+* [Venkata Chandrasekhar, Kohulan Rajan, Sri Ram Sagar Kanakam, Nisha Sharma, Viktor Weißenborn, Jonas Schaub, Christoph Steinbeck, COCONUT 2.0: a comprehensive overhaul and curation of the collection of open natural products database, Nucleic Acids Research, Volume 53, Issue D1, 6 January 2025, Pages D634–D643, https://doi.org/10.1093/nar/gkae1063](https://doi.org/10.1093/nar/gkae1063)
