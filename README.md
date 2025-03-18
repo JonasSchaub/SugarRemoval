@@ -33,17 +33,21 @@ removal of circular and linear sugars from molecular structures, as described in
 C. et al. Too sweet: cheminformatics for deglycosylation in natural products. J Cheminform 12, 67 (2020)](https://doi.org/10.1186/s13321-020-00467-y). 
 <br></br>The algorithm's implementation is available in three forms: As a web application, a command-line application, and
 as source code readily usable for other software development projects. Every form is open and free to use.
-The command-line application along with its source code
-and the sugar removal algorithm's main implementation are part of this repository. The web 
-application is available at [https://sugar.naturalproducts.net](https://sugar.naturalproducts.net) and its source code 
+<p></p>
+Important note: the Sugar Removal Utility (SRU) was implemented based on the 
+<a href="https://github.com/cdk/cdk">Chemistry Development Kit (CDK)</a> Java library for cheminformatics and is now a part of 
+it since CDK v2.10. Therefore, this repository here does not contain the main source code for SRU anymore. Only the 
+command-line application along with its source code and some code snippets and documentation can still be found here. If
+you want to use the SRU as a library or incorporate it into your own software, we recommend using it via CDK (follow the 
+link to the CDK repository above).
+<p></p>
+The SRU web application is available at [https://sugar.naturalproducts.net](https://sugar.naturalproducts.net) and its source code 
 can be found [here](https://github.com/mSorok/SugarRemovalWeb). <p></p>
 Further description of the implemented sugar removal algorithm and its various configurations can be found in the article
 referenced above.
 <br></br>The Sugar Removal Utility is also available in the open Java rich client application MORTAR ('MOlecule fRagmenTation fRamework')
 where <i>in silico</i> molecule fragmentation can be easily conducted on a given data set and the results visualised
 ([MORTAR GitHub repository](https://github.com/FelixBaensch/MORTAR) | [MORTAR article](https://doi.org/10.1186/s13321-022-00674-9)).
-<br></br>Since version 2.10, the Sugar Removal Utility is also part of the <a href="https://github.com/cdk/cdk">Chemistry Development Kit</a>.</b> 
-So, if you are already using CDK, you do not need to install the SRU externally.
 <p></p>
 
 The repository [wiki](https://github.com/JonasSchaub/SugarRemoval/wiki) contains code examples and some additional notes on sugar 
@@ -113,7 +117,7 @@ care of installing all dependencies.
   * Apache License, version 2.0
 
 **Managed by Maven:**
-* Chemistry Development Kit (CDK) version 2.9
+* Chemistry Development Kit (CDK) version 2.10
   * [Chemistry Development Kit on GitHub](https://cdk.github.io/)
   * License: GNU Lesser General Public License 2.1
 * JUnit version 5.10.0
