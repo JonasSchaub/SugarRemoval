@@ -2,7 +2,7 @@
 <!--
   ~ MIT License
   ~
-  ~ Copyright (c) 2023 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
+  ~ Copyright (c) 2025 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
   ~
   ~ Permission is hereby granted, free of charge, to any person obtaining a copy
   ~ of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
 
     <groupId>io.github.jonasschaub</groupId>
     <artifactId>sru</artifactId>
-    <version>1.4.0.0</version>
+    <version>1.5.0.0</version>
     <name>Sugar Removal Utility</name>
     <packaging>jar</packaging>
     <url>https://github.com/JonasSchaub/SugarRemoval</url>
@@ -43,10 +43,10 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <sonar.organization>jonasschaub</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <project.build.source>11</project.build.source>
-        <project.build.target>11</project.build.target>
-        <java.version>11</java.version>
-        <cdk.version>2.9</cdk.version>
+        <project.build.source>17</project.build.source>
+        <project.build.target>17</project.build.target>
+        <java.version>17</java.version>
+        <cdk.version>2.10</cdk.version>
         <junit.version>5.10.0</junit.version>
         <hamcrest.version>2.2</hamcrest.version>
         <spotless.version>2.40.0</spotless.version>
@@ -114,6 +114,14 @@
             <id>ossrh</id>
             <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
         </repository>
+        <repository>
+            <id>oss-sonatype</id>
+            <name>oss-sonatype</name>
+            <url>https://central.sonatype.org/content/repositories/</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -136,7 +144,7 @@
         </dependency>
         <dependency>
             <groupId>org.openscience.cdk</groupId>
-            <artifactId>cdk-model</artifactId>
+            <artifactId>cdk-extra</artifactId>
             <version>${cdk.version}</version>
         </dependency>
         <dependency>
@@ -385,7 +393,7 @@
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>0.8.7</version>
+                    <version>0.8.12</version>
                     <executions>
                         <execution>
                             <id>prepare-agent</id>
