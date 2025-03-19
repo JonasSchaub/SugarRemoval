@@ -30,7 +30,7 @@
 
     <groupId>io.github.jonasschaub</groupId>
     <artifactId>sru</artifactId>
-    <version>1.4.0.0</version>
+    <version>1.5.0.0</version>
     <name>Sugar Removal Utility</name>
     <packaging>jar</packaging>
     <url>https://github.com/JonasSchaub/SugarRemoval</url>
@@ -113,6 +113,14 @@
         <repository>
             <id>ossrh</id>
             <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
+        <repository>
+            <id>oss-sonatype</id>
+            <name>oss-sonatype</name>
+            <url>https://central.sonatype.org/content/repositories/</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
         </repository>
     </repositories>
 
@@ -385,7 +393,7 @@
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>0.8.7</version>
+                    <version>0.8.12</version>
                     <executions>
                         <execution>
                             <id>prepare-agent</id>
