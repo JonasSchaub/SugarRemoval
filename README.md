@@ -32,7 +32,7 @@
 removal of circular and linear sugars from molecular structures, is described in this scientific publication: [Schaub, J., Zielesny, A., Steinbeck, 
 C. et al. Too sweet: cheminformatics for deglycosylation in natural products. J Cheminform 12, 67 (2020)](https://doi.org/10.1186/s13321-020-00467-y). There, 
 you can find all necessary details about the algorithm and its various configuration options. We also published a 
-[follow-up article]((https://doi.org/10.3390/biom11040486)) where we used the SRU to analyse sugar moieties in the 
+[follow-up article](https://doi.org/10.3390/biom11040486) where we used the SRU to analyse sugar moieties in the 
 Collection of Open Natural products (COCONUT) database.
 * This repository *used to* host the SRU source code, but it has now moved to the 
 <a href="https://github.com/cdk/cdk">Chemistry Development Kit (CDK)</a> Java library for cheminformatics. If you want to 
