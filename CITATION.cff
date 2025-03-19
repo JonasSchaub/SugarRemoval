@@ -19,7 +19,7 @@ authors:
 doi: "10.5281/zenodo.7082113"
 date-released: 2025-03-19
 url: "https://github.com/JonasSchaub/SugarRemoval"
-license: "MIT"
+license: MIT
 references:
   - authors:
       - family-names: "Schaub"
