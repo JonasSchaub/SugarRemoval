@@ -11,8 +11,8 @@
 # and extended using https://selectfrom.dev/using-github-actions-to-automatically-publish-gradle-build-artifacts-d71c915cfa4
 name: Publish package to the Maven Central Repository
 on:
-  push:
-    branches: [ "main" ]
+  #push:
+    #branches: [ "main" ]
   release:
     types: [published, edited]
 jobs:
