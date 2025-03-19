@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Deploy JavaDoc 🚀
-        uses: MathieuSoysal/Javadoc-publisher.yml@v2.4.0
+        uses: MathieuSoysal/Javadoc-publisher.yml@v3.0.2
         with:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
           javadoc-branch: javadoc
-          java-version: 17
-          target-folder: javadoc/1.4
+          java-version: 21
+          target-folder: javadoc/1.5
           project: maven

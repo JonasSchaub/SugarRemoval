@@ -1,12 +1,12 @@
 /*
  * Groovy Cheminformatics with the Chemistry Development Kit
  * Edition 2.3-2
- * https://egonw.github.io/cdkbook/
+ * https://github.com/cdk/cdkbook
  *
  * Egon L. Willighagen PhD
  * Long time CDK developer
  *
- * © E.L. Willighagen 2011-2021
+ * © E.L. Willighagen 2011-2025
  *
  * License: CC-BY-SA 4.0 International
  *
@@ -54,8 +54,7 @@ public class SMILESFormatMatcher
                 try {
                     parser.parseSmiles(smiles);
                     return true;
-                } catch (InvalidSmilesException exception) {
-                }
+                } catch (InvalidSmilesException exception) {}
             }
         }
         return false;
@@ -65,8 +64,8 @@ public class SMILESFormatMatcher
         if (lines.get(0) != null && matches(1, lines.get(0))) {
             return new MatchResult(
                     true,
-                    (IChemFormat) SMILESFormat.getInstance(),
-                    new Integer(1)
+                    (IChemFormat)SMILESFormat.getInstance(),
+                    Integer.valueOf(1)
             );
         }
         return new MatchResult(false, null, Integer.MAX_VALUE);
