@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes and Interfaces","u":"allclasses-index.html"},{"p":"de.unijena.cheminf.deglycosylation","l":"Main"},{"p":"org.openscience.cdk.cdkbook","l":"SMILESFormatMatcher"},{"p":"de.unijena.cheminf.deglycosylation","l":"SugarRemovalUtilityCmdApplication"}];updateSearchResults();
