@@ -1,8 +1,7 @@
 /*
- * MORTAR - MOlecule fRagmenTAtion fRamework
- * Copyright (C) 2025  Felix Baensch, Jonas Schaub (felix.j.baensch@gmail.com, jonas.schaub@uni-jena.de)
+ * MIT License
  *
- * Source code is available at <https://github.com/FelixBaensch/MORTAR>
+ * Copyright (c) 2025 Jonas Schaub, Achim Zielesny, Christoph Steinbeck, Maria Sorokina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +26,13 @@ package de.unijena.cheminf.deglycosylation.tools;
 
 import org.openscience.cdk.AtomContainerSet;
 import org.openscience.cdk.CDKConstants;
+import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.InvalidSmilesException;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IChemObjectBuilder;
+import org.openscience.cdk.io.formats.IResourceFormat;
+import org.openscience.cdk.io.iterator.DefaultIteratingChemObjectReader;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmilesParser;
 
@@ -39,6 +41,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
@@ -55,7 +62,7 @@ import java.util.regex.Pattern;
  * @author Samuel Behr
  * @version 1.0.0.0
  */
-public class DynamicSMILESFileReader {
+public class DynamicSMILESFileReader extends DefaultIteratingChemObjectReader<IAtomContainer> {
     //<editor-fold desc="Public static final class constants">
     /**
      * Possible SMILES file separators used to separate SMILES code from ID. Ordered so that non-whitespace characters
@@ -81,6 +88,11 @@ public class DynamicSMILESFileReader {
      * Logger of this class.
      */
     private static final Logger LOGGER = Logger.getLogger(DynamicSMILESFileReader.class.getName());
+    //
+    /**
+     *
+     */
+    private final SmilesParser smilesParser;
     //</editor-fold>
     //
     //<editor-fold desc="Private variables">
@@ -89,14 +101,56 @@ public class DynamicSMILESFileReader {
      * headline not counted.
      */
     private int skippedLinesCounter;
+    //
+    /**
+     *
+     */
+    private BufferedReader buffReader;
+    //
+    /**
+     *
+     */
+    private DynamicSMILESFileFormat format;
+    //
+    /**
+     *
+     */
+    private String currentLine;
+    //
+    /**
+     *
+     */
+    private int lineInFileCounter;
     //</editor-fold>
     //
     //<editor-fold desc="Constructor">
     /**
-     * Creates new instance. Initialises the skipped lines counter.
+     * Constructs a new DynamicSMILESFileReader that can read molecules from a given a
+     * InputStream.
+     *
+     * @param in the {@link InputStream} to read from
      */
-    public DynamicSMILESFileReader() {
-        this.skippedLinesCounter = 0;
+    public DynamicSMILESFileReader(InputStream in, DynamicSMILESFileFormat aFormat) throws CDKException {
+        this(new InputStreamReader(in), aFormat);
+    }
+    //
+    /**
+     *
+     */
+    public DynamicSMILESFileReader(File aFile, DynamicSMILESFileFormat aFormat) throws CDKException, FileNotFoundException {
+        this(new FileReader(aFile), aFormat);
+    }
+    //
+    /**
+     * Constructs a new DynamicSMILESFileReader that can read molecules from a given a
+     * Reader.
+     *
+     * @param in the {@link Reader} to read from
+     */
+    public DynamicSMILESFileReader(Reader in, DynamicSMILESFileFormat aFormat) throws CDKException {
+        this.setSMILESFileFormat(aFormat);
+        this.setReader(in);
+        this.smilesParser = new SmilesParser(SilentChemObjectBuilder.getInstance());
     }
     //</editor-fold>
     //
@@ -114,6 +168,98 @@ public class DynamicSMILESFileReader {
     //
     //<editor-fold desc="Public static methods">
     /**
+     *
+     */
+    public static DynamicSMILESFileFormat detectFormat(List<String> lines) throws IOException {
+        IChemObjectBuilder tmpBuilder = SilentChemObjectBuilder.getInstance();
+        // AtomContainer to save the parsed SMILES in
+        IAtomContainer tmpMolecule = tmpBuilder.newAtomContainer();
+        SmilesParser tmpSmilesParser = new SmilesParser(tmpBuilder);
+        String tmpSmilesFileDeterminedSeparator = String.valueOf(DynamicSMILESFileFormat.PLACEHOLDER_SEPARATOR_CHAR);
+        int tmpSmilesCodeExpectedPosition = DynamicSMILESFileFormat.DEFAULT_SMILES_COLUMN_POSITION;
+        int tmpIDExpectedPosition = DynamicSMILESFileFormat.PLACEHOLDER_ID_COLUMN_POSITION;
+        int tmpCurrentLineInFileCounter = -1;
+        String tmpSmilesFileFirstLine = "";
+        findSeparatorLoop:
+        for (String tmpSmilesFileCurrentLine : lines) {
+            tmpCurrentLineInFileCounter++;
+            if (Objects.isNull(tmpSmilesFileCurrentLine)) {
+                break findSeparatorLoop;
+            }
+            if (tmpCurrentLineInFileCounter == 0) {
+                // saved for determination of whether the file has a headline below
+                tmpSmilesFileFirstLine = tmpSmilesFileCurrentLine;
+            }
+            // first try the whole line because the file might have only one column
+            if (!tmpSmilesFileCurrentLine.trim().isEmpty()
+                    //not trimmed because whitespaces are invalid and should be detected
+                    && DynamicSMILESFileReader.containsOnlySMILESValidCharacters(tmpSmilesFileCurrentLine)
+                    && !DynamicSMILESFileReader.PARSABLE_SMILES_EXCEPTIONS.contains(tmpSmilesFileCurrentLine.trim())) {
+                try {
+                    //if parsing fails goes to catch block below
+                    // trimmed because a leading whitespace followed by a character string are interpreted as an empty structure and its name
+                    tmpMolecule = tmpSmilesParser.parseSmiles(tmpSmilesFileCurrentLine.trim());
+                    if (!tmpMolecule.isEmpty()) {
+                        //success, SMILES column is identified
+                        tmpSmilesCodeExpectedPosition = 0;
+                        break findSeparatorLoop;
+                    }
+                } catch (InvalidSmilesException anException) {
+                    // do nothing, continue with splitting the line using different separators
+                }
+            }
+            for (String tmpSeparator : DynamicSMILESFileReader.POSSIBLE_SMILES_FILE_SEPARATORS) {
+                // limit param = 3 because we assume that SMILES code and ID are  in the first two columns
+                String[] tmpProcessedLineArray = tmpSmilesFileCurrentLine.split(tmpSeparator, 3);
+                for (int i = 0; i < tmpProcessedLineArray.length; i++) {
+                    String tmpNextElementOfLine = tmpProcessedLineArray[i];
+                    if (tmpNextElementOfLine.trim().isEmpty()
+                            || !DynamicSMILESFileReader.containsOnlySMILESValidCharacters(tmpNextElementOfLine)
+                            || DynamicSMILESFileReader.PARSABLE_SMILES_EXCEPTIONS.contains(tmpNextElementOfLine.trim())) {
+                        continue; //... to try next element in row
+                    }
+                    // check only the first two columns, see comment above
+                    if (i > 1) {
+                        break; //... try next separator
+                    }
+                    try {
+                        //if parsing fails goes to catch block below
+                        tmpMolecule = tmpSmilesParser.parseSmiles(tmpNextElementOfLine.trim());
+                        if (!tmpMolecule.isEmpty()) {
+                            //success, separator and SMILES column are identified
+                            tmpSmilesFileDeterminedSeparator = tmpSeparator;
+                            tmpSmilesCodeExpectedPosition = i;
+                            if (tmpProcessedLineArray.length > 1) {
+                                tmpIDExpectedPosition = tmpSmilesCodeExpectedPosition == 0 ? 1 : 0;
+                            }
+                            break findSeparatorLoop;
+                        } //else {
+                        // continue to try next element in row
+                        //}
+                    } catch (InvalidSmilesException anException) {
+                        // continue to try next element in row
+                    }
+                }
+            }
+        }
+        if (tmpMolecule.isEmpty()) {
+            throw new IOException("Chosen file does not fit to the expected format of a SMILES file.");
+        }
+        boolean tmpHasHeaderLine;
+        try {
+            if (tmpIDExpectedPosition == -1) {
+                tmpSmilesParser.parseSmiles(tmpSmilesFileFirstLine.trim());
+            } else {
+                tmpSmilesParser.parseSmiles(tmpSmilesFileFirstLine.trim().split(tmpSmilesFileDeterminedSeparator, 3)[tmpSmilesCodeExpectedPosition]);
+            }
+            tmpHasHeaderLine = false;
+        } catch (InvalidSmilesException anException) {
+            tmpHasHeaderLine = true;
+        }
+        return new DynamicSMILESFileFormat(tmpHasHeaderLine, tmpSmilesFileDeterminedSeparator.charAt(0), tmpSmilesCodeExpectedPosition, tmpIDExpectedPosition);
+    }
+    //
+    /**
      * Checking the first few lines of the SMILES file for parsable SMILES codes and saving the determined separator
      * character and SMILES code and ID column positions.
      * Expects one parsable SMILES code per line of the file and an optional second element, which is interpreted as the
@@ -130,113 +276,20 @@ public class DynamicSMILESFileReader {
                 FileReader tmpSmilesFileReader = new FileReader(aFile);
                 BufferedReader tmpSmilesFileBufferedReader = new BufferedReader(tmpSmilesFileReader, 65536)
         ) {
-            IChemObjectBuilder tmpBuilder = SilentChemObjectBuilder.getInstance();
-            // AtomContainer to save the parsed SMILES in
-            IAtomContainer tmpMolecule = tmpBuilder.newAtomContainer();
-            SmilesParser tmpSmilesParser = new SmilesParser(tmpBuilder);
-            String tmpSmilesFileDeterminedSeparator = String.valueOf(DynamicSMILESFileFormat.PLACEHOLDER_SEPARATOR_CHAR);
-            int tmpSmilesCodeExpectedPosition = DynamicSMILESFileFormat.DEFAULT_SMILES_COLUMN_POSITION;
-            int tmpIDExpectedPosition = DynamicSMILESFileFormat.PLACEHOLDER_ID_COLUMN_POSITION;
-            int tmpCurrentLineInFileCounter = -1;
-            String tmpSmilesFileCurrentLine;
-            String tmpSmilesFileFirstLine = "";
-            findSeparatorLoop:
-            while (!Thread.currentThread().isInterrupted() && tmpCurrentLineInFileCounter < DynamicSMILESFileReader.MAXIMUM_LINE_NUMBER_TO_CHECK_IN_SMILES_FILES) {
-                tmpSmilesFileCurrentLine = tmpSmilesFileBufferedReader.readLine();
-                tmpCurrentLineInFileCounter++;
-                if (Objects.isNull(tmpSmilesFileCurrentLine)) {
-                    break findSeparatorLoop;
-                }
-                if (tmpCurrentLineInFileCounter == 0) {
-                    // saved for determination of whether the file has a headline below
-                    tmpSmilesFileFirstLine = tmpSmilesFileCurrentLine;
-                }
-                // first try the whole line because the file might have only one column
-                if (!tmpSmilesFileCurrentLine.trim().isEmpty()
-                        //not trimmed because whitespaces are invalid and should be detected
-                        && DynamicSMILESFileReader.containsOnlySMILESValidCharacters(tmpSmilesFileCurrentLine)
-                        && !DynamicSMILESFileReader.PARSABLE_SMILES_EXCEPTIONS.contains(tmpSmilesFileCurrentLine.trim())) {
-                    try {
-                        //if parsing fails goes to catch block below
-                        // trimmed because a leading whitespace followed by a character string are interpreted as an empty structure and its name
-                        tmpMolecule = tmpSmilesParser.parseSmiles(tmpSmilesFileCurrentLine.trim());
-                        if (!tmpMolecule.isEmpty()) {
-                            //success, SMILES column is identified
-                            tmpSmilesCodeExpectedPosition = 0;
-                            break findSeparatorLoop;
-                        }
-                    } catch (InvalidSmilesException anException) {
-                        // do nothing, continue with splitting the line using different separators
-                    }
-                }
-                for (String tmpSeparator : DynamicSMILESFileReader.POSSIBLE_SMILES_FILE_SEPARATORS) {
-                    // limit param = 3 because we assume that SMILES code and ID are  in the first two columns
-                    String[] tmpProcessedLineArray = tmpSmilesFileCurrentLine.split(tmpSeparator, 3);
-                    for (int i = 0; i < tmpProcessedLineArray.length; i++) {
-                        String tmpNextElementOfLine = tmpProcessedLineArray[i];
-                        if (tmpNextElementOfLine.trim().isEmpty()
-                                || !DynamicSMILESFileReader.containsOnlySMILESValidCharacters(tmpNextElementOfLine)
-                                || DynamicSMILESFileReader.PARSABLE_SMILES_EXCEPTIONS.contains(tmpNextElementOfLine.trim())) {
-                            continue; //... to try next element in row
-                        }
-                        // check only the first two columns, see comment above
-                        if (i > 1) {
-                            break; //... try next separator
-                        }
-                        try {
-                            //if parsing fails goes to catch block below
-                            tmpMolecule = tmpSmilesParser.parseSmiles(tmpNextElementOfLine.trim());
-                            if (!tmpMolecule.isEmpty()) {
-                                //success, separator and SMILES column are identified
-                                tmpSmilesFileDeterminedSeparator = tmpSeparator;
-                                tmpSmilesCodeExpectedPosition = i;
-                                if (tmpProcessedLineArray.length > 1) {
-                                    tmpIDExpectedPosition = tmpSmilesCodeExpectedPosition == 0 ? 1 : 0;
-                                }
-                                break findSeparatorLoop;
-                            } //else {
-                                // continue to try next element in row
-                            //}
-                        } catch (InvalidSmilesException anException) {
-                            // continue to try next element in row
-                        }
-                    }
-                }
+            String tmpCurrentLine;
+            int tmpLinesCheckedCounter = 0;
+            List<String> tmpLinesToCheck = new ArrayList<>(DynamicSMILESFileReader.MAXIMUM_LINE_NUMBER_TO_CHECK_IN_SMILES_FILES);
+            while (tmpLinesCheckedCounter < DynamicSMILESFileReader.MAXIMUM_LINE_NUMBER_TO_CHECK_IN_SMILES_FILES
+                    && (tmpCurrentLine = tmpSmilesFileBufferedReader.readLine()) != null) {
+                tmpLinesToCheck.add(tmpCurrentLine);
+                tmpLinesCheckedCounter++;
             }
-            if (tmpMolecule.isEmpty()) {
-                throw new IOException("Chosen file does not fit to the expected format of a SMILES file.");
-            }
-            boolean tmpHasHeaderLine;
-            try {
-                if (tmpIDExpectedPosition == -1) {
-                    tmpSmilesParser.parseSmiles(tmpSmilesFileFirstLine.trim());
-                } else {
-                    tmpSmilesParser.parseSmiles(tmpSmilesFileFirstLine.trim().split(tmpSmilesFileDeterminedSeparator, 3)[tmpSmilesCodeExpectedPosition]);
-                }
-                tmpHasHeaderLine = false;
-            } catch (InvalidSmilesException anException) {
-                tmpHasHeaderLine = true;
-            }
-            return new DynamicSMILESFileFormat(tmpHasHeaderLine, tmpSmilesFileDeterminedSeparator.charAt(0), tmpSmilesCodeExpectedPosition, tmpIDExpectedPosition);
+            return DynamicSMILESFileReader.detectFormat(tmpLinesToCheck);
         } catch (FileNotFoundException anException) {
             String tmpMessage = "File " + aFile.getPath() + " could not be found";
             DynamicSMILESFileReader.LOGGER.log(Level.SEVERE, tmpMessage);
             throw new IOException(tmpMessage);
         }
-    }
-    //
-    /**
-     * Returns the name of the file without the file extension.
-     *
-     * @param aFile whose name should be returned without extension
-     * @return file name without extension
-     * @throws NullPointerException if given file is 'null'
-     */
-    public static String getFileNameWithoutExtension(File aFile) throws NullPointerException{
-        //<editor-fold defaultstate="collapsed" desc="Checks">
-        Objects.requireNonNull(aFile, "Given file is 'null'.");
-        //</editor-fold>
-        return aFile.getName().replaceFirst("[.][^.]+$", "");
     }
     //</editor-fold>
     //
@@ -248,72 +301,17 @@ public class DynamicSMILESFileReader {
      * after import via the respective getter method. If a name/ID column is given in the file, it is read and saved as
      * a property of the respective atom container under the name property key taken from the Importer class.
      *
-     * @param aFile a SMILES file
-     * @param aFormat the determined format of the file
      * @return atom container set parsed from the file
      * @throws IOException if the given file cannot be found
      */
-    public IAtomContainerSet readFile(File aFile, DynamicSMILESFileFormat aFormat) throws IOException {
-        try (
-                // throws FileNotFoundException if file cannot be found, see catch block below
-                FileReader tmpSmilesFileReader = new FileReader(aFile);
-                BufferedReader tmpSmilesFileBufferedReader = new BufferedReader(tmpSmilesFileReader, 65536)
-        ) {
-            IAtomContainerSet tmpAtomContainerSet = new AtomContainerSet();
-            IChemObjectBuilder tmpBuilder = SilentChemObjectBuilder.getInstance();
-            // AtomContainer to save the parsed SMILES in
-            IAtomContainer tmpMolecule;
-            SmilesParser tmpSmilesParser = new SmilesParser(tmpBuilder);
-            String tmpSmilesFileCurrentLine;
-            String tmpSmilesFileDeterminedSeparator = aFormat.getSeparatorChar().toString();
-            String[] tmpProcessedLineArray = new String[0];
-            int tmpSmilesCodeExpectedPosition = aFormat.getSMILESCodeColumnPosition();
-            int tmpIDExpectedPosition = aFormat.getIDColumnPosition();
-            this.skippedLinesCounter = 0;
-            int tmpLineInFileCounter = -1;
-            if (aFormat.hasHeaderLine()) {
-                tmpSmilesFileCurrentLine = tmpSmilesFileBufferedReader.readLine();
-                tmpLineInFileCounter++;
-            }
-            while (!Thread.currentThread().isInterrupted() && (tmpSmilesFileCurrentLine = tmpSmilesFileBufferedReader.readLine()) != null) {
-                tmpLineInFileCounter++;
-                //trying to parse as SMILES code
-                try {
-                    String tmpSmiles;
-                    if (aFormat.hasIDColumn()) {
-                        tmpProcessedLineArray = tmpSmilesFileCurrentLine.split(tmpSmilesFileDeterminedSeparator, 3);
-                        tmpSmiles = tmpProcessedLineArray[tmpSmilesCodeExpectedPosition].trim().isBlank() ? null :
-                                tmpProcessedLineArray[tmpSmilesCodeExpectedPosition].trim();
-                    } else {
-                        tmpSmiles = tmpSmilesFileCurrentLine.trim();
-                    }
-                    if (tmpSmiles != null && !tmpSmiles.isEmpty()) {
-                        //throws exception if SMILES string is null, goes to catch block
-                        tmpMolecule = tmpSmilesParser.parseSmiles(tmpSmiles);
-                    } else {
-                        throw new InvalidSmilesException("String is empty");
-                    }
-                } catch (InvalidSmilesException | IndexOutOfBoundsException | NullPointerException anException) {
-                    this.skippedLinesCounter++;
-                    DynamicSMILESFileReader.LOGGER.log(Level.WARNING, String.format("Import failed for structure in line (starting at 0):\t%s", tmpLineInFileCounter));
-                    continue;
-                }
-                //setting the name of the atom container
-                String tmpName;
-                if (aFormat.hasIDColumn() && tmpProcessedLineArray.length > 1 && !tmpProcessedLineArray[tmpIDExpectedPosition].trim().isEmpty()) {
-                    tmpName = tmpProcessedLineArray[tmpIDExpectedPosition].trim();
-                } else {
-                    tmpName = DynamicSMILESFileReader.getFileNameWithoutExtension(aFile) + tmpLineInFileCounter;
-                }
-                tmpMolecule.setProperty(CDKConstants.TITLE, tmpName);
-                tmpAtomContainerSet.addAtomContainer(tmpMolecule);
-            }
-            return tmpAtomContainerSet;
-        } catch (FileNotFoundException anException) {
-            String tmpMessage = "File " + aFile.getPath() + " could not be found";
-            DynamicSMILESFileReader.LOGGER.log(Level.SEVERE, tmpMessage);
-            throw new IOException(tmpMessage);
+    public IAtomContainerSet readToSet() throws IOException {
+        IAtomContainerSet tmpAtomContainerSet = new AtomContainerSet();
+        while (this.hasNext()) {
+            IAtomContainer next = this.next();
+            if (next != null)
+                tmpAtomContainerSet.addAtomContainer(next);
         }
+        return tmpAtomContainerSet;
     }
     //</editor-fold>
     //
@@ -343,4 +341,95 @@ public class DynamicSMILESFileReader {
         return matcher.find();
     }
     //</editor-fold>
+
+    @Override
+    public boolean hasNext() {
+        if (this.currentLine == null) {
+            try {
+                this.currentLine = this.buffReader.readLine();
+                return this.currentLine != null;
+            } catch (IOException e) {
+                return false;
+            }
+        } else {
+            return true;
+        }
+    }
+
+    @Override
+    public IAtomContainer next() {
+        if (this.currentLine == null && !this.hasNext()) {
+            return null;
+        }
+        IAtomContainer tmpMolecule;
+        String[] tmpProcessedLineArray = new String[0];
+        this.lineInFileCounter++;
+        //trying to parse as SMILES code
+        try {
+            String tmpSmiles;
+            if (this.format.hasIDColumn()) {
+                tmpProcessedLineArray = this.currentLine.split(this.format.getSeparatorChar().toString(), 3);
+                tmpSmiles = tmpProcessedLineArray[this.format.getSMILESCodeColumnPosition()].trim().isBlank() ? null :
+                        tmpProcessedLineArray[this.format.getSMILESCodeColumnPosition()].trim();
+            } else {
+                tmpSmiles = this.currentLine.trim();
+            }
+            this.currentLine = null;
+            if (tmpSmiles != null && !tmpSmiles.isEmpty()) {
+                //throws exception if SMILES string is null, goes to catch block
+                tmpMolecule = this.smilesParser.parseSmiles(tmpSmiles);
+            } else {
+                throw new InvalidSmilesException("String is empty");
+            }
+        } catch (InvalidSmilesException | IndexOutOfBoundsException | NullPointerException anException) {
+            this.skippedLinesCounter++;
+            DynamicSMILESFileReader.LOGGER.log(Level.WARNING, String.format("Import failed for structure in line (starting at 0):\t%s", this.lineInFileCounter), anException);
+            return null;
+        }
+        //setting the name of the atom container
+        String tmpName;
+        if (this.format.hasIDColumn() && tmpProcessedLineArray.length > 1 && !tmpProcessedLineArray[this.format.getIDColumnPosition()].trim().isEmpty()) {
+            tmpName = tmpProcessedLineArray[this.format.getIDColumnPosition()].trim();
+            tmpMolecule.setProperty(CDKConstants.TITLE, tmpName);
+        }
+        return tmpMolecule;
+    }
+
+    @Override
+    public void setReader(Reader reader) throws CDKException{
+        if (reader instanceof BufferedReader) {
+            this.buffReader = (BufferedReader) reader;
+        } else {
+            this.buffReader = new BufferedReader(reader, 65536);
+        }
+        this.skippedLinesCounter = 0;
+        this.lineInFileCounter = -1;
+        if (this.format.hasHeaderLine()) {
+            try {
+                this.buffReader.readLine();
+                this.lineInFileCounter++;
+            } catch (IOException anException) {
+                throw new CDKException(anException.getMessage());
+            }
+        }
+    }
+
+    @Override
+    public void setReader(InputStream inputStream) throws CDKException {
+        this.setReader(new InputStreamReader(inputStream));
+    }
+
+    public void setSMILESFileFormat(DynamicSMILESFileFormat aFormat) {
+        this.format = aFormat;
+    }
+
+    @Override
+    public IResourceFormat getFormat() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void close() throws IOException {
+        this.buffReader.close();
+    }
 }

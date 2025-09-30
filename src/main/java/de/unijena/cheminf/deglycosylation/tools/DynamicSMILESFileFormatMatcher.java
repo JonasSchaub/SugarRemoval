@@ -21,12 +21,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
 package de.unijena.cheminf.deglycosylation.tools;
 
 import org.openscience.cdk.io.formats.AbstractResourceFormat;
+import org.openscience.cdk.io.formats.IChemFormat;
 import org.openscience.cdk.io.formats.IChemFormatMatcher;
+import org.openscience.cdk.io.formats.IResourceFormat;
+import org.openscience.cdk.io.formats.SMILESFormat;
 import org.openscience.cdk.tools.DataFeatures;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -36,9 +41,26 @@ public class DynamicSMILESFileFormatMatcher
         extends AbstractResourceFormat
         implements IChemFormatMatcher {
 
+    private static IResourceFormat instance = null;
+
+    public DynamicSMILESFileFormatMatcher() {}
+
+    public static IResourceFormat getInstance() {
+        if (instance == null)
+            instance = new DynamicSMILESFileFormatMatcher();
+        return instance;
+    }
+
     @Override
     public MatchResult matches(List<String> list) {
-        return null;
+        try {
+            DynamicSMILESFileFormat format = DynamicSMILESFileReader.detectFormat(list);
+            return new MatchResult(true,
+                    (IChemFormat)SMILESFormat.getInstance(),
+                    Integer.valueOf(1));
+        } catch (IOException e) {
+            return new MatchResult(false, null, Integer.MAX_VALUE);
+        }
     }
 
     @Override

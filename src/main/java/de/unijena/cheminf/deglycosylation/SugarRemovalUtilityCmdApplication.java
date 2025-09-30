@@ -24,6 +24,10 @@
 
 package de.unijena.cheminf.deglycosylation;
 
+import de.unijena.cheminf.deglycosylation.tools.DynamicSMILESFileFormat;
+import de.unijena.cheminf.deglycosylation.tools.DynamicSMILESFileFormatMatcher;
+import de.unijena.cheminf.deglycosylation.tools.DynamicSMILESFileReader;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -33,17 +37,14 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.atomtype.CDKAtomTypeMatcher;
-import org.openscience.cdk.cdkbook.SMILESFormatMatcher;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomType;
 import org.openscience.cdk.io.FormatFactory;
 import org.openscience.cdk.io.formats.IChemFormat;
-import org.openscience.cdk.io.formats.IChemFormatMatcher;
 import org.openscience.cdk.io.iterator.IIteratingChemObjectReader;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
-import org.openscience.cdk.io.iterator.IteratingSMILESReader;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
@@ -877,7 +878,7 @@ public class SugarRemovalUtilityCmdApplication {
      * @throws IllegalArgumentException if the given input file cannot be used or another setting in this class is
      * erroneous
      */
-    public void execute() throws IOException, SecurityException, IllegalArgumentException {
+    public void execute() throws IOException, SecurityException, IllegalArgumentException, CDKException {
         if (Objects.isNull(this.inputFile) || Objects.isNull(this.sugarRemovalUtil) || this.typeOfMoietiesToRemove == 0) {
             throw new IllegalArgumentException("This object has not been properly instantiated because the usage " +
                     "instructions or version were queried by the command-line. It therefore cannot be executed.");
@@ -889,7 +890,7 @@ public class SugarRemovalUtilityCmdApplication {
         BufferedReader tmpBuffReader = new BufferedReader(tmpInputStreamReader);
         FileReader tmpFileReader = new FileReader(this.inputFile);
         FormatFactory tmpCDKFormatFactory = new FormatFactory();
-        tmpCDKFormatFactory.registerFormat((IChemFormatMatcher) SMILESFormatMatcher.getInstance());
+        tmpCDKFormatFactory.registerFormat(new DynamicSMILESFileFormatMatcher());
         IChemFormat tmpFormat = tmpCDKFormatFactory.guessFormat(tmpBuffReader);
         if (Objects.isNull(tmpFormat)) {
             throw new IllegalArgumentException("Given file format cannot be determined.");
@@ -905,7 +906,8 @@ public class SugarRemovalUtilityCmdApplication {
                 System.out.println("Found MDL molfile / structure data file.");
                 break;
             case "SMILES":
-                tmpReader = new IteratingSMILESReader(tmpFileReader, SilentChemObjectBuilder.getInstance());
+                DynamicSMILESFileFormat format = DynamicSMILESFileReader.detectFormat(this.inputFile);
+                tmpReader = new DynamicSMILESFileReader(tmpFileReader, format);
                 System.out.println("Found SMILES file.");
                 break;
             default:
