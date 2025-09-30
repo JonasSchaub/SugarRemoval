@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package de.unijena.cheminf.deglycosylation;
+package org.openscience.cdk.tools;
 
 /**
  * TODO (if there are bugs to investigate):
@@ -31,6 +31,7 @@ package de.unijena.cheminf.deglycosylation;
  * - test the protected routines
  */
 
+import de.unijena.cheminf.deglycosylation.SugarRemovalUtilityCmdApplication;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.openscience.cdk.Atom;
@@ -56,8 +57,6 @@ import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
-import org.openscience.cdk.tools.CDKHydrogenAdder;
-import org.openscience.cdk.tools.SugarRemovalUtility;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
 import java.io.File;
@@ -1689,35 +1688,35 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         Assertions.assertEquals(344, tmpMoleculesCounter);
     }
 
-//    /**
-//     * Tests the protected routine to split ether, ester and peroxide bonds.
-//     *
-//     * @throws Exception if anything goes wrong or an AssertionError occurs
-//     */
-//    @Test
-//    void testEtherEsterPeroxideSplittingExtraction() throws Exception {
-//        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
-//        SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
-//        IAtomContainer originalMolecule;
-//        originalMolecule = smiPar.parseSmiles(
-//                //CNP0138295
-//                "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O");
-//        List<IAtomContainer> beforeSplittingList = new ArrayList<>(1);
-//        beforeSplittingList.add(originalMolecule);
-//        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
-//        List<IAtomContainer> afterSplittingList = sru.splitEtherEsterAndPeroxideBondsExtraction(beforeSplittingList);
-//        List<String> smilesAfterSplittingList = new ArrayList<>(3);
-//        for (IAtomContainer fragment : afterSplittingList) {
-//            String smilesCode = smiGen.create(fragment);
-//            smilesAfterSplittingList.add(smilesCode);
-//        }
-//        List<String> expectedList = new ArrayList<>(3);
-//        expectedList.add("O=CC(O)C(O)C(O)C(O)C[O]");
-//        expectedList.add("O=CC(O)C(O)[C](O)C(O)C[O]");
-//        //note: This structure is not split because one of the carbon atoms surrounding the ether oxygen is aromatic
-//        expectedList.add("O=[C]C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C");
-//        Assertions.assertEquals(expectedList, smilesAfterSplittingList);
-//    }
+    /**
+     * Tests the protected routine to split ether, ester and peroxide bonds.
+     *
+     * @throws Exception if anything goes wrong or an AssertionError occurs
+     */
+    @Test
+    void testEtherEsterPeroxideSplittingExtraction() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
+        IAtomContainer originalMolecule;
+        originalMolecule = smiPar.parseSmiles(
+                //CNP0138295
+                "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O");
+        List<IAtomContainer> beforeSplittingList = new ArrayList<>(1);
+        beforeSplittingList.add(originalMolecule);
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
+        List<IAtomContainer> afterSplittingList = sru.splitEtherEsterAndPeroxideBondsExtraction(beforeSplittingList);
+        List<String> smilesAfterSplittingList = new ArrayList<>(3);
+        for (IAtomContainer fragment : afterSplittingList) {
+            String smilesCode = smiGen.create(fragment);
+            smilesAfterSplittingList.add(smilesCode);
+        }
+        List<String> expectedList = new ArrayList<>(3);
+        expectedList.add("O=CC(O)C(O)C(O)C(O)C[O]");
+        expectedList.add("O=CC(O)C(O)[C](O)C(O)C[O]");
+        //note: This structure is not split because one of the carbon atoms surrounding the ether oxygen is aromatic
+        expectedList.add("O=[C]C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C");
+        Assertions.assertEquals(expectedList, smilesAfterSplittingList);
+    }
 
     /**
      * Tests the correct handling of input molecules that consist of multiple
