@@ -25,7 +25,6 @@
 package de.unijena.cheminf.deglycosylation;
 
 import de.unijena.cheminf.deglycosylation.tools.DynamicSMILESFileFormat;
-import de.unijena.cheminf.deglycosylation.tools.DynamicSMILESFileFormatMatcher;
 import de.unijena.cheminf.deglycosylation.tools.DynamicSMILESFileReader;
 
 import org.apache.commons.cli.CommandLine;
@@ -36,26 +35,19 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.openscience.cdk.CDKConstants;
-import org.openscience.cdk.atomtype.CDKAtomTypeMatcher;
 import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
-import org.openscience.cdk.interfaces.IAtomType;
-import org.openscience.cdk.io.FormatFactory;
-import org.openscience.cdk.io.formats.IChemFormat;
 import org.openscience.cdk.io.iterator.IIteratingChemObjectReader;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
-import org.openscience.cdk.tools.CDKHydrogenAdder;
+import org.openscience.cdk.tools.SugarDetectionUtility;
 import org.openscience.cdk.tools.SugarRemovalUtility;
-import org.openscience.cdk.tools.manipulator.AtomTypeManipulator;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -68,23 +60,24 @@ import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
 /**
- * Controller of the Sugar Removal Utility command-line application. It can be used to remove sugar moieties from
+ * Controller of the Sugar Removal/Detection Utility command-line application. It can be used to remove sugar moieties from
  * molecules in a given data set, according to <a href="https://doi.org/10.1186/s13321-020-00467-y"
  * >"Schaub, J., Zielesny, A., Steinbeck, C., Sorokina, M. Too sweet: cheminformatics for deglycosylation in natural
- * products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y"</a>. This class
- * basically instantiates the SugarRemovalUtility class with the settings specified in the command line arguments and
+ * products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y"</a> with the more recent
+ * <a href="https://github.com/cdk/cdk/pull/1225">SugarDetectionUtility extension</a>.
+ * This class basically instantiates the SugarDetectionUtility class with the settings specified in the command line arguments and
  * uses it to iterate over all molecules found in the given file and remove their sugar moieties. Also, a CSV file detailing
  * the deglycosylated cores and removed sugar moieties for each molecule is created as output.
  *
  * @author Jonas Schaub
- * @version 1.5
+ * @version 1.6
  */
 public class SugarRemovalUtilityCmdApplication {
     //<editor-fold desc="Public static final constants">
     /**
      * Version string of this class to print out if -v --version is queried from the command-line.
      */
-    public static final String VERSION = "1.5.0.0";
+    public static final String VERSION = "1.6.0.0";
     //</editor-fold>
     //
     //<editor-fold desc="Private static final constants">
@@ -343,6 +336,48 @@ public class SugarRemovalUtilityCmdApplication {
             .required(false)
             .optionalArg(false)
             .build();
+
+    /**
+     * Optional command-line option to specify whether to mark the attachment points of removed sugar moieties by R.
+     */
+    private static final Option MARK_ATTACHMENT_POINTS_BY_R_OPTION = Option.builder("markR")
+            .argName("boolean")
+            .longOpt("markAttachmentPointsByR")
+            .desc("Either true or false, indicating whether the attachment points of removed sugar moieties should be " +
+                    "marked by R groups in the deglycosylated core structure and on the extracted sugars; default: false")
+            .hasArg(true)
+            .numberOfArgs(1)
+            .required(false)
+            .optionalArg(false)
+            .build();
+
+    /**
+     * Optional command-line option to specify whether to post-process the extracted sugar moieties.
+     */
+    private static final Option POST_PROCESS_SUGARS_OPTION = Option.builder("postProcSug")
+            .argName("boolean")
+            .longOpt("postProcessSugars")
+            .desc("Either true or false, indicating whether the extracted sugar moieties should be post-processed, " +
+                    "i.e. bond splitting (O-glycosidic, ether, ester, peroxide) to separate the individual sugars, before being output; default: false")
+            .hasArg(true)
+            .numberOfArgs(1)
+            .required(false)
+            .optionalArg(false)
+            .build();
+
+    /**
+     * Optional command-line option to specify whether to limit the post-processing of extracted sugar moieties by size.
+     */
+    private static final Option LIMIT_POST_PROCESSING_BY_SIZE_OPTION = Option.builder("limitPostProcBySize")
+            .argName("boolean")
+            .longOpt("limitPostProcessingBySize")
+            .desc("Either true or false, indicating whether the post-processing of extracted sugar moieties should be " +
+                    "limited to structures bigger than a defined size (see preservation mode (threshold)) to preserve smaller modifications; default: false")
+            .hasArg(true)
+            .numberOfArgs(1)
+            .required(false)
+            .optionalArg(false)
+            .build();
     //</editor-fold>
     //</editor-fold>
     //
@@ -384,6 +419,12 @@ public class SugarRemovalUtilityCmdApplication {
                 SugarRemovalUtilityCmdApplication.DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_OPTION);
         SugarRemovalUtilityCmdApplication.CMD_OPTIONS.addOption(
                 SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION);
+        SugarRemovalUtilityCmdApplication.CMD_OPTIONS.addOption(
+                SugarRemovalUtilityCmdApplication.MARK_ATTACHMENT_POINTS_BY_R_OPTION);
+        SugarRemovalUtilityCmdApplication.CMD_OPTIONS.addOption(
+                SugarRemovalUtilityCmdApplication.POST_PROCESS_SUGARS_OPTION);
+        SugarRemovalUtilityCmdApplication.CMD_OPTIONS.addOption(
+                SugarRemovalUtilityCmdApplication.LIMIT_POST_PROCESSING_BY_SIZE_OPTION);
     }
     //</editor-fold>
     //
@@ -395,9 +436,9 @@ public class SugarRemovalUtilityCmdApplication {
     private boolean wasHelpOrVersionQueried;
 
     /**
-     * SugarRemovalUtility instance used to detect and remove the sugar moieties.
+     * SugarDetectionUtility instance used to detect and remove the sugar moieties.
      */
-    private SugarRemovalUtility sugarRemovalUtil;
+    private SugarDetectionUtility sugarDetectionUtility;
 
     /**
      * Setting that specifies whether to remove circular, linear, or both types of moieties from the molecules.
@@ -408,6 +449,24 @@ public class SugarRemovalUtilityCmdApplication {
      * Input file containing molecule set, either MDL Molfile, MDL Structure data file (SDF), or SMILES file.
      */
     private File inputFile;
+
+    /**
+     * Setting that specifies whether attachment points of removed sugar moieties should be marked by R groups in the
+     * deglycosylated core structure and on the extracted sugars.
+     */
+    private boolean markAttachmentPointsByR;
+
+    /**
+     * Setting that specifies whether the extracted sugar moieties should be post-processed, i.e. bond splitting
+     * (O-glycosidic, ether, ester, peroxide) to separate the individual sugars, before being output.
+     */
+    private boolean postProcessSugars;
+
+    /**
+     * Setting that specifies whether the post-processing of extracted sugar moieties should be limited to structures
+     * bigger than a defined size (see preservation mode (threshold)) to preserve smaller modifications.
+     */
+    private boolean limitPostProcessingBySize;
     //</editor-fold>
     //
     //<editor-fold desc="Constructors">
@@ -490,11 +549,26 @@ public class SugarRemovalUtilityCmdApplication {
      * <br>* option -circSugKetoGroups --detectCircularSugarsWithKetoGroups {@literal <}boolean{@literal >}: Either "true" or "false",
      * indicating whether circular sugar-like moieties with keto groups should be detected. Any other value of this
      * argument will be interpreted as "false". Default: "false". This option is optional.
+     * <br>* option -markR --markAttachmentPointsByR {@literal <}boolean{@literal >}: Either "true" or "false", indicating whether the
+     * attachment points of removed sugar moieties should be marked by R groups in the deglycosylated core structure
+     * and on the extracted sugars. Any other value of this argument will be interpreted as "false". Default: "false".
+     * This option is optional.
+     * <br>* option -postProcSug --postProcessSugars {@literal <}boolean{@literal >}: Either "true" or "false",
+     * indicating whether the extracted sugar moieties
+     * should be post-processed, i.e. bond splitting (O-glycosidic, ether, ester, peroxide) to separate the individual sugars,
+     * before being output. Any other value of this argument will be interpreted as "false". Default: "false".
+     * This option is optional.
+     * <br>* option -limitPostProcBySize --limitPostProcessingBySize {@literal <}boolean{@literal >}: Either "true" or
+     * "false", indicating whether the post-processing of
+     * extracted sugar moieties should be limited to structures bigger than a defined size (see preservation mode
+     * (threshold)) to preserve smaller modifications. Any other value of this argument will be interpreted as "false".
+     * Default: "false". This option is optional.
      * <p>
      * Example (all settings in default): String[] args = new String[] {"-i", "smiles_test_file.txt", "-t", "3",
      * "-glyBond", "false", "-remTerm", "true", "-presMode", "1", "-presThres", "5", "-oxyAtoms", "true", "-oxyAtomsThres",
      * "0.5", "-linSugInRings", "false", "-linSugMinSize", "4", "-linSugMaxSize", "7", "-linAcSug", "false",
-     * "-circSugSpiro", "false", "-circSugKetoGroups", "false"};
+     * "-circSugSpiro", "false", "-circSugKetoGroups", "false", "-markR", "false", "-postProcSug", "false",
+     * "-limitPostProcBySize", "false"};
      *
      * @param args see doc above for description of possible command-line arguments
      * @throws IllegalArgumentException if any parameter does not meet the specified requirements
@@ -574,7 +648,7 @@ public class SugarRemovalUtilityCmdApplication {
                     + "either 1 (circular sugar moieties), 2 (linear sugar moieties), or 3 (both).");
         }
         this.typeOfMoietiesToRemove = tmpTypeOfMoietiesToRemove;
-        this.sugarRemovalUtil = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        this.sugarDetectionUtility = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_OPTION.getOpt())) {
             if (Objects.isNull(tmpCommandLine.getOptionValue(
                     SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_OPTION.getOpt()))) {
@@ -587,7 +661,7 @@ public class SugarRemovalUtilityCmdApplication {
             boolean tmpDetectCircularSugarsOnlyWithOGlycosidicBondSetting = Boolean.parseBoolean(
                     tmpCommandLine.getOptionValue(
                     SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_ONLY_WITH_O_GLYCOSIDIC_BOND_OPTION.getOpt()).trim());
-            this.sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(
+            this.sugarDetectionUtility.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(
                     tmpDetectCircularSugarsOnlyWithOGlycosidicBondSetting);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.REMOVE_ONLY_TERMINAL_SUGARS_OPTION.getOpt())) {
@@ -601,7 +675,7 @@ public class SugarRemovalUtilityCmdApplication {
             boolean tmpRemoveOnlyTerminalSugarsSetting = Boolean.parseBoolean(
                     tmpCommandLine.getOptionValue(
                             SugarRemovalUtilityCmdApplication.REMOVE_ONLY_TERMINAL_SUGARS_OPTION.getOpt()).trim());
-            this.sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(
+            this.sugarDetectionUtility.setRemoveOnlyTerminalSugarsSetting(
                     tmpRemoveOnlyTerminalSugarsSetting);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getOpt())) {
@@ -635,7 +709,7 @@ public class SugarRemovalUtilityCmdApplication {
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getLongOpt()
                         + ") does not correspond to an ordinal in the PreservationMode enumeration.");
             }
-            this.sugarRemovalUtil.setPreservationModeSetting(tmpPreservationMode);
+            this.sugarDetectionUtility.setPreservationModeSetting(tmpPreservationMode);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_THRESHOLD_OPTION.getOpt())) {
             int tmpPreservationModeThresholdSetting = -1;
@@ -656,7 +730,7 @@ public class SugarRemovalUtilityCmdApplication {
             }
             //case 1: Preservation mode setting is 'all' (ordinal 0). Then, a 0 threshold should be passed.
             // case 2: Preservation mode is not 'all' (ordinal nonzero). Then, a nonzero threshold should be passed.
-            SugarRemovalUtility.PreservationMode tmpPreservationModeSetting = this.sugarRemovalUtil.getPreservationModeSetting();
+            SugarRemovalUtility.PreservationMode tmpPreservationModeSetting = this.sugarDetectionUtility.getPreservationModeSetting();
             if (tmpPreservationModeSetting.equals(SugarRemovalUtility.PreservationMode.ALL) && tmpPreservationModeThresholdSetting != 0) {
                 throw new IllegalArgumentException("Preservation mode 'all' was selected or used as default (option -"
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_OPTION.getOpt() + " or --"
@@ -674,7 +748,7 @@ public class SugarRemovalUtilityCmdApplication {
                         + SugarRemovalUtilityCmdApplication.PRESERVATION_MODE_THRESHOLD_OPTION.getLongOpt()
                         + ").");
             }
-            this.sugarRemovalUtil.setPreservationModeThresholdSetting(tmpPreservationModeThresholdSetting);
+            this.sugarDetectionUtility.setPreservationModeThresholdSetting(tmpPreservationModeThresholdSetting);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_ONLY_WITH_ENOUGH_EXOCYCLIC_OXYGEN_ATOMS_OPTION.getOpt())) {
             if (Objects.isNull(tmpCommandLine.getOptionValue(
@@ -688,7 +762,7 @@ public class SugarRemovalUtilityCmdApplication {
             boolean tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting = Boolean.parseBoolean(
                     tmpCommandLine.getOptionValue(
                             SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_ONLY_WITH_ENOUGH_EXOCYCLIC_OXYGEN_ATOMS_OPTION.getOpt()).trim());
-            this.sugarRemovalUtil.setDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting(
+            this.sugarDetectionUtility.setDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting(
                     tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_OPTION.getOpt())) {
@@ -713,7 +787,7 @@ public class SugarRemovalUtilityCmdApplication {
             //case 1: If the number of exocyclic oxygen atoms is neglected, a 0 threshold should be passed
             // case 2: If it is detected, a nonzero threshold should be passed
             boolean tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting =
-                    this.sugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected();
+                    this.sugarDetectionUtility.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected();
             if (!tmpDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting
                     && tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting != 0) {
                 throw new IllegalArgumentException("The number of exocyclic oxygen atoms of circular sugars is neglected at detection (option -"
@@ -734,7 +808,7 @@ public class SugarRemovalUtilityCmdApplication {
                         + SugarRemovalUtilityCmdApplication.EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_OPTION.getLongOpt()
                         + ").");
             }
-            this.sugarRemovalUtil.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting);
+            this.sugarDetectionUtility.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(tmpExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.DETECT_LINEAR_SUGARS_IN_RINGS_OPTION.getOpt())) {
             if (Objects.isNull(tmpCommandLine.getOptionValue(
@@ -747,7 +821,7 @@ public class SugarRemovalUtilityCmdApplication {
             boolean tmpDetectLinearSugarsInRingsSetting = Boolean.parseBoolean(
                     tmpCommandLine.getOptionValue(
                             SugarRemovalUtilityCmdApplication.DETECT_LINEAR_SUGARS_IN_RINGS_OPTION.getOpt()).trim());
-            this.sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(
+            this.sugarDetectionUtility.setDetectLinearSugarsInRingsSetting(
                     tmpDetectLinearSugarsInRingsSetting);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.LINEAR_SUGAR_CANDIDATE_MIN_SIZE_OPTION.getOpt()) ||
@@ -789,10 +863,10 @@ public class SugarRemovalUtilityCmdApplication {
                 }
             }
             if (tmpLinearSugarCandidateMinSizeSetting == -1) {
-                tmpLinearSugarCandidateMinSizeSetting = this.sugarRemovalUtil.getLinearSugarCandidateMinSizeSetting();
+                tmpLinearSugarCandidateMinSizeSetting = this.sugarDetectionUtility.getLinearSugarCandidateMinSizeSetting();
             }
             if (tmpLinearSugarCandidateMaxSizeSetting == -1) {
-                tmpLinearSugarCandidateMaxSizeSetting = this.sugarRemovalUtil.getLinearSugarCandidateMaxSizeSetting();
+                tmpLinearSugarCandidateMaxSizeSetting = this.sugarDetectionUtility.getLinearSugarCandidateMaxSizeSetting();
             }
             if (tmpLinearSugarCandidateMinSizeSetting > tmpLinearSugarCandidateMaxSizeSetting) {
                 throw new IllegalArgumentException("The linear sugar candidate minimum size (option -"
@@ -807,8 +881,8 @@ public class SugarRemovalUtilityCmdApplication {
                         + SugarRemovalUtility.LINEAR_SUGAR_CANDIDATE_MAX_SIZE_DEFAULT
                         + ").");
             }
-            this.sugarRemovalUtil.setLinearSugarCandidateMinSizeSetting(tmpLinearSugarCandidateMinSizeSetting);
-            this.sugarRemovalUtil.setLinearSugarCandidateMaxSizeSetting(tmpLinearSugarCandidateMaxSizeSetting);
+            this.sugarDetectionUtility.setLinearSugarCandidateMinSizeSetting(tmpLinearSugarCandidateMinSizeSetting);
+            this.sugarDetectionUtility.setLinearSugarCandidateMaxSizeSetting(tmpLinearSugarCandidateMaxSizeSetting);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.DETECT_LINEAR_ACIDIC_SUGARS_OPTION.getOpt())) {
             if (Objects.isNull(tmpCommandLine.getOptionValue(
@@ -822,7 +896,7 @@ public class SugarRemovalUtilityCmdApplication {
             boolean tmpDetectLinearAcidicSugarsSetting = Boolean.parseBoolean(
                     tmpCommandLine.getOptionValue(
                             SugarRemovalUtilityCmdApplication.DETECT_LINEAR_ACIDIC_SUGARS_OPTION.getOpt()).trim());
-            this.sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(
+            this.sugarDetectionUtility.setDetectLinearAcidicSugarsSetting(
                     tmpDetectLinearAcidicSugarsSetting);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_OPTION.getOpt())) {
@@ -836,7 +910,7 @@ public class SugarRemovalUtilityCmdApplication {
             boolean tmpDetectSpiroRingsAsCircularSugarsSetting = Boolean.parseBoolean(
                     tmpCommandLine.getOptionValue(
                             SugarRemovalUtilityCmdApplication.DETECT_SPIRO_RINGS_AS_CIRCULAR_SUGARS_OPTION.getOpt()).trim());
-            this.sugarRemovalUtil.setDetectSpiroRingsAsCircularSugarsSetting(
+            this.sugarDetectionUtility.setDetectSpiroRingsAsCircularSugarsSetting(
                     tmpDetectSpiroRingsAsCircularSugarsSetting);
         }
         if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION.getOpt())) {
@@ -850,8 +924,44 @@ public class SugarRemovalUtilityCmdApplication {
             boolean tmpDetectCircularSugarsWithKetoGroupsSetting = Boolean.parseBoolean(
                     tmpCommandLine.getOptionValue(
                             SugarRemovalUtilityCmdApplication.DETECT_CIRCULAR_SUGARS_WITH_KETO_GROUPS_OPTION.getOpt()).trim());
-            this.sugarRemovalUtil.setDetectCircularSugarsWithKetoGroupsSetting(
+            this.sugarDetectionUtility.setDetectCircularSugarsWithKetoGroupsSetting(
                     tmpDetectCircularSugarsWithKetoGroupsSetting);
+        }
+        if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.MARK_ATTACHMENT_POINTS_BY_R_OPTION.getOpt())) {
+            if (Objects.isNull(tmpCommandLine.getOptionValue(
+                    SugarRemovalUtilityCmdApplication.MARK_ATTACHMENT_POINTS_BY_R_OPTION.getOpt()))) {
+                throw new IllegalArgumentException("Boolean value indicating whether to mark the attachment points by R groups (option -"
+                        + SugarRemovalUtilityCmdApplication.MARK_ATTACHMENT_POINTS_BY_R_OPTION.getOpt() + " or --"
+                        + SugarRemovalUtilityCmdApplication.MARK_ATTACHMENT_POINTS_BY_R_OPTION.getLongOpt()
+                        + ") is empty (null).");
+            }
+            this.markAttachmentPointsByR = Boolean.parseBoolean(
+                    tmpCommandLine.getOptionValue(
+                            SugarRemovalUtilityCmdApplication.MARK_ATTACHMENT_POINTS_BY_R_OPTION.getOpt()).trim());
+        }
+        if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.POST_PROCESS_SUGARS_OPTION.getOpt())) {
+            if (Objects.isNull(tmpCommandLine.getOptionValue(
+                    SugarRemovalUtilityCmdApplication.POST_PROCESS_SUGARS_OPTION.getOpt()))) {
+                throw new IllegalArgumentException("Boolean value indicating whether to post-process sugar moieties after extraction (option -"
+                        + SugarRemovalUtilityCmdApplication.POST_PROCESS_SUGARS_OPTION.getOpt() + " or --"
+                        + SugarRemovalUtilityCmdApplication.POST_PROCESS_SUGARS_OPTION.getLongOpt()
+                        + ") is empty (null).");
+            }
+            this.postProcessSugars = Boolean.parseBoolean(
+                    tmpCommandLine.getOptionValue(
+                            SugarRemovalUtilityCmdApplication.POST_PROCESS_SUGARS_OPTION.getOpt()).trim());
+        }
+        if (tmpCommandLine.hasOption(SugarRemovalUtilityCmdApplication.LIMIT_POST_PROCESSING_BY_SIZE_OPTION.getOpt())) {
+            if (Objects.isNull(tmpCommandLine.getOptionValue(
+                    SugarRemovalUtilityCmdApplication.LIMIT_POST_PROCESSING_BY_SIZE_OPTION.getOpt()))) {
+                throw new IllegalArgumentException("Boolean value indicating whether to limit post-processing of sugar moieties by size (option -"
+                        + SugarRemovalUtilityCmdApplication.LIMIT_POST_PROCESSING_BY_SIZE_OPTION.getOpt() + " or --"
+                        + SugarRemovalUtilityCmdApplication.LIMIT_POST_PROCESSING_BY_SIZE_OPTION.getLongOpt()
+                        + ") is empty (null).");
+            }
+            this.limitPostProcessingBySize = Boolean.parseBoolean(
+                    tmpCommandLine.getOptionValue(
+                            SugarRemovalUtilityCmdApplication.LIMIT_POST_PROCESSING_BY_SIZE_OPTION.getOpt()).trim());
         }
     }
     //</editor-fold>
@@ -879,7 +989,7 @@ public class SugarRemovalUtilityCmdApplication {
      * erroneous
      */
     public void execute() throws IOException, SecurityException, IllegalArgumentException, CDKException {
-        if (Objects.isNull(this.inputFile) || Objects.isNull(this.sugarRemovalUtil) || this.typeOfMoietiesToRemove == 0) {
+        if (Objects.isNull(this.inputFile) || Objects.isNull(this.sugarDetectionUtility) || this.typeOfMoietiesToRemove == 0) {
             throw new IllegalArgumentException("This object has not been properly instantiated because the usage " +
                     "instructions or version were queried by the command-line. It therefore cannot be executed.");
         }
@@ -888,30 +998,28 @@ public class SugarRemovalUtilityCmdApplication {
         FileInputStream tmpFileInputStream = new FileInputStream(this.inputFile);
         InputStreamReader tmpInputStreamReader = new InputStreamReader(tmpFileInputStream);
         BufferedReader tmpBuffReader = new BufferedReader(tmpInputStreamReader);
-        FileReader tmpFileReader = new FileReader(this.inputFile);
-        FormatFactory tmpCDKFormatFactory = new FormatFactory();
-        tmpCDKFormatFactory.registerFormat(new DynamicSMILESFileFormatMatcher());
-        IChemFormat tmpFormat = tmpCDKFormatFactory.guessFormat(tmpBuffReader);
-        if (Objects.isNull(tmpFormat)) {
-            throw new IllegalArgumentException("Given file format cannot be determined.");
+        IIteratingChemObjectReader<IAtomContainer> tmpIteratingChemObjectReader = null;
+        String tmpFileExtension = SugarRemovalUtilityCmdApplication.getFileExtension(this.inputFile.getAbsolutePath());
+        if (tmpFileExtension.isEmpty()) {
+            throw new IllegalArgumentException("Given file has no extension and therefore its type cannot be determined.");
         }
-        String tmpFormatClassName = tmpFormat.getFormatName();
-        IIteratingChemObjectReader<IAtomContainer> tmpReader = null;
-        switch (tmpFormatClassName) {
-            case "MDL Structure-data file":
-            case "MDL Molfile":
-            case "MDL Molfile V2000":
-            case "MDL Mol/SDF V3000":
-                tmpReader = new IteratingSDFReader(tmpFileReader, SilentChemObjectBuilder.getInstance(), true);
+        switch (tmpFileExtension) {
+            case ".sdf":
+            case ".mol":
+                tmpIteratingChemObjectReader = new IteratingSDFReader(tmpBuffReader, SilentChemObjectBuilder.getInstance(), true);
                 System.out.println("Found MDL molfile / structure data file.");
                 break;
-            case "SMILES":
+            case ".smi":
+            case ".smiles":
+            case ".csv":
+            case ".tsv":
+            case ".txt":
                 DynamicSMILESFileFormat format = DynamicSMILESFileReader.detectFormat(this.inputFile);
-                tmpReader = new DynamicSMILESFileReader(tmpFileReader, format);
+                tmpIteratingChemObjectReader = new DynamicSMILESFileReader(tmpBuffReader, format);
                 System.out.println("Found SMILES file.");
                 break;
             default:
-                throw new IllegalArgumentException("Given file type " + tmpFormatClassName + " cannot be used");
+                throw new IllegalArgumentException("Given file type " + tmpFileExtension + " cannot be used");
         }
         String tmpOutputRootDirectoryPath = this.inputFile.getAbsoluteFile().getParent() + File.separator;
         String tmpOutputFilePath = tmpOutputRootDirectoryPath + "deglycosylation_results.txt";
@@ -960,32 +1068,36 @@ public class SugarRemovalUtilityCmdApplication {
                         "2 (linear sugar moieties), or 3 (both).");
         }
         System.out.println("\tDetect circular sugars only with O-glycosidic bond: "
-                + this.sugarRemovalUtil.areOnlyCircularSugarsWithOGlycosidicBondDetected());
-        System.out.println("\tRemove only terminal sugar moieties: " + this.sugarRemovalUtil.areOnlyTerminalSugarsRemoved());
-        System.out.println("\tPreservation mode setting: " + this.sugarRemovalUtil.getPreservationModeSetting().name()
-                + " (" + this.sugarRemovalUtil.getPreservationModeSetting().ordinal() + ")");
+                + this.sugarDetectionUtility.areOnlyCircularSugarsWithOGlycosidicBondDetected());
+        System.out.println("\tRemove only terminal sugar moieties: " + this.sugarDetectionUtility.areOnlyTerminalSugarsRemoved());
+        System.out.println("\tPreservation mode setting: " + this.sugarDetectionUtility.getPreservationModeSetting().name()
+                + " (" + this.sugarDetectionUtility.getPreservationModeSetting().ordinal() + ")");
         System.out.println("\tPreservation mode threshold: "
-                + this.sugarRemovalUtil.getPreservationModeThresholdSetting());
+                + this.sugarDetectionUtility.getPreservationModeThresholdSetting());
         System.out.println("\tDetect circular sugars only with enough exocyclic oxygen atoms: "
-                + this.sugarRemovalUtil.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
+                + this.sugarDetectionUtility.areOnlyCircularSugarsWithEnoughExocyclicOxygenAtomsDetected());
         System.out.println("\tExocyclic oxygen atoms to atoms in ring ratio threshold: "
-                + this.sugarRemovalUtil.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
-        System.out.println("\tDetect linear sugars in rings: " + this.sugarRemovalUtil.areLinearSugarsInRingsDetected());
+                + this.sugarDetectionUtility.getExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting());
+        System.out.println("\tDetect linear sugars in rings: " + this.sugarDetectionUtility.areLinearSugarsInRingsDetected());
         System.out.println("\tLinear sugar candidate minimum size: "
-                + this.sugarRemovalUtil.getLinearSugarCandidateMinSizeSetting() + " carbon atoms");
+                + this.sugarDetectionUtility.getLinearSugarCandidateMinSizeSetting() + " carbon atoms");
         System.out.println("\tLinear sugar candidate maximum size: "
-                + this.sugarRemovalUtil.getLinearSugarCandidateMaxSizeSetting() + " carbon atoms");
-        System.out.println("\tDetect linear acidic sugars: " + this.sugarRemovalUtil.areLinearAcidicSugarsDetected());
+                + this.sugarDetectionUtility.getLinearSugarCandidateMaxSizeSetting() + " carbon atoms");
+        System.out.println("\tDetect linear acidic sugars: " + this.sugarDetectionUtility.areLinearAcidicSugarsDetected());
         System.out.println("\tDetect spiro rings as circular sugars: "
-                + this.sugarRemovalUtil.areSpiroRingsDetectedAsCircularSugars());
+                + this.sugarDetectionUtility.areSpiroRingsDetectedAsCircularSugars());
         System.out.println("\tDetect circular sugars with keto groups: "
-                + this.sugarRemovalUtil.areCircularSugarsWithKetoGroupsDetected());
+                + this.sugarDetectionUtility.areCircularSugarsWithKetoGroupsDetected());
+        System.out.println("\tMark attachment points by R groups: "
+                + this.markAttachmentPointsByR);
+        System.out.println("\tPost-process sugar moieties after extraction: "
+                + this.postProcessSugars);
+        System.out.println("\tLimit post-processing of sugar moieties by size: "
+                + this.limitPostProcessingBySize);
         System.out.println();
         System.out.println("Entering iteration of molecules...");
         System.out.println();
         SmilesGenerator tmpSmiGen = new SmilesGenerator(SmiFlavor.Absolute);
-        CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(SilentChemObjectBuilder.getInstance());
-        CDKAtomTypeMatcher matcher = CDKAtomTypeMatcher.getInstance(SilentChemObjectBuilder.getInstance());
         int tmpMoleculeCounter = 1;
         int tmpFatalExceptionCounter = 0;
         int tmpMinorExceptionsCounter = 0;
@@ -997,11 +1109,11 @@ public class SugarRemovalUtilityCmdApplication {
         String tmpDeglycosylatedMoleculeSMILES;
         List<IAtomContainer> tmpSugarMoieties;
         String tmpOutput = "";
-        while (tmpReader.hasNext()) {
+        while (tmpIteratingChemObjectReader.hasNext()) {
             try {
                 tmpOutput = tmpMoleculeCounter + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR;
                 try {
-                    tmpMolecule = tmpReader.next();
+                    tmpMolecule = tmpIteratingChemObjectReader.next();
                 } catch (Exception anException) {
                     SugarRemovalUtilityCmdApplication.LOGGER.log(Level.SEVERE,
                             anException.toString() + " Molecule number: " + tmpMoleculeCounter,
@@ -1046,13 +1158,28 @@ public class SugarRemovalUtilityCmdApplication {
                 tmpOutput = tmpOutput.concat(tmpOriginalMoleculeSMILES + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR);
                 switch (this.typeOfMoietiesToRemove) {
                     case 1:
-                        tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularSugars(tmpMolecule);
+                        tmpSugarMoieties = this.sugarDetectionUtility.copyAndExtractAglyconeAndSugars(tmpMolecule,
+                                true,
+                                false,
+                                this.markAttachmentPointsByR,
+                                this.postProcessSugars,
+                                this.limitPostProcessingBySize);
                         break;
                     case 2:
-                        tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnLinearSugars(tmpMolecule);
+                        tmpSugarMoieties = this.sugarDetectionUtility.copyAndExtractAglyconeAndSugars(tmpMolecule,
+                                false,
+                                true,
+                                this.markAttachmentPointsByR,
+                                this.postProcessSugars,
+                                this.limitPostProcessingBySize);
                         break;
                     case 3:
-                        tmpSugarMoieties = this.sugarRemovalUtil.removeAndReturnCircularAndLinearSugars(tmpMolecule);
+                        tmpSugarMoieties = this.sugarDetectionUtility.copyAndExtractAglyconeAndSugars(tmpMolecule,
+                                true,
+                                true,
+                                this.markAttachmentPointsByR,
+                                this.postProcessSugars,
+                                this.limitPostProcessingBySize);
                         break;
                     default:
                         throw new IllegalArgumentException("Type of moieties to remove must be either 1 (circular sugar moieties), " +
@@ -1060,16 +1187,6 @@ public class SugarRemovalUtilityCmdApplication {
                 }
                 if (tmpSugarMoieties.size() > 1) {
                     tmpSugarContainingMoleculesCounter++;
-                }
-                for (IAtomContainer structureInList : tmpSugarMoieties) {
-                    if (structureInList.isEmpty()) {
-                        continue;
-                    }
-                    for (IAtom atom : structureInList.atoms()) {
-                        IAtomType type = matcher.findMatchingAtomType(structureInList, atom);
-                        AtomTypeManipulator.configure(atom, type);
-                    }
-                    hydrogenAdder.addImplicitHydrogens(structureInList);
                 }
                 IAtomContainer tmpDeglycosylatedCore = tmpSugarMoieties.remove(0);
                 if (tmpDeglycosylatedCore.isEmpty()) {
@@ -1089,7 +1206,7 @@ public class SugarRemovalUtilityCmdApplication {
                 }
                 tmpOutput = tmpOutput.concat(tmpDeglycosylatedMoleculeSMILES
                         + SugarRemovalUtilityCmdApplication.OUTPUT_FILE_SEPARATOR
-                        + (tmpSugarMoieties.size() > 1));
+                        + (!tmpSugarMoieties.isEmpty()));
                 if (!tmpSugarMoieties.isEmpty()) {
                     for (IAtomContainer tmpMoiety : tmpSugarMoieties) {
                         String tmpSMILEScode = null;
@@ -1132,8 +1249,7 @@ public class SugarRemovalUtilityCmdApplication {
         tmpOutputFilePrintWriter.flush();
         tmpOutputFilePrintWriter.close();
         tmpOutputFileWriter.close();
-        tmpFileReader.close();
-        tmpReader.close();
+        tmpIteratingChemObjectReader.close();
         tmpLogFileHandler.flush();
         tmpLogFileHandler.close();
     }
@@ -1149,6 +1265,32 @@ public class SugarRemovalUtilityCmdApplication {
      */
     public static boolean isLegalTypeOfMoietiesToRemove(int aTypeOfMoietiesToRemove) {
         return aTypeOfMoietiesToRemove == 1 || aTypeOfMoietiesToRemove == 2 || aTypeOfMoietiesToRemove == 3;
+    }
+
+    /**
+     * Returns the extension of the file represented by the given pathname. If no file extension is specified, an empty
+     * string is returned.
+     *
+     * @param aFilePathname representing the file whose extension should be extracted
+     * @return extension of the file represented by the given pathname; an empty string if no file extension is specified
+     * @throws IllegalArgumentException if given file pathname is empty
+     * @throws NullPointerException if given file pathname is 'null'
+     */
+    public static String getFileExtension(String aFilePathname) throws NullPointerException, IllegalArgumentException {
+        //<editor-fold defaultstate="collapsed" desc="Checks">
+        Objects.requireNonNull(aFilePathname, "Given file pathname is 'null'.");
+        if (aFilePathname.isEmpty()) {
+            throw new IllegalArgumentException("Given file pathname is empty.");
+        }
+        //</editor-fold>
+        File tmpFile = new File(aFilePathname);
+        String tmpFilename = tmpFile.getName();
+        int tmpLastIndexOfDot = tmpFilename.lastIndexOf('.');
+        if (tmpLastIndexOfDot == -1) {
+            return "";
+        }
+        String tmpFileExtension = tmpFilename.substring(tmpLastIndexOfDot);
+        return tmpFileExtension;
     }
     //</editor-fold>
 }

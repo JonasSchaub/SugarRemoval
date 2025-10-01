@@ -32,7 +32,6 @@ package org.openscience.cdk.tools;
  */
 
 import de.unijena.cheminf.deglycosylation.SugarRemovalUtilityCmdApplication;
-import de.unijena.cheminf.deglycosylation.tools.DynamicSMILESFileFormatMatcher;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -44,8 +43,6 @@ import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IBond;
-import org.openscience.cdk.io.FormatFactory;
-import org.openscience.cdk.io.formats.IChemFormat;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
@@ -1883,21 +1880,6 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         tmpMol.addAtom(tmpAtom);
         tmpMol.addAtom(tmpAtom);
         System.out.println(tmpMol.getAtomCount());
-    }
-
-    /**
-     * This test illustrates what file formats the CDK FormatFactory can recognize. It is used in the sugar removal
-     * application.
-     *
-     * @throws Exception if anything goes wrong
-     */
-    @Test
-    void readingFilesExperiment() throws Exception {
-        FormatFactory tmpCDKFormatFactory = new FormatFactory();
-        tmpCDKFormatFactory.registerFormat(new DynamicSMILESFileFormatMatcher());
-        for (IChemFormat tmpFormat : tmpCDKFormatFactory.getFormats()) {
-            System.out.println(tmpFormat.getFormatName() + " " + tmpFormat.getReaderClassName());
-        }
     }
 
     /**

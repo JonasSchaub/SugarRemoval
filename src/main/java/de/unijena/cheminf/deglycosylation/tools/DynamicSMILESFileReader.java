@@ -90,7 +90,7 @@ public class DynamicSMILESFileReader extends DefaultIteratingChemObjectReader<IA
     private static final Logger LOGGER = Logger.getLogger(DynamicSMILESFileReader.class.getName());
     //
     /**
-     *
+     * Parser for SMILES codes.
      */
     private final SmilesParser smilesParser;
     //</editor-fold>
@@ -103,22 +103,23 @@ public class DynamicSMILESFileReader extends DefaultIteratingChemObjectReader<IA
     private int skippedLinesCounter;
     //
     /**
-     *
+     * Buffered reader to read the file line by line.
      */
     private BufferedReader buffReader;
     //
     /**
-     *
+     * Format of the SMILES file to read.
      */
     private DynamicSMILESFileFormat format;
     //
     /**
-     *
+     * Current line read from the file, null if the next line has not been read yet.
      */
     private String currentLine;
     //
     /**
-     *
+     * Counter for the current line in the file, starting at -1 before reading the first line (0 after reading the
+     * headline if present).
      */
     private int lineInFileCounter;
     //</editor-fold>
@@ -135,7 +136,7 @@ public class DynamicSMILESFileReader extends DefaultIteratingChemObjectReader<IA
     }
     //
     /**
-     *
+     * Constructs a new DynamicSMILESFileReader that can read molecules from a given file.
      */
     public DynamicSMILESFileReader(File aFile, DynamicSMILESFileFormat aFormat) throws CDKException, FileNotFoundException {
         this(new FileReader(aFile), aFormat);
@@ -168,7 +169,15 @@ public class DynamicSMILESFileReader extends DefaultIteratingChemObjectReader<IA
     //
     //<editor-fold desc="Public static methods">
     /**
+     * Checking the first few lines of a SMILES file for parsable SMILES codes and saving the determined separator
+     * character and SMILES code and ID column positions.
+     * Expects one parsable SMILES code per line of the file and an optional second element, which is interpreted as the
+     * molecule's ID or name and is separated from the SMILES code by one of the separator tokens tab, semicolon, comma, or space.
+     * Unsuitable for reaction SMILES or CxSMILES.
      *
+     * @param lines first few lines of a SMILES file
+     * @return determined format of the given lines
+     * @throws IOException if the lines do not adhere to the format expectations
      */
     public static DynamicSMILESFileFormat detectFormat(List<String> lines) throws IOException {
         IChemObjectBuilder tmpBuilder = SilentChemObjectBuilder.getInstance();
@@ -268,7 +277,7 @@ public class DynamicSMILESFileReader extends DefaultIteratingChemObjectReader<IA
      *
      * @param aFile a SMILES file
      * @return determined format of the given file
-     * @throws IOException if the file cannot be found or does not adhere to the format expectations.
+     * @throws IOException if the file cannot be found or does not adhere to the format expectations
      */
     public static DynamicSMILESFileFormat detectFormat(File aFile) throws IOException {
         try (
@@ -341,6 +350,8 @@ public class DynamicSMILESFileReader extends DefaultIteratingChemObjectReader<IA
         return matcher.find();
     }
     //</editor-fold>
+    //
+    //<editor-fold desc="Overwritten DefaultIteratingChemObjectReader methods">
 
     @Override
     public boolean hasNext() {
@@ -432,4 +443,5 @@ public class DynamicSMILESFileReader extends DefaultIteratingChemObjectReader<IA
     public void close() throws IOException {
         this.buffReader.close();
     }
+    //</editor-fold>
 }

@@ -30,7 +30,7 @@
 
     <groupId>io.github.jonasschaub</groupId>
     <artifactId>sru</artifactId>
-    <version>1.5.0.0</version>
+    <version>1.6.0.0</version>
     <name>Sugar Removal Utility</name>
     <packaging>jar</packaging>
     <url>https://github.com/JonasSchaub/SugarRemoval</url>
