@@ -1,20 +1,24 @@
 ---------------------------------------------------------------------------------------------------
-Sugar Removal Utility Command Line Application Usage instructions v. 1.5
+Sugar Removal Utility Command Line Application Usage instructions v. 1.6
 ---------------------------------------------------------------------------------------------------
 
 This application can be used to remove sugar moieties from molecules in a given data set, according 
 to "Schaub, J., Zielesny, A., Steinbeck, C., Sorokina, M. Too sweet: cheminformatics for deglycosylation in natural
-products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y".
+products. J Cheminform 12, 67 (2020). https://doi.org/10.1186/s13321-020-00467-y". Additionally, it includes the
+"Sugar Detection Utility" extension (https://github.com/cdk/cdk/pull/1225) to extract sugar moieties correctly.
 
-Accepted input formats: MDL Molfile, MDL Structure data file (SDF), and SMILES file (of 
-format: [SMILES string][space][name] in each line, see example file)
+Accepted input formats: MDL Molfile, MDL Structure data file (SDF), and SMILES file
+(determined by file extension; .sdf and .mol will be recognized as SDF and Molfile, respectively; .smi, .smiles, .csv,
+.tsv, and .txt will be interpreted as SMILES file).
 
-The output is a comma-separated value (CSV) text file containing: 
+The output is a comma-separated value (CSV) text file containing (separated by semicolon ;):
 - the respective number of each molecule in the input file
 - detected identifiers of the molecules
-- SMILES strings of the original molcules
-- SMILES strings of the deglycosylated molecules
-- SMILES strings of the removed sugar moieties
+- SMILES strings of the original molecules
+- SMILES strings of the deglycosylated molecules (aglycone)
+- whether the molecule contained sugar moieties
+- SMILES strings of the removed sugar moieties (variable number of columns here depending on how many sugars were removed from
+  the respective molecule)
 
 The output file and a log file will be created in the same directory as the input file.
 
@@ -29,7 +33,8 @@ the JAR file. These are (-[short name] --[long name] <argument>):
 java -jar SugarRemovalUtility-jar-with-dependencies.jar -i <filePath> -t <integer> 
 	[-glyBond <boolean>] [-remTerm <boolean>] [-presMode <integer>] [-presThres <integer>] 
 	[-oxyAtoms <boolean>] [-oxyAtomsThres <number>] [-linSugInRings <boolean>] [-linSugMinSize <integer>] 
-	[-linSugMaxSize <integer>][-linAcSug <boolean>] [-circSugSpiro <boolean>] [-circSugKetoGroups <boolean>]
+	[-linSugMaxSize <integer>] [-linAcSug <boolean>] [-circSugSpiro <boolean>] [-circSugKetoGroups <boolean>]
+	[-markR <boolean>] [-postProcSug <boolean>] [-limitPostProcBySize <boolean>]
 
 - Option -h --help: Print usage and help information regarding the required command-line arguments and 
   options. If this option is used, the application is exited afterwards.
@@ -57,7 +62,7 @@ java -jar SugarRemovalUtility-jar-with-dependencies.jar -i <filePath> -t <intege
 	- This option and its argument are always required
 
 -> These two options must ALWAYS be given (except if --help or --version are used). The remaining 
-   arguments are optional. If they are not specified, they will be in their default value.
+   arguments are optional. If they are not specified, they will be set to their default value.
 
 - Option -glyBond --detectCircSugOnlyWithGlyBond <boolean>: Either "true" or "false", indicating 
   whether circular sugars should be detected (and removed) only if they have an O-glycosidic bond 
@@ -129,6 +134,21 @@ java -jar SugarRemovalUtility-jar-with-dependencies.jar -i <filePath> -t <intege
   whether circular sugar-like moieties with keto groups should be detected.
 	- Any other value of this argument will be interpreted as "false"	
 	- Default: "false"
+- Option -markR --markAttachmentPointsByR <boolean>: Either "true" or "false", indicating whether the attachment
+  points of removed sugar moieties should be marked by R groups (pseudo atoms, * in the exported SMILES codes)
+  in the deglycosylated core structure and on the extracted sugars.
+    - Any other value of this argument will be interpreted as "false"
+    - Default: "false"
+- Option -postProcSug --postProcessSugars <boolean>: Either true or false, indicating whether the extracted sugar
+  moieties should be post-processed, i.e. bond splitting (O-glycosidic, ether, ester, peroxide) to separate the
+  individual sugars, before being output.
+    - Any other value of this argument will be interpreted as "false"
+    - Default: "false"
+- Option -limitPostProcBySize --limitPostProcessingBySize <boolean>: Either true or false, indicating whether the
+  post-processing of extracted sugar moieties should be limited to structures bigger than a defined size (see
+  preservation mode (threshold)) to preserve smaller modifications.
+    - Any other value of this argument will be interpreted as "false"
+    - Default: "false"
 
 Example usages: 
 - Removing circular AND linear sugars from all molecules in the given example file, using default settings 
@@ -136,7 +156,7 @@ Example usages:
 	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -i "smiles_test_file.txt" -t "3"
 - Removing circular AND linear sugars from all molecules in the given example file, using all default settings 
   explicitly: 
-	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -i "smiles_test_file.txt" -t "3" -glyBond "false" -remTerm "true" -presMode "1" -presThres "5" -oxyAtoms "true" -oxyAtomsThres "0.5" -linSugInRings "false" -linSugMinSize "4" -linSugMaxSize "7" -linAcSug "false" -circSugSpiro "false" -circSugKetoGroups "false"
+	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -i "smiles_test_file.txt" -t "3" -glyBond "false" -remTerm "true" -presMode "1" -presThres "5" -oxyAtoms "true" -oxyAtomsThres "0.5" -linSugInRings "false" -linSugMinSize "4" -linSugMaxSize "7" -linAcSug "false" -circSugSpiro "false" -circSugKetoGroups "false" -markR "false" -postProcSug "false" -limitPostProcBySize "false"
 - Printing usage and help information and the version of the application:
 	java -jar "SugarRemovalUtility-jar-with-dependencies.jar" -h -v
 
