@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"de.unijena.cheminf.deglycosylation"},{"l":"de.unijena.cheminf.deglycosylation.tools"}];updateSearchResults();
