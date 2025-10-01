@@ -34,18 +34,20 @@ removal of circular and linear sugars from molecular structures, is described in
 C. et al. Too sweet: cheminformatics for deglycosylation in natural products. J Cheminform 12, 67 (2020)](https://doi.org/10.1186/s13321-020-00467-y). There, 
 you can find all necessary details about the algorithm and its various configuration options. We also published a 
 [follow-up article](https://doi.org/10.3390/biom11040486) where we used the SRU to analyse sugar moieties in the 
-Collection of Open Natural products (COCONUT) database.
+Collection of Open Natural products (COCONUT) database. Recently, we also developed an extension called Sugar Detection 
+Utility (SDU) which is described here, for now: [https://github.com/cdk/cdk/pull/1225](https://github.com/cdk/cdk/pull/1225).
 * This repository *used to* host the SRU source code, but it has now moved to the 
 <a href="https://github.com/cdk/cdk">Chemistry Development Kit (CDK)</a> Java library for cheminformatics. If you want to 
 use the SRU as a Java library, you now need to use the CDK version 2.10 or higher. Information on how to install and use
 the CDK can be found in the GitHub repository linked above. You can then use the SRU via CDK's 
-[SugarRemovalUtility class](https://github.com/cdk/cdk/blob/main/misc/extra/src/main/java/org/openscience/cdk/tools/SugarRemovalUtility.java).
+[SugarRemovalUtility class](https://github.com/cdk/cdk/blob/main/misc/extra/src/main/java/org/openscience/cdk/tools/SugarRemovalUtility.java)
+or the [SugarDetectionUtility extension](https://github.com/cdk/cdk/blob/main/misc/extra/src/main/java/org/openscience/cdk/tools/SugarDetectionUtility.java).
 * This repository now only hosts the SRU command-line application and its source code and it serves as a place for 
 documentation about the algorithm.
 * The SRU's functionalities can also be used in other software tools:
   * The SRU web application is available at [https://sugar.naturalproducts.net](https://sugar.naturalproducts.net) and its source code
     can be found [here](https://github.com/mSorok/SugarRemovalWeb).
-  * The Sugar Removal Utility is also available in the open Java rich client application MORTAR ('MOlecule fRagmenTation 
+  * The Sugar Removal/Detection Utility is also available in the open Java rich client application MORTAR ('MOlecule fRagmenTation 
   fRamework') where <i>in silico</i> molecule fragmentation can be easily conducted on a given data set and the results 
   visualised ([MORTAR GitHub repository](https://github.com/FelixBaensch/MORTAR) 
   | [MORTAR article](https://doi.org/10.1186/s13321-022-00674-9))
@@ -60,8 +62,8 @@ moiety detection and removal using the SRU.
 ### Sources
 The sources available in <i>/src/main/java/de/unijena/cheminf/deglycosylation/</i> belong to the SRU command-line
 application. It makes the various settings for fine-tuning the sugar detection and removal process available through
-command-line arguments. But using the CDK <i>SugarRemovalUtility</i> class directly in your own software project offers some
-additional configuration options and functionalities:
+command-line arguments. But using the CDK <i>SugarRemovalUtility / SugarDetectionUtility</i> classes directly in your 
+own software project offers some additional configuration options and functionalities:
 * Adding and removing circular and linear sugar patterns for the initial detection steps
 * Sugar detection without removal
 * Detecting only the number of sugar moieties of a molecule
@@ -70,6 +72,7 @@ The class <i>SugarRemovalUtilityTest</i> can be found in the directory
 <i>/src/test/java/de/unijena/cheminf/deglycosylation/</i>. It is a JUnit test class that tests the performance of the
 Sugar Removal Utility on multiple specific molecular structures of natural products hand-picked from public databases
 (see article linked above). Code examples of how to use and configure the <i>SugarRemovalUtility</i> class can be found here.
+There is also an analogous test class for the <i>SugarDetectionUtility</i>.
 
 ### SugarRemovalUtility CMD App
 The sub-folder ["SugarRemovalUtility CMD App"](https://github.com/JonasSchaub/SugarRemoval/tree/main/SugarRemovalUtility%20CMD%20App) 
@@ -94,12 +97,12 @@ As stated above, the Sugar Removal Utility is now part of the
 install the SRU externally, you can use it via CDK's SugarRemovalUtility class. If not, please follow the installation
 description in the CDK repository linked above.
 <br>
-The Sugar Removal Utility web applcation in *this* repository is hosted as a package/artifact on the sonatype maven 
+The Sugar Removal Utility web application in *this* repository is hosted as a package/artifact on the sonatype maven 
 central repository. See the [artifact page](https://central.sonatype.com/artifact/io.github.jonasschaub/sru/) for installation guidelines using build tools like maven or gradle.
 To install it via its JAR archive, you can get it from the [releases](https://github.com/JonasSchaub/SugarRemoval/releases). 
 Note that other dependencies will need to be installed via JAR archives as well this way.
 
-### Command line application JAR 
+### Command line application JAR
 The command-line application JAR has to be downloaded. After that, it can be executed from the command-line
 as described in the usage instructions. Java version 17 or higher has to be installed on your machine.
 
@@ -118,7 +121,7 @@ care of installing all dependencies.
   * Apache License, version 2.0
 
 **Managed by Maven:**
-* Chemistry Development Kit (CDK) version 2.10
+* Chemistry Development Kit (CDK) version 2.12-SNAPSHOT
   * [Chemistry Development Kit on GitHub](https://cdk.github.io/)
   * License: GNU Lesser General Public License 2.1
 * JUnit version 5.10.0

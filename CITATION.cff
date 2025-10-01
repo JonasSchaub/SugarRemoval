@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 title: Sugar Removal Utility (SRU)
-version: 1.5.0.0
+version: 1.6.0.0
 message: "If you use this software, please cite it as below and also cite the accompanying scientific publication referenced below."
 type: software
 authors:
@@ -17,7 +17,7 @@ authors:
     given-names: "Maria"
     orcid: "https://orcid.org/0000-0001-9359-7149"
 doi: "10.5281/zenodo.7082113"
-date-released: 2025-03-19
+date-released: 2025-10-01
 url: "https://github.com/JonasSchaub/SugarRemoval"
 license: MIT
 references:
