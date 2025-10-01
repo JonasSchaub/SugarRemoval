@@ -33,7 +33,7 @@ import java.util.Objects;
  * SugarRemovalUtilityCmdApplication class, calls its execute() function and measures the time it takes for execution.
  *
  * @author Jonas Schaub
- * @version 1.5
+ * @version 1.6
  */
 public class Main {
     /**
